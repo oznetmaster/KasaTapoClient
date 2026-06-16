@@ -42,7 +42,7 @@ During the benchmark and live-device validation work in this repository, the kee
 
 ## Installation
 
-The library is intended to be available as the `KasaTapoClient` NuGet package before this repository is made public.
+The library is available as the `KasaTapoClient` NuGet package.
 
 ```powershell
 dotnet add package KasaTapoClient
@@ -126,7 +126,7 @@ This list reflects real console discovery output from the development environmen
 
 ## Documentation
 
-Public documentation for this repository is intended to be available on GitHub Pages:
+Public documentation for this repository is available on GitHub Pages:
 
 - https://oznetmaster.github.io/KasaTapoClient/
 
