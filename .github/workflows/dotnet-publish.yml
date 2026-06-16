@@ -1,33 +1,119 @@
 name: Publish .NET Package
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version or tag to publish, for example 1.2.3 or v1.2.3
+        required: true
+        type: string
+
+permissions:
+  contents: write
 
 jobs:
-  deploy:
+  publish:
     runs-on: ubuntu-latest
+    env:
+      PROJECT_PATH: KasaClient/KasaTapoClient.csproj
+      ARTIFACT_DIR: ${{ github.workspace }}/artifacts
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
+      - name: Determine package version
+        id: version
+        shell: pwsh
+        run: |
+          $rawVersion = switch ('${{ github.event_name }}') {
+              'workflow_dispatch' { '${{ inputs.version }}'; break }
+              'push' { '${{ github.ref_name }}'; break }
+              default { '' }
+          }
+
+          if ([string]::IsNullOrWhiteSpace($rawVersion)) {
+              throw 'No release tag or manual version was provided.'
+          }
+
+          $packageVersion = $rawVersion.Trim()
+          if ($packageVersion.StartsWith('v', [System.StringComparison]::OrdinalIgnoreCase)) {
+              $packageVersion = $packageVersion.Substring(1)
+          }
+
+          if ($packageVersion -notmatch '^\d+\.\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z\.-]+)?$') {
+              throw "Version '$packageVersion' is not a supported NuGet semantic version."
+          }
+
+          "raw_version=$rawVersion" >> $env:GITHUB_OUTPUT
+          "package_version=$packageVersion" >> $env:GITHUB_OUTPUT
+
       - name: Restore solution
         run: dotnet restore KasaClient.slnx
 
       - name: Build solution
-        run: dotnet build KasaClient.slnx --configuration Release --no-restore
+        run: dotnet build KasaClient.slnx --configuration Release --no-restore -p:ContinuousIntegrationBuild=true -p:Version=${{ steps.version.outputs.package_version }}
 
       - name: Run tests
         run: dotnet test KasaClient.Tests/KasaClient.Tests.csproj --configuration Release --no-build --framework net10.0 --filter "TestCategory!=Live"
 
       - name: Pack library
-        run: dotnet pack KasaClient/KasaTapoClient.csproj --configuration Release --no-build --output ./artifacts/nuget
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path "${{ env.ARTIFACT_DIR }}/nuget" -Force | Out-Null
+          dotnet pack ${{ env.PROJECT_PATH }} --configuration Release --no-build -p:ContinuousIntegrationBuild=true -p:Version=${{ steps.version.outputs.package_version }} -p:PackageVersion=${{ steps.version.outputs.package_version }} --output "${{ env.ARTIFACT_DIR }}/nuget"
 
       - name: Publish package
-        run: dotnet nuget push "./artifacts/nuget/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source "https://api.nuget.org/v3/index.json" --skip-duplicate
+        shell: pwsh
+        run: |
+          $packages = Get-ChildItem -Path "${{ env.ARTIFACT_DIR }}/nuget" -Filter '*.nupkg' | Where-Object { $_.Name -notlike '*.symbols.nupkg' }
+          if (-not $packages) {
+              throw 'No NuGet package was produced.'
+          }
+
+          foreach ($package in $packages) {
+              dotnet nuget push $package.FullName --api-key "${{ secrets.NUGET_API_KEY }}" --source "https://api.nuget.org/v3/index.json" --skip-duplicate
+          }
+
+      - name: Collect release assets
+        shell: pwsh
+        run: |
+          $releaseDir = "${{ env.ARTIFACT_DIR }}/release"
+          New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
+
+          Get-ChildItem -Path "${{ env.ARTIFACT_DIR }}/nuget" -Filter '*.nupkg' | Where-Object { $_.Name -notlike '*.symbols.nupkg' } | Copy-Item -Destination $releaseDir -Force
+
+          $projectDir = Split-Path -Parent "${{ env.PROJECT_PATH }}"
+          $frameworks = @('net472', 'net10.0')
+          foreach ($framework in $frameworks) {
+              $outputDir = Join-Path $projectDir "bin/Release/$framework"
+              foreach ($extension in @('dll', 'xml')) {
+                  $sourcePath = Join-Path $outputDir "KasaTapoClient.$extension"
+                  if (Test-Path $sourcePath) {
+                      Copy-Item $sourcePath (Join-Path $releaseDir "KasaTapoClient.$framework.$extension") -Force
+                  }
+              }
+          }
+
+      - name: Create GitHub release from tag
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.raw_version }}
+          name: ${{ steps.version.outputs.raw_version }}
+          generate_release_notes: true
+          prerelease: ${{ contains(steps.version.outputs.package_version, '-') }}
+          files: |
+            ${{ env.ARTIFACT_DIR }}/release/*.nupkg
+            ${{ env.ARTIFACT_DIR }}/release/*.dll
+            ${{ env.ARTIFACT_DIR }}/release/*.xml
