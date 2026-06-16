@@ -2,6 +2,8 @@
 
 KasaTapoClient is an independent .NET implementation.
 
+TP-Link, Kasa, and Tapo are trademarks of their respective owners. This project is an independent, unofficial .NET library and is not affiliated with or endorsed by TP-Link.
+
 ## Upstream references
 
 This project references the public `python-kasa` project for compatibility behavior, device support expectations, and protocol understanding.

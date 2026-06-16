@@ -2,6 +2,8 @@
 
 KasaTapoClient is a .NET client library for TP-Link Kasa and Tapo devices, supporting discovery, inspection, refresh, and control of plugs, bulbs, light strips, strips, hubs, and selected child devices.
 
+TP-Link, Kasa, and Tapo are trademarks of their respective owners. This project is an independent, unofficial .NET library and is not affiliated with or endorsed by TP-Link.
+
 ## Supported frameworks
 
 - `.NET 10`
