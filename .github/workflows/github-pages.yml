@@ -2,7 +2,7 @@ name: Publish Documentation Site
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]
   workflow_dispatch:
 
 permissions:
@@ -31,6 +31,12 @@ jobs:
 
       - name: Restore solution
         run: dotnet restore KasaClient.slnx
+
+      - name: Build solution
+        run: dotnet build KasaClient.slnx --configuration Release --no-restore
+
+      - name: Run tests
+        run: dotnet test KasaClient.Tests/KasaClient.Tests.csproj --configuration Release --no-build --framework net10.0
 
       - name: Build metadata and site
         run: |
