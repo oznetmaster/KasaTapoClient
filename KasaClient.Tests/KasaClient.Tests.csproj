@@ -34,7 +34,7 @@
   </ItemGroup>
 
   <ItemGroup>
-	 <None Include="LiveTestSettings.json" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+	 <None Include="LiveTestSettings.json" CopyToOutputDirectory="PreserveNewest" Visible="false" Condition="Exists('LiveTestSettings.json')" />
 	 <None Include="LiveTestSettings.sample.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
