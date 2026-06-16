@@ -1,6 +1,20 @@
 # Library usage
 
-## Connect and update
+## Discover and update
+
+```csharp
+using KasaTapoClient;
+
+IReadOnlyList<DiscoveryResult> discoveredDevices = await Discover.DiscoverDevicesAsync().ConfigureAwait(false);
+DiscoveryResult firstDevice = discoveredDevices[0];
+
+using KasaDevice discoveredDevice = await Discover.ConnectAsync(firstDevice.Configuration).ConfigureAwait(false);
+await discoveredDevice.UpdateAsync().ConfigureAwait(false);
+```
+
+Discovery is the easiest first step when you want to inspect what supported devices are visible on the local network before deciding which one to control.
+
+## Connect to a known device
 
 ```csharp
 using KasaTapoClient;
