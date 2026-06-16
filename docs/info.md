@@ -5,7 +5,7 @@ It targets `.NET Framework 4.7.2` and `.NET 10`, and is intended to provide a pr
 
 ## Release status
 
-This repository is being prepared for public release as `kasatapoclient` and is currently intended to remain private until the release-facing assets and workflows are finalized.
+This repository is being prepared for public release as `KasaTapoClient` and is currently intended to remain private until the release-facing assets and workflows are finalized.
 
 ## Installation
 
