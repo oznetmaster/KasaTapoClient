@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="BenchmarkSuite1/BenchmarkSuite1.csproj" />
+  <Project Path="BenchmarkSuite2/BenchmarkSuite2.csproj" />
+  <Project Path="BenchmarkSuite3/BenchmarkSuite3.csproj" />
+  <Project Path="KasaClient.Console/KasaClient.Console.csproj" />
+  <Project Path="KasaClient.Tests/KasaClient.Tests.csproj" />
+  <Project Path="KasaClient/KasaTapoClient.csproj" />
+</Solution>

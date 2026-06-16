@@ -1,0 +1,22 @@
+<!-- Copyright © 2026 Neil Colvin. -->
+<!-- Licensed under the MIT License. See LICENSE file in the project root for full license information. -->
+
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+ <LangVersion>13.0</LangVersion>
+   <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.15.2" />
+    <PackageReference Include="Microsoft.VisualStudio.DiagnosticsHub.BenchmarkDotNetDiagnosers" Version="18.7.37220.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\KasaClient.Console\KasaClient.Console.csproj"
+                      SetTargetFramework="TargetFramework=net10.0" />
+  </ItemGroup>
+</Project>

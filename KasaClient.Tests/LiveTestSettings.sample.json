@@ -1,0 +1,78 @@
+{
+  "enabled": false,
+  "timeoutSeconds": 10,
+  "credentials": {
+    "userName": "",
+    "password": ""
+  },
+  "devices": {
+    "plug": {
+      "hosts": [
+        {
+          "host": "replace-with-plug-host-1",
+          "port": 9999,
+          "transportKind": "Auto",
+          "deviceFamily": null,
+          "encryptionKind": null,
+          "useSsl": false,
+          "httpPort": null,
+          "applicationPath": "/app"
+        },
+        {
+          "host": "replace-with-plug-host-2",
+          "port": 9999,
+          "transportKind": "Auto",
+          "deviceFamily": null,
+          "encryptionKind": null,
+          "useSsl": false,
+          "httpPort": null,
+          "applicationPath": "/app"
+        }
+      ]
+    },
+    "light": {
+      "hosts": [
+        {
+          "host": "replace-with-light-host",
+          "port": null,
+          "transportKind": "Auto",
+          "deviceFamily": null,
+          "encryptionKind": null,
+          "useSsl": false,
+          "httpPort": null,
+          "applicationPath": "/app"
+        }
+      ]
+    },
+    "strip": {
+      "hosts": [
+        {
+          "host": "replace-with-strip-host",
+          "port": 9999,
+          "transportKind": "Auto",
+          "deviceFamily": null,
+          "encryptionKind": null,
+          "useSsl": false,
+          "httpPort": null,
+          "applicationPath": "/app",
+          "childDeviceId": "replace-with-real-strip-child-id"
+        }
+      ]
+    },
+    "hub": {
+      "hosts": [
+        {
+          "host": "replace-with-hub-host",
+          "port": 9999,
+          "transportKind": "Auto",
+          "deviceFamily": null,
+          "encryptionKind": null,
+          "useSsl": false,
+          "httpPort": null,
+          "applicationPath": "/app",
+          "childDeviceId": "replace-with-real-child-id"
+        }
+      ]
+    }
+  }
+}

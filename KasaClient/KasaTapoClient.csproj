@@ -1,0 +1,134 @@
+<!-- Copyright © 2026 Neil Colvin. -->
+<!-- Licensed under the MIT License. See LICENSE file in the project root for full license information. -->
+
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<OutputType>Library</OutputType>
+		<RootNamespace>KasaTapoClient</RootNamespace>
+		<AssemblyName>KasaTapoClient</AssemblyName>
+		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+		<TargetFrameworks>net472;net10.0</TargetFrameworks>
+		<IsPackable>true</IsPackable>
+		<PackageId>KasaTapoClient</PackageId>
+		<Authors>Neil Colvin</Authors>
+		<Company>Neil Colvin</Company>
+		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageTags>kasa;api;library</PackageTags>
+		<RepositoryUrl>https://github.com/neilcolvin/kasatapoclient</RepositoryUrl>
+		<PackageProjectUrl>https://github.com/neilcolvin/kasatapoclient</PackageProjectUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
+		<PackageReleaseNotes>Initial public GitHub-ready release preparation for KasaTapoClient with TP-Link Kasa and Tapo device support.</PackageReleaseNotes>
+		<!-- brings in System.Net.Http -->
+		<LangVersion>13.0</LangVersion>
+		<Nullable>enable</Nullable>
+		<AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+		<GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+		<AnalysisLevel>latest-recommended</AnalysisLevel>
+		<EnableNETAnalyzers>true</EnableNETAnalyzers>
+		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+		<CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
+		<GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+		<DebugType>portable</DebugType>
+		<DebugSymbols>true</DebugSymbols>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+		<CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)' == 'Release'">
+		<DebugType>none</DebugType>
+		<DebugSymbols>false</DebugSymbols>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<DocumentationFile>$(OutputPath)$(AssemblyName).xml</DocumentationFile>
+		<!-- Treat missing XML docs as errors in Release -->
+		<WarningsAsErrors>$(WarningsAsErrors);CS1591</WarningsAsErrors>
+		<!-- Disable deterministic so timestamps differ (useful if stamping versions externally) -->
+		<Deterministic>false</Deterministic>
+	</PropertyGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)' == 'net472'">
+		<Reference Include="System.Configuration" />
+		<Reference Include="System.Data.DataSetExtensions" />
+		<Reference Include="Microsoft.CSharp" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
+		<PackageReference Include="log4net" Version="3.3.1" />
+		<PackageReference Include="System.Text.Json" Version="9.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="..\README.md" Pack="true" PackagePath="" />
+		<None Include="..\LICENSE" Pack="true" PackagePath="" />
+		<None Include="..\ATTRIBUTIONS.md" Pack="true" PackagePath="" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="KasaClient.Tests" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)' == 'net472'">
+		<PackageReference Include="IsExternalInit" Version="1.0.3">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Hafner.Compatibility.MetaPackage" Version="1.9.0" />
+		<PackageReference Include="System.Net.Http" Version="4.3.4" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Folder Include="Properties\" />
+	</ItemGroup>
+
+	<!-- Detect docfx.exe from docfx.console package or global dotnet tool -->
+	<Choose>
+		<When Condition="Exists('C:\ProgramData\chocolatey\bin\docfx.exe')">
+			<PropertyGroup>
+				<DocfxExe>C:\ProgramData\chocolatey\bin\docfx.exe</DocfxExe>
+			</PropertyGroup>
+		</When>
+		<When Condition="Exists('$(USERPROFILE)\.dotnet\tools\docfx.exe')">
+			<PropertyGroup>
+				<DocfxExe>$(USERPROFILE)\.dotnet\tools\docfx.exe</DocfxExe>
+			</PropertyGroup>
+		</When>
+		<When Condition="Exists('$(Pkgdocfx_console)\tools\docfx.exe')">
+			<PropertyGroup>
+				<DocfxExe>$(Pkgdocfx_console)\tools\docfx.exe</DocfxExe>
+			</PropertyGroup>
+		</When>
+		<Otherwise>
+			<PropertyGroup>
+				<DocfxExe></DocfxExe>
+			</PropertyGroup>
+		</Otherwise>
+	</Choose>
+
+	<Target Name="GenerateDocfxDoc" AfterTargets="Build" Condition="'$(Configuration)' == 'Release' and '$(TargetFramework)' == 'net472'">
+		<PropertyGroup>
+			<DocsDir>$(MSBuildProjectDirectory)\docs</DocsDir>
+			<DocfxConfig>$(MSBuildProjectDirectory)\docfx\docfx.json</DocfxConfig>
+		</PropertyGroup>
+
+		<Warning Text="DOCFX: DocFX not found. Skipping docs." Condition="'$(DocfxExe)' == ''" />
+		<Warning Text="DOCFX: docfx.json not found at '$(DocfxConfig)'. Skipping docs." Condition="'$(DocfxExe)' != '' and !Exists('$(DocfxConfig)')" />
+
+		<!--1) Metadata -->
+		<Message Importance="high" Text="DOCFX: Generating metadata from $(DocfxConfig)" Condition="'$(DocfxExe)' != '' and Exists('$(DocfxConfig)')" />
+		<Exec Command="&quot;$(DocfxExe)&quot; metadata &quot;$(DocfxConfig)&quot;" ContinueOnError="true" IgnoreExitCode="true" Condition="'$(DocfxExe)' != '' and Exists('$(DocfxConfig)')" />
+
+		<!--2) Build site directly into docs -->
+		<Message Importance="high" Text="DOCFX: Building site to $(DocsDir)" Condition="'$(DocfxExe)' != '' and Exists('$(DocfxConfig)')" />
+		<RemoveDir Directories="$(DocsDir)" Condition="Exists('$(DocsDir)')" />
+		<MakeDir Directories="$(DocsDir)" Condition="'$(DocfxExe)' != '' and Exists('$(DocfxConfig)')" />
+		<Exec Command="&quot;$(DocfxExe)&quot; build &quot;$(DocfxConfig)&quot; --output &quot;$(DocsDir)&quot; --logLevel Error --noLangKeyword true --markdownEngineName markdig" ContinueOnError="true" IgnoreExitCode="true" Condition="'$(DocfxExe)' != '' and Exists('$(DocfxConfig)')" />
+
+	</Target>
+</Project>
