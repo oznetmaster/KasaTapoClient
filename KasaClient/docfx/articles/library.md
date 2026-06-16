@@ -1,5 +1,7 @@
 # Library usage
 
+`KasaTapoClient` is for local device communication only. It does not implement TP-Link cloud control or remote cloud APIs.
+
 ## Discover and update
 
 ```csharp

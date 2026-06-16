@@ -1,5 +1,7 @@
 # Getting started
 
+`KasaTapoClient` is for local device communication only. It does not implement TP-Link cloud control or remote cloud APIs.
+
 ## Build the solution
 
 ```powershell
