@@ -366,6 +366,14 @@ FodyWeavers.xsd
 KasaClient/docs/
 KasaClient/docfx/_site/
 KasaClient/docfx/.manifest/
+KasaClient/docfx/favicon.ico
+KasaClient/docfx/fonts/
+KasaClient/docfx/index.json
+KasaClient/docfx/logo.svg
+KasaClient/docfx/manifest.json
+KasaClient/docfx/search-stopwords.json
+KasaClient/docfx/styles/
+KasaClient/docfx/xrefmap.yml
 
 # Local scratch and temporary investigation assets
 Scratch/

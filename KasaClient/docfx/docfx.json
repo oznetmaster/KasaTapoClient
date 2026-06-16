@@ -4,8 +4,9 @@
     {
       "src": [
         {
+          "src": "..",
           "files": [
-            "../KasaTapoClient.csproj"
+            "KasaTapoClient.csproj"
           ]
         }
       ],

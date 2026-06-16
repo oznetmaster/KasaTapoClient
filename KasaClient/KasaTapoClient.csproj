@@ -89,14 +89,14 @@
 
 	<!-- Detect docfx.exe from docfx.console package or global dotnet tool -->
 	<Choose>
-		<When Condition="Exists('C:\ProgramData\chocolatey\bin\docfx.exe')">
-			<PropertyGroup>
-				<DocfxExe>C:\ProgramData\chocolatey\bin\docfx.exe</DocfxExe>
-			</PropertyGroup>
-		</When>
 		<When Condition="Exists('$(USERPROFILE)\.dotnet\tools\docfx.exe')">
 			<PropertyGroup>
 				<DocfxExe>$(USERPROFILE)\.dotnet\tools\docfx.exe</DocfxExe>
+			</PropertyGroup>
+		</When>
+		<When Condition="Exists('C:\ProgramData\chocolatey\bin\docfx.exe')">
+			<PropertyGroup>
+				<DocfxExe>C:\ProgramData\chocolatey\bin\docfx.exe</DocfxExe>
 			</PropertyGroup>
 		</When>
 		<When Condition="Exists('$(Pkgdocfx_console)\tools\docfx.exe')">
