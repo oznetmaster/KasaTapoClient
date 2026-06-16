@@ -114,11 +114,11 @@ This list reflects real console discovery output from the development environmen
 
 ## Documentation
 
-The final published documentation for this repository is intended to be available on GitHub Pages before the repository is made public.
+Public documentation for this repository is intended to be available on GitHub Pages:
+
+- https://oznetmaster.github.io/KasaTapoClient/
 
 Lightweight repository documentation is available in [docs/info.md](docs/info.md) during release preparation.
-
-A DocFX documentation site is scaffolded under `KasaClient/docfx` and is intended for GitHub Pages publication.
 
 ## Repository Contents
 
