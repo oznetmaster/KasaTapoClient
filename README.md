@@ -118,8 +118,6 @@ Public documentation for this repository is intended to be available on GitHub P
 
 - https://oznetmaster.github.io/KasaTapoClient/
 
-Lightweight repository documentation is available in [docs/info.md](docs/info.md) during release preparation.
-
 ## Repository Contents
 
 - `KasaClient` — the main library project published to NuGet
