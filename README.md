@@ -67,6 +67,18 @@ dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework ne
 ```csharp
 using KasaTapoClient;
 
+IReadOnlyList<DiscoveryResult> discoveredDevices = await Discover.DiscoverDevicesAsync().ConfigureAwait(false);
+DiscoveryResult firstDevice = discoveredDevices[0];
+
+using KasaDevice discoveredDevice = await Discover.ConnectAsync(firstDevice.Configuration).ConfigureAwait(false);
+await discoveredDevice.UpdateAsync().ConfigureAwait(false);
+```
+
+If you already know the device host or want a deterministic connection path, resolve the configuration directly:
+
+```csharp
+using KasaTapoClient;
+
 DeviceConfiguration configuration = await Discover.ResolveConfigurationAsync(
     new DeviceConfiguration("device-host-or-ip")).ConfigureAwait(false);
 
