@@ -541,6 +541,11 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			return TimeSpan.FromSeconds (45);
 			}
 
+		if (IsLongRunningLightStateRequest (commandJson) && _configuration.Timeout < TimeSpan.FromSeconds (45))
+			{
+			return TimeSpan.FromSeconds (45);
+			}
+
 		return _configuration.Timeout;
 		}
 
@@ -556,6 +561,39 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 				JsonObject root = JsonSupport.ParseObject (commandJson);
 				string? method = root["method"]?.GetValue<string?> ();
 				return string.Equals (method, "set_lighting_effect", StringComparison.Ordinal);
+			}
+		catch (Exception)
+			{
+			return false;
+			}
+		}
+
+	private static bool IsLongRunningLightStateRequest (string commandJson)
+		{
+		if (string.IsNullOrWhiteSpace (commandJson))
+			{
+			return false;
+			}
+
+		try
+			{
+				JsonObject root = JsonSupport.ParseObject (commandJson);
+				string? method = root["method"]?.GetValue<string?> ();
+				if (!string.Equals (method, "set_device_info", StringComparison.Ordinal))
+					{
+					return false;
+					}
+
+				JsonObject? parameters = root["params"] as JsonObject;
+				if (parameters is null)
+					{
+					return false;
+					}
+
+				return parameters.ContainsKey ("color_temp")
+					|| parameters.ContainsKey ("brightness")
+					|| parameters.ContainsKey ("hue")
+					|| parameters.ContainsKey ("saturation");
 			}
 		catch (Exception)
 			{

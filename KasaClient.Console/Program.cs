@@ -119,8 +119,9 @@ static async Task<int> RunDiscoverAsync (IReadOnlyList<string> arguments)
 					{
 					for (int i = 0; i < connectedDevice.Children.Count; i++)
 						{
-						ChildDeviceInfo child = connectedDevice.Children[i];
-						Console.WriteLine ($"  {i + 1} | {child.Id} | {child.Alias ?? "(no alias)"} | {child.Model ?? "(unknown model)"} | {FormatChildState (child)}");
+					ChildDeviceInfo childInfo = connectedDevice.Children[i];
+					ChildDevice? child = connectedDevice.GetChildDevice (childInfo.Id);
+					Console.WriteLine ($"  {i + 1} | {childInfo.Id} | {childInfo.Alias ?? "(no alias)"} | {childInfo.Model ?? "(unknown model)"} | {(child is null ? FormatPowerState (childInfo.IsOn) : FormatChildState (child, childInfo))}");
 						}
 					}
 			}
@@ -618,7 +619,7 @@ static async Task<int> RunChildAsync (string host, IReadOnlyList<string> argumen
 	Console.WriteLine ($"Alias: {child.Alias ?? "(no alias)"}");
 	Console.WriteLine ($"Model: {child.Model ?? "(unknown)"}");
 	Console.WriteLine ($"Type: {childInfo.DeviceType}");
-	Console.WriteLine ($"State: {FormatChildState (childInfo)}");
+	Console.WriteLine ($"State: {FormatChildState (child, childInfo)}");
 	PrintTypedChildModuleState (child);
 	if (childInfo.Features.Count > 0)
 		{
@@ -777,7 +778,7 @@ static void PrintChildSummary (KasaDevice device, ChildDevice child, ChildDevice
 	Console.WriteLine ($"{indent}Alias: {child.Alias ?? "(no alias)"}");
 	Console.WriteLine ($"{indent}Model: {child.Model ?? "(unknown)"}");
 	Console.WriteLine ($"{indent}Type: {childInfo.DeviceType}");
-	Console.WriteLine ($"{indent}State: {FormatChildState (childInfo)}");
+	Console.WriteLine ($"{indent}State: {FormatChildState (child, childInfo)}");
 	PrintTypedChildModuleState (child, indent);
 	if (childInfo.Features.Count > 0)
 		{
@@ -1158,11 +1159,13 @@ static async Task<int> RunLightAsync (string host, IReadOnlyList<string> argumen
 	Console.WriteLine ($"Type: {device.DeviceType}");
 	Console.WriteLine ($"State: {FormatPowerState (device.Light.State?.IsOn)}");
 	Console.WriteLine ($"Brightness: {FormatNullableInt (device.Light.State?.Brightness, "%")}" );
-	bool isWhiteMode = device.Light.State?.Hsv is null && device.Light.State?.ColorTemperature is int colorTemperature && colorTemperature > 0;
-	Console.WriteLine ($"Color Temperature: {(isWhiteMode ? FormatNullableInt (device.Light.State?.ColorTemperature, "K") : "N/A")}" );
-	Console.WriteLine ($"Hue: {(isWhiteMode ? "N/A" : FormatNullableInt (device.Light.State?.Hue, null))}" );
-	Console.WriteLine ($"Saturation: {(isWhiteMode ? "N/A" : FormatNullableInt (device.Light.State?.Saturation, null))}" );
-	Console.WriteLine ($"Value: {(isWhiteMode ? "N/A" : FormatNullableInt (device.Light.Hsv?.Value, "%"))}" );
+	bool hasColorTemperature = device.Light.State?.ColorTemperature is int colorTemperature && colorTemperature > 0;
+	bool hasColor = device.Light.State?.Hue is int hue && hue != 0
+		|| device.Light.State?.Saturation is int saturation && saturation != 0;
+	Console.WriteLine ($"Color Temperature: {(hasColorTemperature ? FormatNullableInt (device.Light.State?.ColorTemperature, "K") : "N/A")}" );
+	Console.WriteLine ($"Hue: {(hasColor ? FormatNullableInt (device.Light.State?.Hue, null) : "N/A")}" );
+	Console.WriteLine ($"Saturation: {(hasColor ? FormatNullableInt (device.Light.State?.Saturation, null) : "N/A")}" );
+	Console.WriteLine ($"Value: {(hasColor ? FormatNullableInt (device.Light.Hsv?.Value, "%") : "N/A")}" );
 	Console.WriteLine ($"Effect: {FormatEffectName (device.Light.Effect)}" );
 	Console.WriteLine ($"Effect Enabled: {FormatNullableBoolean (device.Light.Effect?.IsEnabled)}" );
 	return 0;
@@ -1226,15 +1229,33 @@ static string FormatPowerState (bool? isOn) => isOn switch
 		null => "Unknown",
 		};
 
-static string FormatChildState (ChildDeviceInfo child)
+static string FormatChildState (ChildDevice child, ChildDeviceInfo childInfo)
 	{
-	return child.DeviceType switch
+	if (child.Thermostat.CurrentTemperature is double currentTemperature)
+		{
+		string unit = child.Thermostat.Unit ?? "celsius";
+		return currentTemperature.ToString (CultureInfo.InvariantCulture) + " " + unit;
+		}
+
+	if (child.Temperature.Temperature is double temperature)
+		{
+		string unit = child.Temperature.Unit ?? "celsius";
+		return temperature.ToString (CultureInfo.InvariantCulture) + " " + unit;
+		}
+
+	if (child.Thermostat.TargetTemperature is double targetTemperature)
+		{
+		string unit = child.Thermostat.Unit ?? "celsius";
+		return "Target " + targetTemperature.ToString (CultureInfo.InvariantCulture) + " " + unit;
+		}
+
+	return childInfo.DeviceType switch
 		{
 			DeviceType.Sensor => "N/A",
 			DeviceType.Thermostat => "N/A",
 			DeviceType.Camera => "N/A",
 			DeviceType.Hub => "N/A",
-			_ => FormatPowerState (child.IsOn),
+			_ => FormatPowerState (childInfo.IsOn),
 		};
 	}
 

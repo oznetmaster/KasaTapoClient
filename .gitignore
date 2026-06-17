@@ -366,6 +366,9 @@ FodyWeavers.xsd
 KasaClient/docs/
 KasaClient/docfx/_site/
 KasaClient/docfx/.manifest/
+KasaClient/docfx/api/.manifest
+KasaClient/docfx/api/*.yml
+KasaClient/docfx/api/toc.yml
 KasaClient/docfx/favicon.ico
 KasaClient/docfx/fonts/
 KasaClient/docfx/index.json

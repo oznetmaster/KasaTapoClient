@@ -89,8 +89,28 @@ public sealed partial class KasaDevice
 				parameters["color_temp"] = 0;
 				}
 
-			await ExecuteCommandAsync (KasaTapoClient.Internal.KasaCommands.CreateSmartRequest ("set_device_info", parameters), cancellationToken).ConfigureAwait (false);
-			await UpdateAsync (cancellationToken).ConfigureAwait (false);
+			CancellationToken operationCancellationToken = cancellationToken;
+			CancellationTokenSource? timeoutOverride = null;
+			if (!cancellationToken.IsCancellationRequested && Configuration.Timeout < TimeSpan.FromSeconds (45))
+				{
+				timeoutOverride = CancellationTokenSource.CreateLinkedTokenSource (cancellationToken);
+				timeoutOverride.CancelAfter (TimeSpan.FromSeconds (45));
+				operationCancellationToken = timeoutOverride.Token;
+				}
+
+			try
+				{
+				await ExecuteCommandAsync (KasaTapoClient.Internal.KasaCommands.CreateSmartRequest ("set_device_info", parameters), operationCancellationToken).ConfigureAwait (false);
+				await UpdateAsync (operationCancellationToken).ConfigureAwait (false);
+				}
+			catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+				{
+				await UpdateAsync (cancellationToken).ConfigureAwait (false);
+				}
+			finally
+				{
+				timeoutOverride?.Dispose ();
+				}
 			return;
 			}
 
