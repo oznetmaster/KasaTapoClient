@@ -5,6 +5,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -23,6 +24,7 @@ internal sealed class DiscoveryClient
 	private const int TAPO_DISCOVERY_PORT = 20002;
 	private const int KLAP_DISCOVERY_PORT = 20004;
 	private const int DISCOVERY_PACKET_COUNT = 3;
+	private const int UDP_RECEIVE_BUFFER_SIZE = 256 * 1024;
 	private static readonly byte[] NEW_DISCOVERY_QUERY = CreateNewDiscoveryQuery ();
 	private readonly TimeSpan _timeout;
 
@@ -31,11 +33,18 @@ internal sealed class DiscoveryClient
 	public async Task<IReadOnlyList<DiscoveryResult>> DiscoverAsync (string target, CancellationToken cancellationToken)
 		{
 		IPAddress targetAddress = ResolveTarget (target);
+		#if DEBUG
+		int receivedPacketCount = 0;
+		int parseSuccessCount = 0;
+		int parseFailureCount = 0;
+		int ignoredSocketExceptionCount = 0;
+		#endif
 		using var kasaClient = new UdpClient (AddressFamily.InterNetwork)
 			{
 			EnableBroadcast = true,
 			};
 		kasaClient.Client.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+		kasaClient.Client.ReceiveBufferSize = UDP_RECEIVE_BUFFER_SIZE;
 		kasaClient.Client.Bind (new IPEndPoint (IPAddress.Any, 0));
 		DisableUdpConnectionReset (kasaClient.Client);
 		using var smartClient = new UdpClient (AddressFamily.InterNetwork)
@@ -43,6 +52,7 @@ internal sealed class DiscoveryClient
 			EnableBroadcast = true,
 			};
 		smartClient.Client.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+		smartClient.Client.ReceiveBufferSize = UDP_RECEIVE_BUFFER_SIZE;
 		smartClient.Client.Bind (new IPEndPoint (IPAddress.Any, 0));
 		DisableUdpConnectionReset (smartClient.Client);
 
@@ -55,6 +65,9 @@ internal sealed class DiscoveryClient
 		DateTimeOffset expiresAt = DateTimeOffset.UtcNow.Add (_timeout);
 		Task<UdpReceiveResult>? kasaReceiveTask = null;
 		Task<UdpReceiveResult>? smartReceiveTask = null;
+		#if DEBUG
+		Trace.WriteLine ($"[KasaTapoClient.Discovery] target={targetAddress} timeout={_timeout} buffer={UDP_RECEIVE_BUFFER_SIZE}");
+		#endif
 		Task broadcastTask = BroadcastAsync (kasaClient, smartClient, kasaRequest, kasaEndpoint, tapoEndpoint, klapEndpoint, cancellationToken);
 		while (DateTimeOffset.UtcNow < expiresAt)
 			{
@@ -71,29 +84,96 @@ internal sealed class DiscoveryClient
 
 			if (completedTask == kasaReceiveTask)
 				{
-				UdpReceiveResult packet = await kasaReceiveTask.ConfigureAwait (false);
-				kasaReceiveTask = null;
-				string response = KasaCipher.Decrypt (packet.Buffer);
-				KasaResponseParser.ParsedResponse parsedResponse = KasaResponseParser.ParseResponse (response);
-				if (KasaResponseParser.TryParseDiscoveryResult (parsedResponse, packet.RemoteEndPoint, out DiscoveryResult? result)
-					&& result is not null)
+				try
 					{
-					StorePreferredDiscoveryResult (results, result);
+					UdpReceiveResult packet = await kasaReceiveTask.ConfigureAwait (false);
+					#if DEBUG
+					receivedPacketCount++;
+					#endif
+					string response = KasaCipher.Decrypt (packet.Buffer);
+					KasaResponseParser.ParsedResponse parsedResponse = KasaResponseParser.ParseResponse (response);
+					if (KasaResponseParser.TryParseDiscoveryResult (parsedResponse, packet.RemoteEndPoint, out DiscoveryResult? result)
+						&& result is not null)
+						{
+						StorePreferredDiscoveryResult (results, result);
+						#if DEBUG
+						parseSuccessCount++;
+						#endif
+						}
+					else
+						{
+						#if DEBUG
+						parseFailureCount++;
+						#endif
+						}
 					}
+				catch (OperationCanceledException)
+					{
+					throw;
+					}
+				catch (SocketException ex) when (IsTransientDiscoverySocketException (ex.SocketErrorCode))
+					{
+					#if DEBUG
+					ignoredSocketExceptionCount++;
+					Trace.WriteLine ($"[KasaTapoClient.Discovery] ignored legacy receive socket error={ex.SocketErrorCode}");
+					#endif
+					}
+				catch
+					{
+					#if DEBUG
+					parseFailureCount++;
+					#endif
+					}
+				kasaReceiveTask = null;
 				}
 			else if (completedTask == smartReceiveTask)
 				{
-				UdpReceiveResult packet = await smartReceiveTask.ConfigureAwait (false);
-				smartReceiveTask = null;
-				if (TryParseTapoDiscoveryResult (packet, out DiscoveryResult? result)
-					&& result is not null)
+				try
 					{
-					StorePreferredDiscoveryResult (results, result);
+					UdpReceiveResult packet = await smartReceiveTask.ConfigureAwait (false);
+					#if DEBUG
+					receivedPacketCount++;
+					#endif
+					if (TryParseTapoDiscoveryResult (packet, out DiscoveryResult? result)
+						&& result is not null)
+						{
+						StorePreferredDiscoveryResult (results, result);
+						#if DEBUG
+						parseSuccessCount++;
+						#endif
+						}
+					else
+						{
+						#if DEBUG
+						parseFailureCount++;
+						#endif
+						}
 					}
+				catch (OperationCanceledException)
+					{
+					throw;
+					}
+				catch (SocketException ex) when (IsTransientDiscoverySocketException (ex.SocketErrorCode))
+					{
+					#if DEBUG
+					ignoredSocketExceptionCount++;
+					Trace.WriteLine ($"[KasaTapoClient.Discovery] ignored smart receive socket error={ex.SocketErrorCode}");
+					#endif
+					}
+				catch
+					{
+					#if DEBUG
+					parseFailureCount++;
+					#endif
+					}
+				smartReceiveTask = null;
 				}
 			}
 
 		await broadcastTask.ConfigureAwait (false);
+		#if DEBUG
+		Trace.WriteLine ($"[KasaTapoClient.Discovery] completed target={targetAddress} timeout={_timeout} packets={receivedPacketCount} parseSuccess={parseSuccessCount} parseFailure={parseFailureCount} ignoredSocketExceptions={ignoredSocketExceptionCount}");
+		#endif
 
 		return results.Values.OrderBy (static result => result.Host, StringComparer.OrdinalIgnoreCase).ToArray ();
 		}
@@ -461,6 +541,22 @@ internal sealed class DiscoveryClient
 #pragma warning restore CA2016
 #endif
 		}
+
+	private static bool IsTransientDiscoverySocketException (SocketError socketError) => socketError is
+		SocketError.ConnectionReset
+		or SocketError.ConnectionAborted
+		or SocketError.Interrupted
+		or SocketError.MessageSize
+		or SocketError.NetworkReset
+		or SocketError.NetworkDown
+		or SocketError.NetworkUnreachable
+		or SocketError.HostDown
+		or SocketError.HostUnreachable
+		or SocketError.NotConnected
+		or SocketError.Shutdown
+		or SocketError.TimedOut
+		or SocketError.TryAgain
+		or SocketError.WouldBlock;
 
 	private static void DisableUdpConnectionReset (Socket socket)
 		{

@@ -97,6 +97,7 @@ StyleCopReport.xml
 *.pidb
 *.svclog
 *.scc
+KasaClient/KasaTapoClient.xml
 
 # Chutzpah Test files
 _Chutzpah*
