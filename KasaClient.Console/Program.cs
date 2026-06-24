@@ -3,10 +3,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,6 +18,7 @@ using KasaTapoClient;
 const string PROFILE_SAVE_OPTION = "--save";
 const string PROFILE_USE_OPTION = "--profile";
 const string PROFILE_CLEAR_OPTION = "--clear-profile";
+const string RAW_UPDATE_OPTION = "--update";
 const string DEFAULT_PROFILE_NAME = "default";
 const string IMPLICIT_PROFILE_NAME = "__implicit__";
 const int DEFAULT_DISCOVERY_TIMEOUT_MILLISECONDS = 8000;
@@ -86,7 +89,6 @@ static async Task<int> RunDiscoverAsync (IReadOnlyList<string> arguments)
 				continue;
 				}
 			}
-
 		if (string.IsNullOrWhiteSpace (displayAlias) || shouldExpandChildren)
 			{
 				TimeSpan aliasTimeout = timeout > TimeSpan.FromSeconds (4)
@@ -324,6 +326,21 @@ static async Task<int> RunHostAsync (IReadOnlyList<string> arguments)
 		return await RunLightAsync (host!, arguments, commandIndex).ConfigureAwait (false);
 		}
 
+	if (hostCommand == "raw")
+		{
+		return await RunRawExecuteAsync (host!, hostWasExplicit, arguments, commandIndex).ConfigureAwait (false);
+		}
+
+	if (hostCommand == "smart")
+		{
+		return await RunSmartExecuteAsync (host!, hostWasExplicit, arguments, commandIndex).ConfigureAwait (false);
+		}
+
+	if (hostCommand == "serialize")
+		{
+		return await RunSerializationExerciseAsync (host!, hostWasExplicit, arguments, commandIndex).ConfigureAwait (false);
+		}
+
 	bool hasExplicitAction = arguments.Count > commandIndex && !arguments[commandIndex].StartsWith ("--", StringComparison.Ordinal);
 	string action = hasExplicitAction
 		? hostCommand ?? ResolveKeyword (arguments[commandIndex], ConsoleCommandLexicon.HostActions)
@@ -350,6 +367,121 @@ static async Task<int> RunHostAsync (IReadOnlyList<string> arguments)
 	PrintDiscoveredDeviceVerbose (device);
 
 	return 0;
+	}
+
+static async Task<int> RunRawExecuteAsync (string host, bool hostWasExplicit, IReadOnlyList<string> arguments, int commandIndex)
+	{
+	if (arguments.Count <= commandIndex + 1)
+		{
+		return Fail ("The 'raw' command requires a JSON command payload.");
+		}
+
+	string commandJson = arguments[commandIndex + 1];
+	bool updateState = arguments.Skip (commandIndex + 2).Any (static argument => string.Equals (argument, RAW_UPDATE_OPTION, StringComparison.OrdinalIgnoreCase));
+	DeviceConfiguration configuration = CreateHostConfiguration (host, hostWasExplicit, "raw", arguments, commandIndex + 2);
+	KasaDevice device = await Discover.ConnectAsync (configuration, updateState: false).ConfigureAwait (false);
+	ConsoleRecentHostStore.Save (device.Host);
+	ConsoleImplicitProfileStore.Save (CreateImplicitProfile (device));
+
+	string response = updateState
+		? await device.ExecuteCommandAsync (commandJson, DeviceStateUpdateMode.UpdateAfterCommand).ConfigureAwait (false)
+		: await device.ExecuteCommandAsync (commandJson).ConfigureAwait (false);
+
+	Console.WriteLine ("Response:");
+	PrintJsonOrRaw (response);
+	if (updateState)
+		{
+		Console.WriteLine ();
+		Console.WriteLine ("Updated state:");
+		PrintDiscoveredDeviceVerbose (device);
+		}
+
+	return 0;
+	}
+
+static async Task<int> RunSmartExecuteAsync (string host, bool hostWasExplicit, IReadOnlyList<string> arguments, int commandIndex)
+	{
+	if (arguments.Count <= commandIndex + 1)
+		{
+		return Fail ("The 'smart' command requires a smart method name.");
+		}
+
+	string method = arguments[commandIndex + 1];
+	JsonObject? parameters = null;
+	int optionStartIndex = commandIndex + 2;
+	if (arguments.Count > optionStartIndex && !arguments[optionStartIndex].StartsWith ("--", StringComparison.Ordinal))
+		{
+		parameters = JsonNode.Parse (arguments[optionStartIndex]) as JsonObject
+			?? throw new ArgumentException ("The smart command parameters must be a JSON object.");
+		optionStartIndex++;
+		}
+
+	bool updateState = arguments.Skip (optionStartIndex).Any (static argument => string.Equals (argument, RAW_UPDATE_OPTION, StringComparison.OrdinalIgnoreCase));
+	DeviceConfiguration configuration = CreateHostConfiguration (host, hostWasExplicit, "smart", arguments, optionStartIndex);
+	KasaDevice device = await Discover.ConnectAsync (configuration, updateState: false).ConfigureAwait (false);
+	ConsoleRecentHostStore.Save (device.Host);
+	ConsoleImplicitProfileStore.Save (CreateImplicitProfile (device));
+
+	string response = updateState
+		? await device.ExecuteSmartCommandAsync (method, parameters, DeviceStateUpdateMode.UpdateAfterCommand).ConfigureAwait (false)
+		: await device.ExecuteSmartCommandAsync (method, parameters).ConfigureAwait (false);
+
+	Console.WriteLine ("Response:");
+	PrintJsonOrRaw (response);
+	if (updateState)
+		{
+		Console.WriteLine ();
+		Console.WriteLine ("Updated state:");
+		PrintDiscoveredDeviceVerbose (device);
+		}
+
+	return 0;
+	}
+
+static async Task<int> RunSerializationExerciseAsync (string host, bool hostWasExplicit, IReadOnlyList<string> arguments, int commandIndex)
+	{
+	int operationCount = 4;
+	int optionStartIndex = commandIndex + 1;
+	if (arguments.Count > optionStartIndex && !arguments[optionStartIndex].StartsWith ("--", StringComparison.Ordinal))
+		{
+		operationCount = int.Parse (arguments[optionStartIndex], CultureInfo.InvariantCulture);
+		optionStartIndex++;
+		}
+
+	if (operationCount <= 0)
+		{
+		return Fail ("The 'serialize' operation count must be greater than zero.");
+		}
+
+	DeviceConfiguration configuration = CreateHostConfiguration (host, hostWasExplicit, "serialize", arguments, optionStartIndex);
+	KasaDevice device = await Discover.ConnectAsync (configuration, updateState: true).ConfigureAwait (false);
+	ConsoleRecentHostStore.Save (device.Host);
+	ConsoleImplicitProfileStore.Save (CreateImplicitProfile (device));
+
+	Console.WriteLine ($"Starting {operationCount} concurrent UpdateAsync operations against {device.Host}.");
+	var stopwatch = Stopwatch.StartNew ();
+	Task[] updates = Enumerable.Range (0, operationCount)
+		.Select (_ => device.UpdateAsync ())
+		.ToArray ();
+	await Task.WhenAll (updates).ConfigureAwait (false);
+	stopwatch.Stop ();
+
+	Console.WriteLine ($"Completed {operationCount} operations in {stopwatch.Elapsed.TotalSeconds:F2}s.");
+	PrintDiscoveredDeviceVerbose (device);
+	return 0;
+	}
+
+static void PrintJsonOrRaw (string text)
+	{
+	try
+		{
+		using JsonDocument document = JsonDocument.Parse (text);
+		Console.WriteLine (JsonSerializer.Serialize (document.RootElement, new JsonSerializerOptions { WriteIndented = true }));
+		}
+	catch (JsonException)
+		{
+		Console.WriteLine (text);
+		}
 	}
 
 static void PrintDeviceModuleState (KasaDevice device)
@@ -1568,6 +1700,8 @@ static DeviceConfiguration CreateHostConfiguration (string host, bool hostWasExp
 			case PROFILE_CLEAR_OPTION:
 				clearProfileName = GetOptionalNamedValue (arguments, ref i, option);
 				break;
+			case RAW_UPDATE_OPTION:
+				break;
 			}
 		}
 
@@ -1694,6 +1828,8 @@ static DeviceConfiguration CreateHostConfiguration (string host, bool hostWasExp
 					{
 					i++;
 					}
+				break;
+			case RAW_UPDATE_OPTION:
 				break;
 			default:
 				throw new ArgumentException ($"Unknown option '{option}' for host action '{action}'.");
@@ -2004,6 +2140,13 @@ static IReadOnlyList<string> SplitArguments (string commandLine)
 		char character = commandLine[i];
 		if (character == '"')
 			{
+			if (inQuotes && i + 1 < commandLine.Length && commandLine[i + 1] == '"')
+				{
+				current.Add ('"');
+				i++;
+				continue;
+				}
+
 			inQuotes = !inQuotes;
 			continue;
 			}
@@ -2061,7 +2204,7 @@ static void PrintGeneralUsage ()
 	Console.WriteLine ("  e[xit]");
 	Console.WriteLine ("  q[uit]");
 	Console.WriteLine ("  d[iscover] [timeoutMs] [target] [--[v]erbose]");
-	Console.WriteLine ("  ho[st] <address> [s[tate]|on|of[f]] [options]");
+	Console.WriteLine ("  ho[st] <address> [s[tate]|on|of[f]|r[aw] <json> [--update]|sm[art] <method> [paramsJson] [--update]|ser[ialize] [count]] [options]");
 	Console.WriteLine ("  ho[st] <address> c[hild] <childId|index> [s[tate]|on|of[f]|l[ogs]|w[atch]] [options]");
 	Console.WriteLine ("  ho[st] <address> l[ight] [s[tate]|on|of[f]|b[rightness] <0-100>|t[emp] <kelvin>|h[sv] <hue> <saturation> <value>|c[olor] <name>|c[olor] <hue> <saturation> <value>|e[ffect] [name|off|list]] [options]");
 	Console.WriteLine ();
@@ -2078,10 +2221,13 @@ static void PrintDiscoverUsage ()
 
 static void PrintHostUsage ()
 	{
-	Console.WriteLine ("ho[st] <address> [s[tate]|on|of[f]] [options]");
+	Console.WriteLine ("ho[st] <address> [s[tate]|on|of[f]|r[aw] <json> [--update]|sm[art] <method> [paramsJson] [--update]|ser[ialize] [count]] [options]");
 	Console.WriteLine ("ho[st] <address> c[hild] <childId|index> [s[tate]|on|of[f]|l[ogs]|w[atch]] [options]");
 	Console.WriteLine ("ho[st] <address> l[ight] [s[tate]|on|of[f]|b[rightness] <0-100>|t[emp] <kelvin>|h[sv] <h> <s> <v>|c[olor] <hex>|e[ffect] <name>] [options]");
 	Console.WriteLine ("ho[st] <address> se[tup] [s[can] [seconds]|d[etected]|p[air]|u[npair] <childId|index>] [options]");
+	Console.WriteLine ("  raw        Execute a raw JSON command. Add --update to refresh cached state under the same device lock.");
+	Console.WriteLine ("  smart      Execute a smart-protocol method and build the required request envelope. Add --update to refresh cached state.");
+	Console.WriteLine ("  serialize  Start concurrent UpdateAsync calls against one KasaDevice to exercise operation serialization. Default count: 4.");
 	Console.WriteLine ("ho[st] <address> p[rofiles] [l[ist]|r[emove] <name>] [options]");
 	PrintCommonOptions ();
 	}
@@ -2400,8 +2546,8 @@ static class ConsoleImplicitProfileStore
 static class ConsoleCommandLexicon
 	{
 	public static readonly string[] TopLevelCommands = ["help", "exit", "quit", "discover", "host"];
-	public static readonly string[] HostCommands = ["child", "light", "setup", "profiles", "state", "on", "off"];
-	public static readonly string[] HostActions = ["state", "on", "off", "scan", "detected", "pair", "unpair"];
+	public static readonly string[] HostCommands = ["child", "light", "setup", "profiles", "state", "on", "off", "raw", "smart", "serialize"];
+	public static readonly string[] HostActions = ["state", "on", "off", "scan", "detected", "pair", "unpair", "raw", "smart", "serialize"];
 	public static readonly string[] ChildActions = ["state", "on", "off", "logs", "watch"];
 	public static readonly string[] SetupActions = ["scan", "detected", "pair", "unpair"];
 	public static readonly string[] LightActions = ["state", "on", "off", "brightness", "temp", "hsv", "color", "effect"];

@@ -15,11 +15,13 @@ internal sealed class FakeDeviceTransport : IDeviceTransport
 	{
 	private readonly Queue<string> _sendResponses;
 	private readonly Queue<string> _sendManyResponses;
+	private readonly Func<string, CancellationToken, Task<string>>? _sendHandler;
 
-	internal FakeDeviceTransport(IEnumerable<string>? sendResponses = null, IEnumerable<string>? sendManyResponses = null)
+	internal FakeDeviceTransport(IEnumerable<string>? sendResponses = null, IEnumerable<string>? sendManyResponses = null, Func<string, CancellationToken, Task<string>>? sendHandler = null)
 		{
 		_sendResponses = new Queue<string> (sendResponses ?? Enumerable.Empty<string> ());
 		_sendManyResponses = new Queue<string> (sendManyResponses ?? Enumerable.Empty<string> ());
+		_sendHandler = sendHandler;
 		SentCommands = new List<string> ();
 		SentManyCommands = new List<IReadOnlyList<string>> ();
 		}
@@ -31,6 +33,11 @@ internal sealed class FakeDeviceTransport : IDeviceTransport
 		{
 		cancellationToken.ThrowIfCancellationRequested ();
 		SentCommands.Add (commandJson);
+		if (_sendHandler is not null)
+			{
+			return _sendHandler (commandJson, cancellationToken);
+			}
+
 		if (_sendResponses.Count == 0)
 			{
 			throw new InvalidOperationException ("No queued SendAsync response is available for the fake transport.");

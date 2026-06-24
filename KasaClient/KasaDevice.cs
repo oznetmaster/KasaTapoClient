@@ -19,6 +19,7 @@ namespace KasaTapoClient;
 public sealed partial class KasaDevice : IDisposable
 	{
 	private readonly IDeviceTransport _transport;
+	private readonly SemaphoreSlim _operationLock = new (1, 1);
 	private IReadOnlyList<DeviceFeature> _features = Array.Empty<DeviceFeature> ();
 	private static readonly JsonObject SMART_GET_TRIGGER_LOGS_PARAMETERS = new ()
 		{
@@ -513,6 +514,8 @@ public sealed partial class KasaDevice : IDisposable
 			{
 			disposableTransport.Dispose ();
 			}
+
+		_operationLock.Dispose ();
 		}
 
 	/// <summary>
@@ -520,7 +523,10 @@ public sealed partial class KasaDevice : IDisposable
 	/// </summary>
 	/// <param name="cancellationToken">The cancellation token for the operation.</param>
 	/// <returns>A task that completes when the device state has been refreshed.</returns>
-	public async Task UpdateAsync (CancellationToken cancellationToken = default)
+	public Task UpdateAsync (CancellationToken cancellationToken = default) =>
+		RunDeviceOperationAsync (UpdateCoreAsync, cancellationToken);
+
+	private async Task UpdateCoreAsync (CancellationToken cancellationToken)
 		{
 		if (UsesSmartProtocol ())
 			{
@@ -537,6 +543,11 @@ public sealed partial class KasaDevice : IDisposable
 	/// <param name="cancellationToken">The cancellation token for the operation.</param>
 	/// <returns><see langword="true" /> when energy usage data was returned; otherwise, <see langword="false" />.</returns>
 	public async Task<bool> UpdateEnergyUsageAsync (CancellationToken cancellationToken = default)
+		{
+		return await RunDeviceOperationAsync (UpdateEnergyUsageCoreAsync, cancellationToken).ConfigureAwait (false);
+		}
+
+	private async Task<bool> UpdateEnergyUsageCoreAsync (CancellationToken cancellationToken)
 		{
 		DateTime now = DateTime.Now;
 		bool isBulb = DeviceType == DeviceType.Bulb || SystemInfo?.Model?.StartsWith ("KL", StringComparison.OrdinalIgnoreCase) == true || SystemInfo?.Model?.StartsWith ("LB", StringComparison.OrdinalIgnoreCase) == true || SystemInfo?.Model?.StartsWith ("KB", StringComparison.OrdinalIgnoreCase) == true;
@@ -665,6 +676,11 @@ public sealed partial class KasaDevice : IDisposable
 	/// <exception cref="InvalidOperationException">Thrown when the device does not support smart hub child setup operations.</exception>
 	public async Task<ChildSetupScanResult> GetScannedChildDevicesAsync (CancellationToken cancellationToken = default)
 		{
+		return await RunDeviceOperationAsync (GetScannedChildDevicesCoreAsync, cancellationToken).ConfigureAwait (false);
+		}
+
+	private async Task<ChildSetupScanResult> GetScannedChildDevicesCoreAsync (CancellationToken cancellationToken)
+		{
 		if (!UsesSmartProtocol () || DeviceType != DeviceType.Hub)
 			{
 			throw new InvalidOperationException ($"The device '{Host}' does not support smart hub child setup operations.");
@@ -698,6 +714,11 @@ public sealed partial class KasaDevice : IDisposable
 	/// <exception cref="InvalidOperationException">Thrown when the device does not support smart hub child setup operations.</exception>
 	public async Task<IReadOnlyList<DetectedChildDevice>> PairScannedChildDevicesAsync (IReadOnlyList<DetectedChildDevice> devices, CancellationToken cancellationToken = default)
 		{
+		return await RunDeviceOperationAsync (ct => PairScannedChildDevicesCoreAsync (devices, ct), cancellationToken).ConfigureAwait (false);
+		}
+
+	private async Task<IReadOnlyList<DetectedChildDevice>> PairScannedChildDevicesCoreAsync (IReadOnlyList<DetectedChildDevice> devices, CancellationToken cancellationToken)
+		{
 		if (!UsesSmartProtocol () || DeviceType != DeviceType.Hub)
 			{
 			throw new InvalidOperationException ($"The device '{Host}' does not support smart hub child setup operations.");
@@ -726,7 +747,7 @@ public sealed partial class KasaDevice : IDisposable
 			childDeviceList.Add (item);
 			}
 
-		await ExecuteCommandAsync (
+		await ExecuteCommandCoreAsync (
 			KasaCommands.CreateSmartRequest (
 				KasaCommands.SMART_ADD_CHILD_DEVICE_LIST_METHOD,
 				new JsonObject
@@ -734,7 +755,7 @@ public sealed partial class KasaDevice : IDisposable
 					["child_device_list"] = childDeviceList,
 					}),
 			cancellationToken).ConfigureAwait (false);
-		await UpdateAsync (cancellationToken).ConfigureAwait (false);
+		await UpdateCoreAsync (cancellationToken).ConfigureAwait (false);
 
 		var addedDevices = new List<DetectedChildDevice> ();
 		foreach (DetectedChildDevice device in devices)
@@ -757,12 +778,17 @@ public sealed partial class KasaDevice : IDisposable
 	/// <exception cref="InvalidOperationException">Thrown when the device does not support smart hub child setup operations.</exception>
 	public async Task UnpairChildDeviceAsync (string childDeviceId, CancellationToken cancellationToken = default)
 		{
+		await RunDeviceOperationAsync (ct => UnpairChildDeviceCoreAsync (childDeviceId, ct), cancellationToken).ConfigureAwait (false);
+		}
+
+	private async Task UnpairChildDeviceCoreAsync (string childDeviceId, CancellationToken cancellationToken)
+		{
 		if (!UsesSmartProtocol () || DeviceType != DeviceType.Hub)
 			{
 			throw new InvalidOperationException ($"The device '{Host}' does not support smart hub child setup operations.");
 			}
 
-		await ExecuteCommandAsync (
+		await ExecuteCommandCoreAsync (
 			KasaCommands.CreateSmartRequest (
 				KasaCommands.SMART_REMOVE_CHILD_DEVICE_LIST_METHOD,
 				new JsonObject
@@ -774,7 +800,7 @@ public sealed partial class KasaDevice : IDisposable
 							}),
 					}),
 			cancellationToken).ConfigureAwait (false);
-		await UpdateAsync (cancellationToken).ConfigureAwait (false);
+		await UpdateCoreAsync (cancellationToken).ConfigureAwait (false);
 		}
 
 	/// <summary>
@@ -907,7 +933,103 @@ public sealed partial class KasaDevice : IDisposable
 			throw new ArgumentException ("A device command is required.", nameof (commandJson));
 			}
 
-		return _transport.SendAsync (commandJson, cancellationToken);
+		return RunDeviceOperationAsync (ct => ExecuteCommandCoreAsync (commandJson, ct), cancellationToken);
+		}
+
+	/// <summary>
+	/// Executes a raw JSON command against the device and optionally refreshes cached device state before returning.
+	/// </summary>
+	/// <param name="commandJson">The command payload to send.</param>
+	/// <param name="updateMode">The state update behavior to apply after the command completes.</param>
+	/// <param name="cancellationToken">The cancellation token for the operation.</param>
+	/// <returns>The raw JSON response payload from the device.</returns>
+	/// <exception cref="ArgumentException">Thrown when <paramref name="commandJson" /> is empty or whitespace.</exception>
+	/// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="updateMode" /> is unsupported.</exception>
+	public Task<string> ExecuteCommandAsync (string commandJson, DeviceStateUpdateMode updateMode, CancellationToken cancellationToken = default)
+		{
+		if (string.IsNullOrWhiteSpace (commandJson))
+			{
+			throw new ArgumentException ("A device command is required.", nameof (commandJson));
+			}
+
+		if (updateMode is not DeviceStateUpdateMode.None and not DeviceStateUpdateMode.UpdateAfterCommand)
+			{
+			throw new ArgumentOutOfRangeException (nameof (updateMode), updateMode, "Unsupported device state update mode.");
+			}
+
+		return RunDeviceOperationAsync (
+			async ct =>
+				{
+				string response = await ExecuteCommandCoreAsync (commandJson, ct).ConfigureAwait (false);
+				if (updateMode == DeviceStateUpdateMode.UpdateAfterCommand)
+					{
+					await UpdateCoreAsync (ct).ConfigureAwait (false);
+					}
+
+				return response;
+				},
+			cancellationToken);
+		}
+
+	/// <summary>
+	/// Executes a smart-protocol method against the device.
+	/// </summary>
+	/// <param name="method">The smart-protocol method name to execute.</param>
+	/// <param name="parameters">The smart-protocol method parameters, or <see langword="null" /> when the method has no parameters.</param>
+	/// <param name="cancellationToken">The cancellation token for the operation.</param>
+	/// <returns>The raw JSON response payload from the device.</returns>
+	/// <exception cref="ArgumentException">Thrown when <paramref name="method" /> is empty or whitespace.</exception>
+	public Task<string> ExecuteSmartCommandAsync (string method, JsonObject? parameters = null, CancellationToken cancellationToken = default) =>
+		ExecuteSmartCommandAsync (method, parameters, DeviceStateUpdateMode.None, cancellationToken);
+
+	/// <summary>
+	/// Executes a smart-protocol method against the device and optionally refreshes cached device state before returning.
+	/// </summary>
+	/// <param name="method">The smart-protocol method name to execute.</param>
+	/// <param name="parameters">The smart-protocol method parameters, or <see langword="null" /> when the method has no parameters.</param>
+	/// <param name="updateMode">The state update behavior to apply after the command completes.</param>
+	/// <param name="cancellationToken">The cancellation token for the operation.</param>
+	/// <returns>The raw JSON response payload from the device.</returns>
+	/// <exception cref="ArgumentException">Thrown when <paramref name="method" /> is empty or whitespace.</exception>
+	/// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="updateMode" /> is unsupported.</exception>
+	public Task<string> ExecuteSmartCommandAsync (string method, JsonObject? parameters, DeviceStateUpdateMode updateMode, CancellationToken cancellationToken = default)
+		{
+		if (string.IsNullOrWhiteSpace (method))
+			{
+			throw new ArgumentException ("A smart method name is required.", nameof (method));
+			}
+
+		string commandJson = KasaCommands.CreateSmartRequest (method.Trim (), parameters);
+		return ExecuteCommandAsync (commandJson, updateMode, cancellationToken);
+		}
+
+	private Task<string> ExecuteCommandCoreAsync (string commandJson, CancellationToken cancellationToken) =>
+		_transport.SendAsync (commandJson, cancellationToken);
+
+	private async Task RunDeviceOperationAsync (Func<CancellationToken, Task> operation, CancellationToken cancellationToken)
+		{
+		await _operationLock.WaitAsync (cancellationToken).ConfigureAwait (false);
+		try
+			{
+			await operation (cancellationToken).ConfigureAwait (false);
+			}
+		finally
+			{
+			_operationLock.Release ();
+			}
+		}
+
+	private async Task<T> RunDeviceOperationAsync<T> (Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken)
+		{
+		await _operationLock.WaitAsync (cancellationToken).ConfigureAwait (false);
+		try
+			{
+			return await operation (cancellationToken).ConfigureAwait (false);
+			}
+		finally
+			{
+			_operationLock.Release ();
+			}
 		}
 
 

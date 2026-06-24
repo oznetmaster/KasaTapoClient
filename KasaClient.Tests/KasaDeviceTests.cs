@@ -1,6 +1,7 @@
 // Copyright © 2026 Neil Colvin.
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
+using System.Threading;
 using System.Threading.Tasks;
 
 using KasaTapoClient;
@@ -1112,4 +1113,128 @@ public sealed class KasaDeviceTests
 		await device.UpdateAsync ().ConfigureAwait (false);
 		await Assert.ThrowsExceptionAsync<InvalidOperationException> (() => device.GetScannedChildDevicesAsync ()).ConfigureAwait (false);
 		}
+
+	[TestMethod]
+	public async Task ExecuteCommandAsync_WithUpdateAfterCommand_RefreshesStateBeforeReturningResponse ()
+		{
+		var transport = new FakeDeviceTransport (
+			sendResponses:
+			[
+				"{\"system\":{\"set_relay_state\":{\"err_code\":0}}}",
+				"{\"system\":{\"get_sysinfo\":{\"alias\":\"Updated Plug\",\"model\":\"HS100\",\"deviceId\":\"device-1\",\"relay_state\":1}}}"
+			],
+			sendManyResponses:
+			[
+				"{\"emeter\":{\"err_code\":-1},\"time\":{\"get_time\":{\"year\":2025,\"month\":1,\"mday\":2,\"hour\":3,\"min\":4,\"sec\":5}},\"cnCloud\":{\"get_info\":{\"binded\":1,\"cld_connection\":1}},\"count_down\":{\"get_rules\":{\"rule_list\":[]}},\"schedule\":{\"get_rules\":{\"rule_list\":[]}},\"anti_theft\":{\"get_rules\":{\"rule_list\":[]}}}"
+			]);
+		DeviceConfiguration configuration = new ("127.0.0.1");
+		var device = new KasaDevice (configuration, transport);
+
+		string response = await device.ExecuteCommandAsync (
+			KasaTapoClient.Internal.KasaCommands.CreateSetRelayStateCommand (true),
+			DeviceStateUpdateMode.UpdateAfterCommand).ConfigureAwait (false);
+
+		Assert.AreEqual ("{\"system\":{\"set_relay_state\":{\"err_code\":0}}}", response);
+		Assert.AreEqual (2, transport.SentCommands.Count);
+		Assert.AreEqual (1, transport.SentManyCommands.Count);
+		Assert.AreEqual ("Updated Plug", device.SystemInfo?.Alias);
+		Assert.AreEqual (true, device.IsOn);
+		}
+
+	[TestMethod]
+	public async Task ExecuteSmartCommandAsync_BuildsSmartRequestAndRefreshesStateWhenRequested ()
+		{
+		var transport = new FakeDeviceTransport (
+			sendResponses:
+			[
+				"{\"result\":{\"error_code\":0}}",
+				"""
+				{
+				  "result": {
+					 "responses": [
+						{
+						  "method": "get_device_info",
+						  "result": {
+							 "model": "P110",
+							 "type": "SMART.TAPOPLUG",
+							 "device_id": "plug-1",
+							 "nickname": "UGx1Zw==",
+							 "device_on": true
+						  }
+						},
+						{
+						  "method": "component_nego",
+						  "result": {
+							 "component_list": [
+								{ "id": "cloud_connect", "ver_code": 1 }
+							 ]
+						  }
+						}
+					 ]
+				  }
+				}
+				"""
+			]);
+		DeviceConfiguration configuration = new (
+			"127.0.0.1",
+			connectionOptions: new DeviceConnectionOptions (
+				connectionParameters: new DeviceConnectionParameters (DeviceFamilyKind.SmartTapoPlug, DeviceEncryptionKind.Aes)));
+		var device = new KasaDevice (configuration, transport);
+
+		string response = await device.ExecuteSmartCommandAsync (
+			"set_device_info",
+			new System.Text.Json.Nodes.JsonObject { ["device_on"] = true },
+			DeviceStateUpdateMode.UpdateAfterCommand).ConfigureAwait (false);
+
+		Assert.AreEqual ("{\"result\":{\"error_code\":0}}", response);
+		Assert.AreEqual (3, transport.SentCommands.Count);
+		StringAssert.Contains (transport.SentCommands[0], "\"method\":\"set_device_info\"");
+		StringAssert.Contains (transport.SentCommands[0], "\"request_time_milis\"");
+		StringAssert.Contains (transport.SentCommands[0], "\"terminal_uuid\"");
+		Assert.AreEqual ("Plug", device.Alias);
+		Assert.AreEqual (true, device.IsOn);
+		}
+
+	[TestMethod]
+	public async Task ExecuteCommandAsync_ConcurrentCalls_SerializesTransportAccess ()
+		{
+		int activeSends = 0;
+		int maxActiveSends = 0;
+		var transport = new FakeDeviceTransport (
+			sendHandler: async (_, cancellationToken) =>
+				{
+				int active = Interlocked.Increment (ref activeSends);
+				int observed;
+				do
+					{
+					observed = maxActiveSends;
+					if (active <= observed)
+						{
+						break;
+						}
+					}
+				while (Interlocked.CompareExchange (ref maxActiveSends, active, observed) != observed);
+
+				try
+					{
+					await Task.Delay (25, cancellationToken).ConfigureAwait (false);
+					return "{\"ok\":true}";
+					}
+				finally
+					{
+					Interlocked.Decrement (ref activeSends);
+					}
+				});
+		DeviceConfiguration configuration = new ("127.0.0.1");
+		var device = new KasaDevice (configuration, transport);
+
+		await Task.WhenAll (
+			device.ExecuteCommandAsync ("{\"op\":1}"),
+			device.ExecuteCommandAsync ("{\"op\":2}"),
+			device.ExecuteCommandAsync ("{\"op\":3}")).ConfigureAwait (false);
+
+		Assert.AreEqual (3, transport.SentCommands.Count);
+		Assert.AreEqual (1, maxActiveSends);
+		}
 	}
+

@@ -23,6 +23,8 @@ TP-Link, Kasa, and Tapo are trademarks of their respective owners. This project 
 - Host, light, child-device, and effect control where supported
 - Optional live device tests and Benchmark.NET suites for transport and latency analysis
 - TPAP keepalive support to reduce reconnect penalties after long idle periods
+- Per-device operation serialization so concurrent commands, refreshes, and child operations against one physical endpoint run one-at-a-time
+- Raw and smart-method command execution helpers for diagnostics and advanced integrations
 
 This .NET library was developed with compatibility and behavior reference material from the upstream `python-kasa` project. See [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
 
@@ -89,9 +91,65 @@ await device.TurnLightOnAsync().ConfigureAwait(false);
 await device.UpdateAsync().ConfigureAwait(false);
 ```
 
+### Device operation serialization
+
+Operations on a single `KasaDevice` are serialized internally. This means concurrent calls against the same physical endpoint, including hub children and power-strip outlets that share a parent device session, run one-at-a-time.
+
+Different `KasaDevice` instances for different physical hosts can still run in parallel. The serialization is intended to prevent overlapping transport/session access and command/refresh interleaving on the same device.
+
+Existing public APIs remain source-compatible, but callers that previously issued concurrent operations against the same `KasaDevice` may now observe those operations completing sequentially.
+
+### Raw and smart command helpers
+
+`ExecuteCommandAsync` sends a complete JSON payload exactly as supplied. It is useful for legacy Kasa JSON modules or diagnostics where the full request body is already known.
+
+```csharp
+string response = await device.ExecuteCommandAsync(
+    "{\"system\":{\"get_sysinfo\":{}}}").ConfigureAwait(false);
+```
+
+For raw command scenarios that need the cached state refreshed before returning, use `DeviceStateUpdateMode.UpdateAfterCommand`:
+
+```csharp
+string response = await device.ExecuteCommandAsync(
+    "{\"system\":{\"set_relay_state\":{\"state\":1}}}",
+    DeviceStateUpdateMode.UpdateAfterCommand).ConfigureAwait(false);
+```
+
+`ExecuteSmartCommandAsync` is for TP-Link smart-protocol methods such as `get_device_info` and `set_device_info`. It builds the required smart request envelope, including request timestamp and terminal UUID fields, before sending the command.
+
+```csharp
+string response = await device.ExecuteSmartCommandAsync(
+    "set_device_info",
+    new System.Text.Json.Nodes.JsonObject { ["device_on"] = true },
+    DeviceStateUpdateMode.UpdateAfterCommand).ConfigureAwait(false);
+```
+
 ## Test Console
 
 The solution includes `KasaClient.Console`, a console application for discovery and command execution against real devices.
+
+Useful diagnostic commands include:
+
+```powershell
+dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework net10.0 -- host device-host-or-ip raw "{\"system\":{\"get_sysinfo\":{}}}"
+```
+
+```powershell
+dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework net10.0 -- host device-host-or-ip smart get_device_info
+```
+
+```powershell
+dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework net10.0 -- host device-host-or-ip smart set_device_info "{""device_on"":true}" --update
+```
+
+`raw` sends the JSON exactly as supplied. `smart` accepts a smart method name and optional parameters JSON, then builds the smart-protocol request envelope for TPAP/KLAP/AES smart devices. Add `--update` to refresh cached device state under the same device operation lock after the command completes.
+
+To exercise per-device serialization from the console, run concurrent updates against one connected device:
+
+```powershell
+dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework net10.0 -- host device-host-or-ip serialize 4
+```
 
 ## Testing and Benchmark Scaffolding
 

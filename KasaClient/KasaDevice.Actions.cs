@@ -15,35 +15,56 @@ public sealed partial class KasaDevice
 
 	private async Task SetRelayStateAsync (bool isOn, CancellationToken cancellationToken)
 		{
+		await RunDeviceOperationAsync (ct => SetRelayStateCoreAsync (isOn, ct), cancellationToken).ConfigureAwait (false);
+		}
+
+	private async Task SetRelayStateCoreAsync (bool isOn, CancellationToken cancellationToken)
+		{
 		if (UsesSmartProtocol ())
 			{
-			await ExecuteCommandAsync (KasaTapoClient.Internal.KasaCommands.CreateSmartRequest ("set_device_info", new System.Text.Json.Nodes.JsonObject { ["device_on"] = isOn }), cancellationToken).ConfigureAwait (false);
-			await UpdateAsync (cancellationToken).ConfigureAwait (false);
+			await ExecuteCommandCoreAsync (KasaTapoClient.Internal.KasaCommands.CreateSmartRequest ("set_device_info", new System.Text.Json.Nodes.JsonObject { ["device_on"] = isOn }), cancellationToken).ConfigureAwait (false);
+			await UpdateCoreAsync (cancellationToken).ConfigureAwait (false);
 			return;
 			}
 
 		if (SupportsLightControl ())
 			{
-			await SetLightStateAsync (isOn: isOn, cancellationToken: cancellationToken).ConfigureAwait (false);
+			await SetLightStateCoreAsync (isOn: isOn, cancellationToken: cancellationToken).ConfigureAwait (false);
 			return;
 			}
 
-		await ExecuteCommandAsync (KasaTapoClient.Internal.KasaCommands.CreateSetRelayStateCommand (isOn), cancellationToken).ConfigureAwait (false);
-		await UpdateAsync (cancellationToken).ConfigureAwait (false);
+		await ExecuteCommandCoreAsync (KasaTapoClient.Internal.KasaCommands.CreateSetRelayStateCommand (isOn), cancellationToken).ConfigureAwait (false);
+		await UpdateCoreAsync (cancellationToken).ConfigureAwait (false);
 		}
 
 	private async Task SetChildRelayStateAsync (string childDeviceId, bool isOn, CancellationToken cancellationToken)
+		{
+		await RunDeviceOperationAsync (ct => SetChildRelayStateCoreAsync (childDeviceId, isOn, ct), cancellationToken).ConfigureAwait (false);
+		}
+
+	private async Task SetChildRelayStateCoreAsync (string childDeviceId, bool isOn, CancellationToken cancellationToken)
 		{
 		if (GetChild (childDeviceId) is null)
 			{
 			throw new InvalidOperationException ($"The child device '{childDeviceId}' was not found on '{Host}'.");
 			}
 
-		await ExecuteCommandAsync (KasaTapoClient.Internal.KasaCommands.CreateSetChildRelayStateCommand (childDeviceId, isOn), cancellationToken).ConfigureAwait (false);
-		await UpdateAsync (cancellationToken).ConfigureAwait (false);
+		await ExecuteCommandCoreAsync (KasaTapoClient.Internal.KasaCommands.CreateSetChildRelayStateCommand (childDeviceId, isOn), cancellationToken).ConfigureAwait (false);
+		await UpdateCoreAsync (cancellationToken).ConfigureAwait (false);
 		}
 
 	private async Task SetLightStateAsync (
+		bool? isOn = null,
+		int? brightness = null,
+		int? colorTemperature = null,
+		int? hue = null,
+		int? saturation = null,
+		CancellationToken cancellationToken = default)
+		{
+		await RunDeviceOperationAsync (ct => SetLightStateCoreAsync (isOn, brightness, colorTemperature, hue, saturation, ct), cancellationToken).ConfigureAwait (false);
+		}
+
+	private async Task SetLightStateCoreAsync (
 		bool? isOn = null,
 		int? brightness = null,
 		int? colorTemperature = null,
@@ -100,12 +121,12 @@ public sealed partial class KasaDevice
 
 			try
 				{
-				await ExecuteCommandAsync (KasaTapoClient.Internal.KasaCommands.CreateSmartRequest ("set_device_info", parameters), operationCancellationToken).ConfigureAwait (false);
-				await UpdateAsync (operationCancellationToken).ConfigureAwait (false);
+				await ExecuteCommandCoreAsync (KasaTapoClient.Internal.KasaCommands.CreateSmartRequest ("set_device_info", parameters), operationCancellationToken).ConfigureAwait (false);
+				await UpdateCoreAsync (operationCancellationToken).ConfigureAwait (false);
 				}
 			catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
 				{
-				await UpdateAsync (cancellationToken).ConfigureAwait (false);
+				await UpdateCoreAsync (cancellationToken).ConfigureAwait (false);
 				}
 			finally
 				{
@@ -114,18 +135,23 @@ public sealed partial class KasaDevice
 			return;
 			}
 
-		await ExecuteCommandAsync (KasaTapoClient.Internal.KasaCommands.CreateSetLightStateCommand (DeviceType, isOn, brightness, colorTemperature, hue, saturation), cancellationToken).ConfigureAwait (false);
-		await UpdateAsync (cancellationToken).ConfigureAwait (false);
+		await ExecuteCommandCoreAsync (KasaTapoClient.Internal.KasaCommands.CreateSetLightStateCommand (DeviceType, isOn, brightness, colorTemperature, hue, saturation), cancellationToken).ConfigureAwait (false);
+		await UpdateCoreAsync (cancellationToken).ConfigureAwait (false);
 		}
 
 	private async Task SetLightEffectInternalAsync (string? effect, CancellationToken cancellationToken)
+		{
+		await RunDeviceOperationAsync (ct => SetLightEffectCoreAsync (effect, ct), cancellationToken).ConfigureAwait (false);
+		}
+
+	private async Task SetLightEffectCoreAsync (string? effect, CancellationToken cancellationToken)
 		{
 		if (!SupportsLightControl ())
 			{
 			throw new InvalidOperationException ($"The device '{Host}' does not support light-effect control.");
 			}
 
-		await UpdateAsync (cancellationToken).ConfigureAwait (false);
+		await UpdateCoreAsync (cancellationToken).ConfigureAwait (false);
 		if (!SupportsLightEffects)
 			{
 			throw new InvalidOperationException ($"The device '{Host}' does not report light-effect support.");
@@ -144,16 +170,16 @@ public sealed partial class KasaDevice
 
 			try
 				{
-				await ExecuteCommandAsync (
+				await ExecuteCommandCoreAsync (
 					KasaTapoClient.Internal.KasaCommands.CreateSmartRequest (
 						"set_lighting_effect",
 						KasaTapoClient.Internal.KasaResponseParser.CreateSmartLightStripEffectPayload (effect)),
 					operationCancellationToken).ConfigureAwait (false);
-				await UpdateAsync (operationCancellationToken).ConfigureAwait (false);
+				await UpdateCoreAsync (operationCancellationToken).ConfigureAwait (false);
 				}
 			catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
 				{
-				await UpdateAsync (cancellationToken).ConfigureAwait (false);
+				await UpdateCoreAsync (cancellationToken).ConfigureAwait (false);
 				}
 			finally
 				{
@@ -162,8 +188,8 @@ public sealed partial class KasaDevice
 			return;
 			}
 
-		await ExecuteCommandAsync (KasaTapoClient.Internal.KasaCommands.CreateSetLightEffectCommand (DeviceType, effect), cancellationToken).ConfigureAwait (false);
-		await UpdateAsync (cancellationToken).ConfigureAwait (false);
+		await ExecuteCommandCoreAsync (KasaTapoClient.Internal.KasaCommands.CreateSetLightEffectCommand (DeviceType, effect), cancellationToken).ConfigureAwait (false);
+		await UpdateCoreAsync (cancellationToken).ConfigureAwait (false);
 		}
 
 	private bool UsesSmartProtocol ()

@@ -20,7 +20,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>Initial public GitHub-ready release preparation for KasaTapoClient with TP-Link Kasa and Tapo device support.</PackageReleaseNotes>
+		<PackageReleaseNotes>Add per-device operation serialization, update-after-command execution mode, smart-command helper APIs, and console diagnostics for raw/smart commands and serialization testing.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>
