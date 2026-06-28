@@ -37,6 +37,16 @@ public sealed class KasaCommandsTests
 		}
 
 	[TestMethod]
+	public void CreateSetLightStateCommand_ForBulb_UsesRequestedTransitionPeriod ()
+		{
+		string command = KasaCommands.CreateSetLightStateCommand (DeviceType.Bulb, isOn: true, brightness: 25, transitionMilliseconds: 1500);
+		JsonObject root = JsonNode.Parse (command)!.AsObject ();
+		JsonObject payload = root["smartlife.iot.smartbulb.lightingservice"]!["transition_light_state"]!.AsObject ();
+
+		Assert.AreEqual (1500, payload["transition_period"]!.GetValue<int> ());
+		}
+
+	[TestMethod]
 	public void CreateSetLightEffectCommand_ForBulb_UsesDynamicEffectPayload ()
 		{
 		string command = KasaCommands.CreateSetLightEffectCommand (DeviceType.Bulb, "L1");
@@ -82,5 +92,42 @@ public sealed class KasaCommandsTests
 
 		Assert.AreEqual (1, payload["enable"]!.GetValue<int> ());
 		Assert.AreEqual ("Aurora", payload["name"]!.GetValue<string> ());
+		}
+
+	[TestMethod]
+	public void CreateSetSmartLightTransitionEnabledCommand_UsesEnablePayload ()
+		{
+		string command = KasaCommands.CreateSetSmartLightTransitionEnabledCommand (true);
+		JsonObject root = JsonNode.Parse (command)!.AsObject ();
+		JsonObject payload = root["params"]!.AsObject ();
+
+		Assert.AreEqual (KasaCommands.SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD, root["method"]!.GetValue<string> ());
+		Assert.AreEqual (true, payload["enable"]!.GetValue<bool> ());
+		}
+
+	[TestMethod]
+	public void CreateSetSmartLightTransitionOnCommand_UsesOnStatePayload ()
+		{
+		string command = KasaCommands.CreateSetSmartLightTransitionOnCommand (true, 12);
+		JsonObject root = JsonNode.Parse (command)!.AsObject ();
+		JsonObject payload = root["params"]!.AsObject ();
+		JsonObject onState = payload["on_state"]!.AsObject ();
+
+		Assert.AreEqual (KasaCommands.SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD, root["method"]!.GetValue<string> ());
+		Assert.AreEqual (true, onState["enable"]!.GetValue<bool> ());
+		Assert.AreEqual (12, onState["duration"]!.GetValue<int> ());
+		}
+
+	[TestMethod]
+	public void CreateSetSmartLightTransitionOffCommand_UsesOffStatePayload ()
+		{
+		string command = KasaCommands.CreateSetSmartLightTransitionOffCommand (false, 0);
+		JsonObject root = JsonNode.Parse (command)!.AsObject ();
+		JsonObject payload = root["params"]!.AsObject ();
+		JsonObject offState = payload["off_state"]!.AsObject ();
+
+		Assert.AreEqual (KasaCommands.SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD, root["method"]!.GetValue<string> ());
+		Assert.AreEqual (false, offState["enable"]!.GetValue<bool> ());
+		Assert.AreEqual (0, offState["duration"]!.GetValue<int> ());
 		}
 	}

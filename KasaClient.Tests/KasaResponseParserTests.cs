@@ -186,8 +186,8 @@ public sealed class KasaResponseParserTests
 				{
 				  "method": "get_on_off_gradually_info",
 				  "result": {
-					 "on_state": { "enable": true, "duration": 12 },
-					 "off_state": { "enable": false, "duration": 30 }
+					 "on_state": { "enable": true, "duration": 12, "max_duration": 40 },
+					 "off_state": { "enable": false, "duration": 30, "max_duration": 45 }
 				  }
 				},
 				{
@@ -234,7 +234,14 @@ public sealed class KasaResponseParserTests
 		Assert.AreEqual (2, state.LightPresetState.Presets.Count);
 		Assert.AreEqual (50, state.LightPresetState.Presets[0].Brightness);
 		Assert.IsNotNull (state.LightTransitionState);
+		Assert.AreEqual (true, state.LightTransitionState.IsEnabled);
+		Assert.AreEqual (true, state.LightTransitionState.IsTransitionOnEnabled);
+		Assert.AreEqual (12, state.LightTransitionState.TransitionOnDurationSeconds);
+		Assert.AreEqual (40, state.LightTransitionState.TransitionOnMaximumDurationSeconds);
 		Assert.AreEqual (12, state.LightTransitionState.TransitionOnSeconds);
+		Assert.AreEqual (false, state.LightTransitionState.IsTransitionOffEnabled);
+		Assert.AreEqual (30, state.LightTransitionState.TransitionOffDurationSeconds);
+		Assert.AreEqual (45, state.LightTransitionState.TransitionOffMaximumDurationSeconds);
 		Assert.AreEqual (0, state.LightTransitionState.TransitionOffSeconds);
 		Assert.IsNotNull (state.AlarmState);
 		Assert.AreEqual (true, state.AlarmState.IsActive);

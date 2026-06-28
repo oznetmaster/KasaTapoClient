@@ -91,6 +91,7 @@ public sealed partial class KasaDevice
 		KasaResponseParser.SmartParsedResponse parsedResponse = KasaResponseParser.ParseSmartResponse (response);
 		parsedResponse = await EnrichSmartModuleResultsAsync (parsedResponse, cancellationToken).ConfigureAwait (false);
 		parsedResponse = await EnrichSmartChildResponseAsync (parsedResponse, cancellationToken).ConfigureAwait (false);
+		_smartComponentVersions = parsedResponse.ComponentVersions;
 		ApplyParsedState (KasaResponseParser.ParseSmartDeviceState (parsedResponse));
 		}
 

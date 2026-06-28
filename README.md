@@ -91,6 +91,13 @@ await device.TurnLightOnAsync().ConfigureAwait(false);
 await device.UpdateAsync().ConfigureAwait(false);
 ```
 
+Optional transition durations for supported legacy light on/off/brightness commands are available through additive overloads, while preserving the original public method signatures:
+
+```csharp
+await device.TurnLightOnAsync(1500).ConfigureAwait(false);
+await device.SetBrightnessAsync(60, 1500).ConfigureAwait(false);
+```
+
 ### Device operation serialization
 
 Operations on a single `KasaDevice` are serialized internally. This means concurrent calls against the same physical endpoint, including hub children and power-strip outlets that share a parent device session, run one-at-a-time.
@@ -143,7 +150,37 @@ dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework ne
 dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework net10.0 -- host device-host-or-ip smart set_device_info "{""device_on"":true}" --update
 ```
 
+```powershell
+dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework net10.0 -- host device-host-or-ip light on --t 1500
+```
+
+```powershell
+dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework net10.0 -- host device-host-or-ip light brightness 60 --t 1500
+```
+
+```powershell
+dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework net10.0 -- host device-host-or-ip light transition on
+dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework net10.0 -- host device-host-or-ip light tr on
+dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework net10.0 -- host device-host-or-ip light tr-on 12 tr-off 8
+dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework net10.0 -- host device-host-or-ip light transition-on 12
+dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework net10.0 -- host device-host-or-ip light transition-off 8
+```
+
 `raw` sends the JSON exactly as supplied. `smart` accepts a smart method name and optional parameters JSON, then builds the smart-protocol request envelope for TPAP/KLAP/AES smart devices. Add `--update` to refresh cached device state under the same device operation lock after the command completes.
+
+For supported legacy light on/off/brightness commands, the console accepts `--t[ransition] <ms>` to pass a transition duration in milliseconds.
+
+For supported smart light devices that expose persistent smooth transitions, the console also accepts `light tr|transition <on|off>`, `light tr-on|transition-on <seconds>`, and `light tr-off|transition-off <seconds>`.
+
+For smart transition v2+ behavior, this matches `python-kasa` semantics:
+
+- `transition` controls the effective overall enabled state
+- `transition-on` and `transition-off` configure the directional transition behavior in seconds
+- the stored directional durations are preserved internally when transitions are disabled
+- the effective public directional values read as `0` when that direction is disabled
+- the effective public overall enabled state is `True` when either directional transition is enabled, and `False` when both are disabled
+
+The console status output also surfaces the negotiated smart component versions as a `Smart Modules:` line, for example `on_off_gradually=v4, preset=v3`. When light transition state is available, the console prints the overall enabled state, the per-direction enabled states, the effective on/off durations, and the stored on/off durations so `v2+` directional behavior is visible without inspecting raw JSON.
 
 To exercise per-device serialization from the console, run concurrent updates against one connected device:
 

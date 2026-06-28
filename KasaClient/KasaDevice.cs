@@ -21,6 +21,7 @@ public sealed partial class KasaDevice : IDisposable
 	private readonly IDeviceTransport _transport;
 	private readonly SemaphoreSlim _operationLock = new (1, 1);
 	private IReadOnlyList<DeviceFeature> _features = Array.Empty<DeviceFeature> ();
+	private IReadOnlyDictionary<string, int> _smartComponentVersions = new Dictionary<string, int> (StringComparer.Ordinal);
 	private static readonly JsonObject SMART_GET_TRIGGER_LOGS_PARAMETERS = new ()
 		{
 		["start_id"] = 0,
@@ -506,6 +507,11 @@ public sealed partial class KasaDevice : IDisposable
 	public IReadOnlyList<DeviceFeature> Features => _features;
 
 	/// <summary>
+	/// Gets the negotiated smart component versions reported by the device.
+	/// </summary>
+	public IReadOnlyDictionary<string, int> SmartComponentVersions => _smartComponentVersions;
+
+	/// <summary>
 	/// Releases transport resources owned by the device.
 	/// </summary>
 	public void Dispose ()
@@ -591,6 +597,23 @@ public sealed partial class KasaDevice : IDisposable
 			}
 
 		return null;
+		}
+
+	/// <summary>
+	/// Returns the negotiated smart component version when present.
+	/// </summary>
+	/// <param name="componentId">The smart component identifier.</param>
+	/// <returns>The negotiated version, or <see langword="null" /> when the component is unavailable.</returns>
+	public int? GetSmartComponentVersion (string componentId)
+		{
+		if (string.IsNullOrWhiteSpace (componentId))
+			{
+			throw new ArgumentException ("A component identifier is required.", nameof (componentId));
+			}
+
+		return _smartComponentVersions.TryGetValue (componentId, out int version)
+			? version
+			: null;
 		}
 
 	/// <summary>
@@ -822,14 +845,34 @@ public sealed partial class KasaDevice : IDisposable
 	/// </summary>
 	/// <param name="cancellationToken">The cancellation token for the operation.</param>
 	/// <returns>A task that completes when the light state has been refreshed.</returns>
-	public Task TurnLightOnAsync (CancellationToken cancellationToken = default) => SetLightStateAsync (isOn: true, cancellationToken: cancellationToken);
+	public Task TurnLightOnAsync (CancellationToken cancellationToken = default) =>
+		SetLightStateAsync (isOn: true, cancellationToken: cancellationToken);
+
+	/// <summary>
+	/// Turns the light on and refreshes state.
+	/// </summary>
+	/// <param name="transitionMilliseconds">The optional transition duration, in milliseconds, for supported legacy light devices.</param>
+	/// <param name="cancellationToken">The cancellation token for the operation.</param>
+	/// <returns>A task that completes when the light state has been refreshed.</returns>
+	public Task TurnLightOnAsync (int transitionMilliseconds, CancellationToken cancellationToken = default) =>
+		SetLightStateAsync (isOn: true, transitionMilliseconds: transitionMilliseconds, cancellationToken: cancellationToken);
 
 	/// <summary>
 	/// Turns the light off and refreshes state.
 	/// </summary>
 	/// <param name="cancellationToken">The cancellation token for the operation.</param>
 	/// <returns>A task that completes when the light state has been refreshed.</returns>
-	public Task TurnLightOffAsync (CancellationToken cancellationToken = default) => SetLightStateAsync (isOn: false, cancellationToken: cancellationToken);
+	public Task TurnLightOffAsync (CancellationToken cancellationToken = default) =>
+		SetLightStateAsync (isOn: false, cancellationToken: cancellationToken);
+
+	/// <summary>
+	/// Turns the light off and refreshes state.
+	/// </summary>
+	/// <param name="transitionMilliseconds">The optional transition duration, in milliseconds, for supported legacy light devices.</param>
+	/// <param name="cancellationToken">The cancellation token for the operation.</param>
+	/// <returns>A task that completes when the light state has been refreshed.</returns>
+	public Task TurnLightOffAsync (int transitionMilliseconds, CancellationToken cancellationToken = default) =>
+		SetLightStateAsync (isOn: false, transitionMilliseconds: transitionMilliseconds, cancellationToken: cancellationToken);
 
 	/// <summary>
 	/// Sets the brightness percentage and refreshes state.
@@ -846,6 +889,24 @@ public sealed partial class KasaDevice : IDisposable
 			}
 
 		return SetLightStateAsync (brightness: brightness, cancellationToken: cancellationToken);
+		}
+
+	/// <summary>
+	/// Sets the brightness percentage and refreshes state.
+	/// </summary>
+	/// <param name="brightness">The brightness percentage from 0 through 100.</param>
+	/// <param name="transitionMilliseconds">The optional transition duration, in milliseconds, for supported legacy light devices.</param>
+	/// <param name="cancellationToken">The cancellation token for the operation.</param>
+	/// <returns>A task that completes when the light state has been refreshed.</returns>
+	/// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="brightness" /> is outside the inclusive range of 0 through 100.</exception>
+	public Task SetBrightnessAsync (int brightness, int transitionMilliseconds, CancellationToken cancellationToken = default)
+		{
+		if (brightness is < 0 or > 100)
+			{
+			throw new ArgumentOutOfRangeException (nameof (brightness), brightness, "Brightness must be between 0 and 100.");
+			}
+
+		return SetLightStateAsync (brightness: brightness, transitionMilliseconds: transitionMilliseconds, cancellationToken: cancellationToken);
 		}
 
 	/// <summary>
@@ -892,6 +953,47 @@ public sealed partial class KasaDevice : IDisposable
 			}
 
 		return SetLightStateAsync (brightness: value, hue: hue, saturation: saturation, cancellationToken: cancellationToken);
+		}
+
+	/// <summary>
+	/// Enables or disables persistent smooth light transitions when supported by the device and refreshes state.
+	/// </summary>
+	/// <param name="enabled">The value indicating whether smooth transitions should be enabled.</param>
+	/// <param name="cancellationToken">The cancellation token for the operation.</param>
+	/// <returns>A task that completes when the transition state has been refreshed.</returns>
+	public Task SetLightTransitionsEnabledAsync (bool enabled, CancellationToken cancellationToken = default) =>
+		SetLightTransitionsEnabledInternalAsync (enabled, cancellationToken);
+
+	/// <summary>
+	/// Sets the persistent smooth turn-on transition duration in seconds when supported by the device and refreshes state.
+	/// </summary>
+	/// <param name="seconds">The turn-on transition duration in seconds. Specify 0 to disable the turn-on transition.</param>
+	/// <param name="cancellationToken">The cancellation token for the operation.</param>
+	/// <returns>A task that completes when the transition state has been refreshed.</returns>
+	public Task SetLightTurnOnTransitionAsync (int seconds, CancellationToken cancellationToken = default)
+		{
+		if (seconds < 0)
+			{
+			throw new ArgumentOutOfRangeException (nameof (seconds), seconds, "Transition duration must be zero or greater.");
+			}
+
+		return SetLightTurnOnTransitionInternalAsync (seconds, cancellationToken);
+		}
+
+	/// <summary>
+	/// Sets the persistent smooth turn-off transition duration in seconds when supported by the device and refreshes state.
+	/// </summary>
+	/// <param name="seconds">The turn-off transition duration in seconds. Specify 0 to disable the turn-off transition.</param>
+	/// <param name="cancellationToken">The cancellation token for the operation.</param>
+	/// <returns>A task that completes when the transition state has been refreshed.</returns>
+	public Task SetLightTurnOffTransitionAsync (int seconds, CancellationToken cancellationToken = default)
+		{
+		if (seconds < 0)
+			{
+			throw new ArgumentOutOfRangeException (nameof (seconds), seconds, "Transition duration must be zero or greater.");
+			}
+
+		return SetLightTurnOffTransitionInternalAsync (seconds, cancellationToken);
 		}
 
 	/// <summary>

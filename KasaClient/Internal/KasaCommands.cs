@@ -68,6 +68,7 @@ internal static class KasaCommands
 	public const string SMART_SET_CHILD_LOCK_INFO_METHOD = "setChildLockInfo";
 	public const string SMART_GET_PRESET_RULES_METHOD = "get_preset_rules";
 	public const string SMART_GET_ON_OFF_GRADUALLY_INFO_METHOD = "get_on_off_gradually_info";
+	public const string SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD = "set_on_off_gradually_info";
 	public const string SMART_GET_DYNAMIC_LIGHT_EFFECT_RULES_METHOD = "get_dynamic_light_effect_rules";
 	public const string SMART_GET_ALARM_CONFIG_METHOD = "get_alarm_configure";
 
@@ -133,7 +134,8 @@ internal static class KasaCommands
 		int? brightness = null,
 		int? colorTemperature = null,
 		int? hue = null,
-		int? saturation = null)
+		int? saturation = null,
+		int? transitionMilliseconds = null)
 		{
 		string service = deviceType switch
 			{
@@ -187,10 +189,7 @@ internal static class KasaCommands
 		if (deviceType == DeviceType.Bulb)
 			{
 			lightState["ignore_default"] = 1;
-			if (!lightState.ContainsKey ("transition_period"))
-				{
-				lightState["transition_period"] = 0;
-				}
+			lightState["transition_period"] = transitionMilliseconds ?? 0;
 			}
 
 		var command = new JsonObject
@@ -261,6 +260,63 @@ internal static class KasaCommands
 			}
 
 		return request.ToJsonString (JsonSupport.COMPACT_JSON);
+		}
+
+	public static string CreateSetSmartLightTransitionEnabledCommand (bool enabled)
+		{
+		return CreateSmartRequest (
+			SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD,
+			new JsonObject
+				{
+				["enable"] = enabled,
+				});
+		}
+
+	public static string CreateSetSmartLightTransitionEnabledCommand (bool enabled, int onDurationSeconds, int offDurationSeconds)
+		{
+		return CreateSmartRequest (
+			SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD,
+			new JsonObject
+				{
+				["on_state"] = new JsonObject
+					{
+					["enable"] = enabled,
+					["duration"] = onDurationSeconds,
+					},
+				["off_state"] = new JsonObject
+					{
+					["enable"] = enabled,
+					["duration"] = offDurationSeconds,
+					},
+				});
+		}
+
+	public static string CreateSetSmartLightTransitionOnCommand (bool enabled, int durationSeconds)
+		{
+		return CreateSmartRequest (
+			SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD,
+			new JsonObject
+				{
+				["on_state"] = new JsonObject
+					{
+					["enable"] = enabled,
+					["duration"] = durationSeconds,
+					},
+				});
+		}
+
+	public static string CreateSetSmartLightTransitionOffCommand (bool enabled, int durationSeconds)
+		{
+		return CreateSmartRequest (
+			SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD,
+			new JsonObject
+				{
+				["off_state"] = new JsonObject
+					{
+					["enable"] = enabled,
+					["duration"] = durationSeconds,
+					},
+				});
 		}
 
 	public static string CreateSmartMultipleRequest (IReadOnlyDictionary<string, JsonObject?> requests)

@@ -167,8 +167,15 @@ public sealed partial class KasaDevice
 
 			if (LightTransitionState is not null)
 				{
-				features.Add (new DeviceFeature ("smooth_transition_on", "Smooth transition on", FeatureKind.Number, LightTransitionState.TransitionOnSeconds?.ToString (CultureInfo.InvariantCulture), minimumValue: 0, maximumValue: 60));
-				features.Add (new DeviceFeature ("smooth_transition_off", "Smooth transition off", FeatureKind.Number, LightTransitionState.TransitionOffSeconds?.ToString (CultureInfo.InvariantCulture), minimumValue: 0, maximumValue: 60));
+				if (_smartComponentVersions.TryGetValue ("on_off_gradually", out int supportedVersion) && supportedVersion >= 2)
+					{
+					features.Add (new DeviceFeature ("smooth_transition_on", "Smooth transition on", FeatureKind.Number, LightTransitionState.TransitionOnSeconds?.ToString (CultureInfo.InvariantCulture), minimumValue: 0, maximumValue: LightTransitionState.TransitionOnMaximumDurationSeconds ?? 60));
+					features.Add (new DeviceFeature ("smooth_transition_off", "Smooth transition off", FeatureKind.Number, LightTransitionState.TransitionOffSeconds?.ToString (CultureInfo.InvariantCulture), minimumValue: 0, maximumValue: LightTransitionState.TransitionOffMaximumDurationSeconds ?? 60));
+					}
+				else
+					{
+					features.Add (new DeviceFeature ("smooth_transitions", "Smooth transitions", FeatureKind.Switch, LightTransitionState.IsEnabled, isReadOnly: false));
+					}
 				}
 			}
 

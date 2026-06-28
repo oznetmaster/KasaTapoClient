@@ -2806,25 +2806,88 @@ public sealed class LightPresetState
 /// </summary>
 public sealed class LightTransitionState
 	{
-	internal LightTransitionState (int? transitionOnSeconds, int? transitionOffSeconds, string rawJson)
+	internal LightTransitionState (
+		bool? isEnabled,
+		bool? isTransitionOnEnabled,
+		int? transitionOnDurationSeconds,
+		int? transitionOnMaximumDurationSeconds,
+		bool? isTransitionOffEnabled,
+		int? transitionOffDurationSeconds,
+		int? transitionOffMaximumDurationSeconds,
+		string rawJson)
 		{
-		TransitionOnSeconds = transitionOnSeconds;
-		TransitionOffSeconds = transitionOffSeconds;
+		IsEnabled = isEnabled;
+		IsTransitionOnEnabled = isTransitionOnEnabled;
+		TransitionOnDurationSeconds = transitionOnDurationSeconds;
+		TransitionOnMaximumDurationSeconds = transitionOnMaximumDurationSeconds;
+		IsTransitionOffEnabled = isTransitionOffEnabled;
+		TransitionOffDurationSeconds = transitionOffDurationSeconds;
+		TransitionOffMaximumDurationSeconds = transitionOffMaximumDurationSeconds;
 		RawJson = rawJson;
 		}
 
 	/// <summary>
-	/// Gets the transition duration used when turning the light on, in seconds.
+	/// Gets a value indicating whether smooth transition behavior is enabled.
 	/// </summary>
-	public int? TransitionOnSeconds
+	public bool? IsEnabled
 		{
 		get;
 		}
 
 	/// <summary>
-	/// Gets the transition duration used when turning the light off, in seconds.
+	/// Gets a value indicating whether the turn-on transition is enabled.
 	/// </summary>
-	public int? TransitionOffSeconds
+	public bool? IsTransitionOnEnabled
+		{
+		get;
+		}
+
+	/// <summary>
+	/// Gets the effective transition duration used when turning the light on, in seconds.
+	/// </summary>
+	public int? TransitionOnSeconds => IsTransitionOnEnabled == false ? 0 : TransitionOnDurationSeconds;
+
+	/// <summary>
+	/// Gets the stored turn-on transition duration, in seconds.
+	/// </summary>
+	public int? TransitionOnDurationSeconds
+		{
+		get;
+		}
+
+	/// <summary>
+	/// Gets the maximum supported turn-on transition duration, in seconds.
+	/// </summary>
+	public int? TransitionOnMaximumDurationSeconds
+		{
+		get;
+		}
+
+	/// <summary>
+	/// Gets a value indicating whether the turn-off transition is enabled.
+	/// </summary>
+	public bool? IsTransitionOffEnabled
+		{
+		get;
+		}
+
+	/// <summary>
+	/// Gets the effective transition duration used when turning the light off, in seconds.
+	/// </summary>
+	public int? TransitionOffSeconds => IsTransitionOffEnabled == false ? 0 : TransitionOffDurationSeconds;
+
+	/// <summary>
+	/// Gets the stored turn-off transition duration, in seconds.
+	/// </summary>
+	public int? TransitionOffDurationSeconds
+		{
+		get;
+		}
+
+	/// <summary>
+	/// Gets the maximum supported turn-off transition duration, in seconds.
+	/// </summary>
+	public int? TransitionOffMaximumDurationSeconds
 		{
 		get;
 		}

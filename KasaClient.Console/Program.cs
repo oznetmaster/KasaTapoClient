@@ -19,6 +19,7 @@ const string PROFILE_SAVE_OPTION = "--save";
 const string PROFILE_USE_OPTION = "--profile";
 const string PROFILE_CLEAR_OPTION = "--clear-profile";
 const string RAW_UPDATE_OPTION = "--update";
+const string LIGHT_TRANSITION_OPTION = "--transition";
 const string DEFAULT_PROFILE_NAME = "default";
 const string IMPLICIT_PROFILE_NAME = "__implicit__";
 const int DEFAULT_DISCOVERY_TIMEOUT_MILLISECONDS = 8000;
@@ -637,11 +638,28 @@ static void PrintDeviceModuleState (KasaDevice device)
 		Console.WriteLine ($"  This month's consumption: {FormatNumber (device.EnergyUsage.MonthKilowattHours, "kWh")}");
 		Console.WriteLine ($"  Total energy: {FormatNumber (device.EnergyUsage.TotalKilowattHours, "kWh")}");
 		}
+
+	if (device.LightTransition.State is LightTransitionState lightTransitionState)
+		{
+		Console.WriteLine ("Light Transition Module:");
+		Console.WriteLine ($"  Enabled: {FormatNullableBoolean (lightTransitionState.IsEnabled)}");
+		Console.WriteLine ($"  Turn-on enabled: {FormatNullableBoolean (lightTransitionState.IsTransitionOnEnabled)}");
+		Console.WriteLine ($"  Turn-off enabled: {FormatNullableBoolean (lightTransitionState.IsTransitionOffEnabled)}");
+		Console.WriteLine ($"  Transition on: {FormatNullableInt (lightTransitionState.TransitionOnSeconds, "s")}");
+		Console.WriteLine ($"  Transition off: {FormatNullableInt (lightTransitionState.TransitionOffSeconds, "s")}");
+		Console.WriteLine ($"  Stored transition on: {FormatNullableInt (lightTransitionState.TransitionOnDurationSeconds, "s")}");
+		Console.WriteLine ($"  Stored transition off: {FormatNullableInt (lightTransitionState.TransitionOffDurationSeconds, "s")}");
+		}
 	}
 
 static void PrintDiscoveredDeviceVerbose (KasaDevice device)
 	{
 	Console.WriteLine ($"Host: {device.Host}");
+	string moduleVersionSummary = FormatSmartModuleVersionSummary (device);
+	if (!string.IsNullOrWhiteSpace (moduleVersionSummary))
+		{
+		Console.WriteLine ($"Smart Modules: {moduleVersionSummary}");
+		}
 	Console.WriteLine ($"Alias: {device.Alias}");
 	Console.WriteLine ($"Transport: {device.Configuration.ConnectionOptions.TransportKind}");
 	Console.WriteLine ($"Type: {device.DeviceType}");
@@ -1202,7 +1220,10 @@ static async Task<int> RunLightAsync (string host, IReadOnlyList<string> argumen
 		}
 
 	bool hasExplicitAction = arguments.Count > commandIndex + 1 && !arguments[commandIndex + 1].StartsWith ("--", StringComparison.Ordinal);
-	string action = hasExplicitAction ? ResolveKeyword (arguments[commandIndex + 1], ConsoleCommandLexicon.LightActions) : "state";
+	string action = hasExplicitAction ? ResolveLightAction (arguments[commandIndex + 1]) : "state";
+	IReadOnlyList<LightTransitionConsoleAction> transitionActions = IsLightTransitionAction (action)
+		? ParseLightTransitionActions (arguments, commandIndex + 1)
+		: Array.Empty<LightTransitionConsoleAction> ();
 	int optionStartIndex = hasExplicitAction
 		? action switch
 			{
@@ -1211,6 +1232,9 @@ static async Task<int> RunLightAsync (string host, IReadOnlyList<string> argumen
 				"hsv" => commandIndex + 5,
 				"color" => DetermineColorOptionStartIndex (arguments, commandIndex),
 				"effect" => DetermineEffectOptionStartIndex (arguments, commandIndex),
+				"transition" => commandIndex + 1 + (transitionActions.Count * 2),
+				"transitionon" => commandIndex + 1 + (transitionActions.Count * 2),
+				"transitionoff" => commandIndex + 1 + (transitionActions.Count * 2),
 				_ => commandIndex + 2,
 			}
 		: commandIndex + 1;
@@ -1218,19 +1242,61 @@ static async Task<int> RunLightAsync (string host, IReadOnlyList<string> argumen
 	KasaDevice device = await Discover.ConnectAsync (configuration).ConfigureAwait (false);
 	ConsoleRecentHostStore.Save (device.Host);
 	ConsoleImplicitProfileStore.Save (CreateImplicitProfile (device));
+	int? transitionMilliseconds = TryGetNamedInt32Option (arguments, optionStartIndex, LIGHT_TRANSITION_OPTION);
 
 	switch (action)
 		{
 		case "state":
 			break;
 		case "on":
-			await device.Light.TurnOnAsync ().ConfigureAwait (false);
+			if (transitionMilliseconds is int onTransitionMilliseconds)
+				{
+				await device.Light.TurnOnAsync (onTransitionMilliseconds).ConfigureAwait (false);
+				}
+			else
+				{
+				await device.Light.TurnOnAsync ().ConfigureAwait (false);
+				}
 			break;
 		case "off":
-			await device.Light.TurnOffAsync ().ConfigureAwait (false);
+			if (transitionMilliseconds is int offTransitionMilliseconds)
+				{
+				await device.Light.TurnOffAsync (offTransitionMilliseconds).ConfigureAwait (false);
+				}
+			else
+				{
+				await device.Light.TurnOffAsync ().ConfigureAwait (false);
+				}
 			break;
 		case "brightness":
-			await device.Light.SetBrightnessAsync (int.Parse (GetRequiredValue (arguments, commandIndex + 2, "brightness"), CultureInfo.InvariantCulture)).ConfigureAwait (false);
+			int brightness = int.Parse (GetRequiredValue (arguments, commandIndex + 2, "brightness"), CultureInfo.InvariantCulture);
+			if (transitionMilliseconds is int brightnessTransitionMilliseconds)
+				{
+				await device.Light.SetBrightnessAsync (brightness, brightnessTransitionMilliseconds).ConfigureAwait (false);
+				}
+			else
+				{
+				await device.Light.SetBrightnessAsync (brightness).ConfigureAwait (false);
+				}
+			break;
+		case "transition":
+		case "transitionon":
+		case "transitionoff":
+			foreach (LightTransitionConsoleAction transitionAction in transitionActions)
+				{
+				switch (transitionAction.Action)
+					{
+					case "transition":
+						await device.LightTransition.SetEnabledAsync (ParseBooleanStateValue (transitionAction.Value)).ConfigureAwait (false);
+						break;
+					case "transitionon":
+						await device.LightTransition.SetTurnOnTransitionAsync (int.Parse (transitionAction.Value, CultureInfo.InvariantCulture)).ConfigureAwait (false);
+						break;
+					case "transitionoff":
+						await device.LightTransition.SetTurnOffTransitionAsync (int.Parse (transitionAction.Value, CultureInfo.InvariantCulture)).ConfigureAwait (false);
+						break;
+					}
+				}
 			break;
 		case "temp":
 			await device.Light.SetColorTemperatureAsync (int.Parse (GetRequiredValue (arguments, commandIndex + 2, "temp"), CultureInfo.InvariantCulture)).ConfigureAwait (false);
@@ -1284,13 +1350,25 @@ static async Task<int> RunLightAsync (string host, IReadOnlyList<string> argumen
 				}
 			break;
 		default:
-			return Fail ($"Unknown light action '{action}'. Use 'state', 'on', 'off', 'brightness', 'temp', 'hsv', 'color', or 'effect'.");
+			return Fail ($"Unknown light action '{action}'. Use 'state', 'on', 'off', 'brightness', 'transition', 'transition-on', 'transition-off', 'temp', 'hsv', 'color', or 'effect'.");
 		}
 
 	Console.WriteLine ($"Host: {device.Host}");
+	string moduleVersionSummary = FormatSmartModuleVersionSummary (device);
+	if (!string.IsNullOrWhiteSpace (moduleVersionSummary))
+		{
+		Console.WriteLine ($"Smart Modules: {moduleVersionSummary}");
+		}
 	Console.WriteLine ($"Type: {device.DeviceType}");
 	Console.WriteLine ($"State: {FormatPowerState (device.Light.State?.IsOn)}");
 	Console.WriteLine ($"Brightness: {FormatNullableInt (device.Light.State?.Brightness, "%")}" );
+	Console.WriteLine ($"Transition: {FormatNullableBoolean (device.LightTransition.State?.IsEnabled)}" );
+	Console.WriteLine ($"Transition On Enabled: {FormatNullableBoolean (device.LightTransition.State?.IsTransitionOnEnabled)}" );
+	Console.WriteLine ($"Transition Off Enabled: {FormatNullableBoolean (device.LightTransition.State?.IsTransitionOffEnabled)}" );
+	Console.WriteLine ($"Transition On: {FormatNullableInt (device.LightTransition.TransitionOnSeconds, "s")}" );
+	Console.WriteLine ($"Transition Off: {FormatNullableInt (device.LightTransition.TransitionOffSeconds, "s")}" );
+	Console.WriteLine ($"Stored Transition On: {FormatNullableInt (device.LightTransition.State?.TransitionOnDurationSeconds, "s")}" );
+	Console.WriteLine ($"Stored Transition Off: {FormatNullableInt (device.LightTransition.State?.TransitionOffDurationSeconds, "s")}" );
 	bool hasColorTemperature = device.Light.State?.ColorTemperature is int colorTemperature && colorTemperature > 0;
 	bool hasColor = device.Light.State?.Hue is int hue && hue != 0
 		|| device.Light.State?.Saturation is int saturation && saturation != 0;
@@ -1502,6 +1580,26 @@ static string FormatNullableBoolean (bool? value) => value switch
 		null => "N/A",
 		};
 
+static string FormatSmartModuleVersionSummary (KasaDevice device)
+	{
+	if (device.SmartComponentVersions.Count == 0)
+		{
+		return string.Empty;
+		}
+
+	string[] preferredComponents = ["on_off_gradually", "energy_monitoring", "preset", "light_effect", "alarm", "auto_off", "led", "cloud_connect", "time"];
+	var parts = new List<string> (preferredComponents.Length);
+	foreach (string componentId in preferredComponents)
+		{
+		if (device.GetSmartComponentVersion (componentId) is int version)
+			{
+			parts.Add ($"{componentId}=v{version}");
+			}
+		}
+
+	return string.Join (", ", parts);
+	}
+
 static string FormatEffectName (LightEffectState? effect)
 	{
 	if (effect is null)
@@ -1681,6 +1779,41 @@ static bool ResolveEffectListValue (string value)
 	return candidate is "list" or "ls";
 	}
 
+static bool IsLightTransitionAction (string action) =>
+	string.Equals (action, "transition", StringComparison.Ordinal)
+	|| string.Equals (action, "transitionon", StringComparison.Ordinal)
+	|| string.Equals (action, "transitionoff", StringComparison.Ordinal);
+
+static IReadOnlyList<LightTransitionConsoleAction> ParseLightTransitionActions (IReadOnlyList<string> arguments, int actionIndex)
+	{
+	var actions = new List<LightTransitionConsoleAction> ();
+	for (int i = actionIndex; i < arguments.Count && !arguments[i].StartsWith ("--", StringComparison.Ordinal);)
+		{
+		if (!TryResolveLightTransitionAction (arguments[i], out string action))
+			{
+			break;
+			}
+
+		string resolvedAction = action ?? string.Empty;
+		string valueName = string.Equals (resolvedAction, "transition", StringComparison.Ordinal) ? "enabled" : "seconds";
+		actions.Add (new LightTransitionConsoleAction (resolvedAction, GetRequiredValue (arguments, i + 1, valueName)));
+		i += 2;
+		}
+
+	return actions;
+	}
+
+static bool ParseBooleanStateValue (string value)
+	{
+	string candidate = value.Trim ().ToLowerInvariant ();
+	return candidate switch
+		{
+			"on" or "true" or "1" or "enable" or "enabled" or "yes" => true,
+			"off" or "false" or "0" or "disable" or "disabled" or "no" => false,
+			_ => throw new ArgumentException ($"Unsupported boolean state value '{value}'. Use on/off, true/false, or enable/disable.", nameof (value)),
+		};
+	}
+
 static DeviceConfiguration CreateHostConfiguration (string host, bool hostWasExplicit, string action, IReadOnlyList<string> arguments, int optionStartIndex)
 	{
 	string? requestedProfileName = null;
@@ -1701,6 +1834,17 @@ static DeviceConfiguration CreateHostConfiguration (string host, bool hostWasExp
 				clearProfileName = GetOptionalNamedValue (arguments, ref i, option);
 				break;
 			case RAW_UPDATE_OPTION:
+				break;
+			default:
+				if (IsMatchingLongOption (option, LIGHT_TRANSITION_OPTION))
+					{
+					if (HasFollowingNamedValue (arguments, i))
+						{
+						i++;
+						}
+					break;
+					}
+
 				break;
 			}
 		}
@@ -1832,6 +1976,12 @@ static DeviceConfiguration CreateHostConfiguration (string host, bool hostWasExp
 			case RAW_UPDATE_OPTION:
 				break;
 			default:
+				if (IsMatchingLongOption (option, LIGHT_TRANSITION_OPTION))
+					{
+					++i;
+					break;
+					}
+
 				throw new ArgumentException ($"Unknown option '{option}' for host action '{action}'.");
 			}
 		}
@@ -2103,6 +2253,45 @@ static bool TryResolveHostKeyword (string value, out string? resolvedKeyword)
 	return TryResolveKeyword (value, ConsoleCommandLexicon.HostCommands, out resolvedKeyword);
 	}
 
+static string ResolveLightAction (string value)
+	{
+	string candidate = value.Trim ().ToLowerInvariant ();
+	return candidate switch
+		{
+			"tr" => "transition",
+			"tr-on" => "transitionon",
+			"tr-off" => "transitionoff",
+			"transition-on" => "transitionon",
+			"transition-off" => "transitionoff",
+			_ => ResolveKeyword (value, ConsoleCommandLexicon.LightActions),
+		};
+	}
+
+static bool TryResolveLightTransitionAction (string value, out string resolvedAction)
+	{
+	string candidate = value.Trim ().ToLowerInvariant ();
+	switch (candidate)
+		{
+		case "tr":
+		case "transition":
+			resolvedAction = "transition";
+			return true;
+		case "tr-on":
+		case "transition-on":
+		case "transitionon":
+			resolvedAction = "transitionon";
+			return true;
+		case "tr-off":
+		case "transition-off":
+		case "transitionoff":
+			resolvedAction = "transitionoff";
+			return true;
+		default:
+			resolvedAction = string.Empty;
+			return false;
+		}
+	}
+
 static DeviceTransportKind ParseTransportKind (string value) => value.Trim ().ToLowerInvariant () switch
 	{
 		"auto" => DeviceTransportKind.Auto,
@@ -2178,6 +2367,42 @@ static IReadOnlyList<string> SplitArguments (string commandLine)
 	return arguments;
 	}
 
+static int? TryGetNamedInt32Option (IReadOnlyList<string> arguments, int optionStartIndex, string optionName)
+	{
+	for (int i = optionStartIndex; i < arguments.Count; i++)
+		{
+		if (!IsMatchingLongOption (arguments[i], optionName))
+			{
+			continue;
+			}
+
+		if (i + 1 >= arguments.Count)
+			{
+			throw new ArgumentException ($"Option '{optionName}' requires a value.");
+			}
+
+		return int.Parse (arguments[i + 1], CultureInfo.InvariantCulture);
+		}
+
+	return null;
+	}
+
+static bool IsMatchingLongOption (string value, string optionName)
+	{
+	if (string.IsNullOrWhiteSpace (value)
+		|| string.IsNullOrWhiteSpace (optionName)
+		|| !value.StartsWith ("--", StringComparison.Ordinal)
+		|| !optionName.StartsWith ("--", StringComparison.Ordinal))
+		{
+		return false;
+		}
+
+	string candidate = value.Substring (2);
+	string canonical = optionName.Substring (2);
+	return candidate.Length > 0
+		&& canonical.StartsWith (candidate, StringComparison.OrdinalIgnoreCase);
+	}
+
 static bool IsHelpCommand (string value) => value is "help" or "--help" or "-h" or "/?";
 
 static bool IsDiscoverVerboseOption (string value)
@@ -2206,7 +2431,7 @@ static void PrintGeneralUsage ()
 	Console.WriteLine ("  d[iscover] [timeoutMs] [target] [--[v]erbose]");
 	Console.WriteLine ("  ho[st] <address> [s[tate]|on|of[f]|r[aw] <json> [--update]|sm[art] <method> [paramsJson] [--update]|ser[ialize] [count]] [options]");
 	Console.WriteLine ("  ho[st] <address> c[hild] <childId|index> [s[tate]|on|of[f]|l[ogs]|w[atch]] [options]");
-	Console.WriteLine ("  ho[st] <address> l[ight] [s[tate]|on|of[f]|b[rightness] <0-100>|t[emp] <kelvin>|h[sv] <hue> <saturation> <value>|c[olor] <name>|c[olor] <hue> <saturation> <value>|e[ffect] [name|off|list]] [options]");
+	Console.WriteLine ("  ho[st] <address> l[ight] [s[tate]|on [--t[ransition] <ms>]|of[f] [--t[ransition] <ms>]|b[rightness] <0-100> [--t[ransition] <ms>]|tr|transition <on|off>|tr-on|transition-on <seconds>|tr-off|transition-off <seconds>|t[emp] <kelvin>|h[sv] <hue> <saturation> <value>|c[olor] <name>|c[olor] <hue> <saturation> <value>|e[ffect] [name|off|list]] [options]");
 	Console.WriteLine ();
 	Console.WriteLine ("Use 'discover --help', 'host <address> --help', 'host <address> child --help', or 'host <address> light --help' for details.");
 	}
@@ -2223,7 +2448,7 @@ static void PrintHostUsage ()
 	{
 	Console.WriteLine ("ho[st] <address> [s[tate]|on|of[f]|r[aw] <json> [--update]|sm[art] <method> [paramsJson] [--update]|ser[ialize] [count]] [options]");
 	Console.WriteLine ("ho[st] <address> c[hild] <childId|index> [s[tate]|on|of[f]|l[ogs]|w[atch]] [options]");
-	Console.WriteLine ("ho[st] <address> l[ight] [s[tate]|on|of[f]|b[rightness] <0-100>|t[emp] <kelvin>|h[sv] <h> <s> <v>|c[olor] <hex>|e[ffect] <name>] [options]");
+	Console.WriteLine ("ho[st] <address> l[ight] [s[tate]|on [--t[ransition] <ms>]|of[f] [--t[ransition] <ms>]|b[rightness] <0-100> [--t[ransition] <ms>]|tr|transition <on|off>|tr-on|transition-on <seconds>|tr-off|transition-off <seconds>|t[emp] <kelvin>|h[sv] <h> <s> <v>|c[olor] <hex>|e[ffect] <name>] [options]");
 	Console.WriteLine ("ho[st] <address> se[tup] [s[can] [seconds]|d[etected]|p[air]|u[npair] <childId|index>] [options]");
 	Console.WriteLine ("  raw        Execute a raw JSON command. Add --update to refresh cached state under the same device lock.");
 	Console.WriteLine ("  smart      Execute a smart-protocol method and build the required request envelope. Add --update to refresh cached state.");
@@ -2296,7 +2521,11 @@ static string ResolveChildIdentifier (KasaDevice device, string childSelector)
 
 static void PrintLightUsage ()
 	{
-	Console.WriteLine ("ho[st] <address> l[ight] [s[tate]|on|of[f]|b[rightness] <0-100>|t[emp] <kelvin>|h[sv] <hue> <saturation> <value>|c[olor] <name>|c[olor] <hue> <saturation> <value>|e[ffect] [name|off|list]] [options]");
+	Console.WriteLine ("ho[st] <address> l[ight] [s[tate]|on [--t[ransition] <ms>]|of[f] [--t[ransition] <ms>]|b[rightness] <0-100> [--t[ransition] <ms>]|tr|transition <on|off>|tr-on|transition-on <seconds>|tr-off|transition-off <seconds>|t[emp] <kelvin>|h[sv] <hue> <saturation> <value>|c[olor] <name>|c[olor] <hue> <saturation> <value>|e[ffect] [name|off|list]] [options]");
+	Console.WriteLine ("  --t[ransition] <ms>  Optional transition duration in milliseconds for supported legacy light on/off/brightness commands.");
+	Console.WriteLine ("  tr|transition <on|off>          Enable or disable persistent smart smooth light transitions when supported.");
+	Console.WriteLine ("  tr-on|transition-on <seconds>   Set the persistent smart turn-on transition duration in seconds.");
+	Console.WriteLine ("  tr-off|transition-off <seconds> Set the persistent smart turn-off transition duration in seconds.");
 	Console.WriteLine ("Named colors: red, orange, yellow, green, cyan, blue, purple, violet, magenta, pink, white, warmwhite, softwhite, daylight");
 	Console.WriteLine ("Effects: use a device-specific effect name to enable one, 'effect off' to disable the current effect, or 'effect list' to show reported effects.");
 	PrintCommonOptions ();
@@ -2550,7 +2779,7 @@ static class ConsoleCommandLexicon
 	public static readonly string[] HostActions = ["state", "on", "off", "scan", "detected", "pair", "unpair", "raw", "smart", "serialize"];
 	public static readonly string[] ChildActions = ["state", "on", "off", "logs", "watch"];
 	public static readonly string[] SetupActions = ["scan", "detected", "pair", "unpair"];
-	public static readonly string[] LightActions = ["state", "on", "off", "brightness", "temp", "hsv", "color", "effect"];
+	public static readonly string[] LightActions = ["state", "on", "off", "brightness", "transition", "transitionon", "transitionoff", "temp", "hsv", "color", "effect"];
 	public static readonly string[] ProfileActions = ["list", "remove"];
 	}
 
@@ -2634,6 +2863,25 @@ sealed class SavedConnectionProfile
 		}
 
 	public DeviceConnectionParameters? ConnectionParameters
+		{
+		get;
+		}
+	}
+
+readonly struct LightTransitionConsoleAction
+	{
+	public LightTransitionConsoleAction (string? action, string value)
+		{
+		Action = action ?? string.Empty;
+		Value = value;
+		}
+
+	public string Action
+		{
+		get;
+		}
+
+	public string Value
 		{
 		get;
 		}

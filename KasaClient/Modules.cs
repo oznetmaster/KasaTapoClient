@@ -622,11 +622,29 @@ public sealed class LightModule
 	public Task TurnOnAsync (CancellationToken cancellationToken = default) => _device.TurnLightOnAsync (cancellationToken);
 
 	/// <summary>
+	/// Turns the light on and refreshes state.
+	/// </summary>
+	/// <param name="transitionMilliseconds">The optional transition duration, in milliseconds, for supported legacy light devices.</param>
+	/// <param name="cancellationToken">The cancellation token for the operation.</param>
+	/// <returns>A task that completes when the light state has been refreshed.</returns>
+	public Task TurnOnAsync (int transitionMilliseconds, CancellationToken cancellationToken = default) =>
+		_device.TurnLightOnAsync (transitionMilliseconds, cancellationToken);
+
+	/// <summary>
 	/// Turns the light off and refreshes state.
 	/// </summary>
 	/// <param name="cancellationToken">The cancellation token for the operation.</param>
 	/// <returns>A task that completes when the light state has been refreshed.</returns>
 	public Task TurnOffAsync (CancellationToken cancellationToken = default) => _device.TurnLightOffAsync (cancellationToken);
+
+	/// <summary>
+	/// Turns the light off and refreshes state.
+	/// </summary>
+	/// <param name="transitionMilliseconds">The optional transition duration, in milliseconds, for supported legacy light devices.</param>
+	/// <param name="cancellationToken">The cancellation token for the operation.</param>
+	/// <returns>A task that completes when the light state has been refreshed.</returns>
+	public Task TurnOffAsync (int transitionMilliseconds, CancellationToken cancellationToken = default) =>
+		_device.TurnLightOffAsync (transitionMilliseconds, cancellationToken);
 
 	/// <summary>
 	/// Sets the brightness percentage and refreshes state.
@@ -636,6 +654,17 @@ public sealed class LightModule
 	/// <returns>A task that completes when the light state has been refreshed.</returns>
 	/// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="brightness" /> is outside the inclusive range of 0 through 100.</exception>
 	public Task SetBrightnessAsync (int brightness, CancellationToken cancellationToken = default) => _device.SetBrightnessAsync (brightness, cancellationToken);
+
+	/// <summary>
+	/// Sets the brightness percentage and refreshes state.
+	/// </summary>
+	/// <param name="brightness">The brightness percentage from 0 through 100.</param>
+	/// <param name="transitionMilliseconds">The optional transition duration, in milliseconds, for supported legacy light devices.</param>
+	/// <param name="cancellationToken">The cancellation token for the operation.</param>
+	/// <returns>A task that completes when the light state has been refreshed.</returns>
+	/// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="brightness" /> is outside the inclusive range of 0 through 100.</exception>
+	public Task SetBrightnessAsync (int brightness, int transitionMilliseconds, CancellationToken cancellationToken = default) =>
+		_device.SetBrightnessAsync (brightness, transitionMilliseconds, cancellationToken);
 
 	/// <summary>
 	/// Sets the color temperature in kelvin and refreshes state.
@@ -745,6 +774,24 @@ public sealed class LightTransitionModule
 	/// Refreshes light transition state.
 	/// </summary>
 	public Task UpdateAsync (CancellationToken cancellationToken = default) => _device.UpdateAsync (cancellationToken);
+
+	/// <summary>
+	/// Enables or disables persistent smooth transitions when supported by the device.
+	/// </summary>
+	public Task SetEnabledAsync (bool enabled, CancellationToken cancellationToken = default) =>
+		_device.SetLightTransitionsEnabledAsync (enabled, cancellationToken);
+
+	/// <summary>
+	/// Sets the persistent turn-on transition duration in seconds. Specify 0 to disable the turn-on transition.
+	/// </summary>
+	public Task SetTurnOnTransitionAsync (int seconds, CancellationToken cancellationToken = default) =>
+		_device.SetLightTurnOnTransitionAsync (seconds, cancellationToken);
+
+	/// <summary>
+	/// Sets the persistent turn-off transition duration in seconds. Specify 0 to disable the turn-off transition.
+	/// </summary>
+	public Task SetTurnOffTransitionAsync (int seconds, CancellationToken cancellationToken = default) =>
+		_device.SetLightTurnOffTransitionAsync (seconds, cancellationToken);
 	}
 
 /// <summary>

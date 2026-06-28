@@ -252,7 +252,7 @@ internal static partial class KasaResponseParser
 			return null;
 			}
 
-		return new LightTransitionState (transitionMilliseconds, transitionMilliseconds, rawJson);
+		return new LightTransitionState (null, null, transitionMilliseconds, null, null, transitionMilliseconds, null, rawJson);
 		}
 
 	private static DeviceType DetermineLegacyDeviceType (LegacySystemInfoDto systemInfo)

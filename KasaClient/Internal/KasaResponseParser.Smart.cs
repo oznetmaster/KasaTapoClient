@@ -79,15 +79,36 @@ internal static partial class KasaResponseParser
 		SmartOnOffGraduallyStateDto? offGraduallyState = graduallyInfo?.OffState;
 		if (onGraduallyState is not null || offGraduallyState is not null)
 			{
-			int? onDurationSeconds = onGraduallyState?.Enable == true ? onGraduallyState.Duration : 0;
-			int? offDurationSeconds = offGraduallyState?.Enable == true ? offGraduallyState.Duration : 0;
-			return new LightTransitionState (onDurationSeconds, offDurationSeconds, JsonSerializer.Serialize (graduallyInfo, JsonSupport.COMPACT_JSON));
+			bool? isEnabled = graduallyInfo?.Enable;
+			if (isEnabled is null)
+				{
+				bool? onEnabled = onGraduallyState?.Enable;
+				bool? offEnabled = offGraduallyState?.Enable;
+				if (onEnabled == true || offEnabled == true)
+					{
+					isEnabled = true;
+					}
+				else if (onEnabled == false && offEnabled == false)
+					{
+					isEnabled = false;
+					}
+				}
+
+			return new LightTransitionState (
+				isEnabled,
+				onGraduallyState?.Enable,
+				onGraduallyState?.Duration,
+				onGraduallyState?.MaximumDuration,
+				offGraduallyState?.Enable,
+				offGraduallyState?.Duration,
+				offGraduallyState?.MaximumDuration,
+				JsonSerializer.Serialize (graduallyInfo, JsonSupport.COMPACT_JSON));
 			}
 
 		if (graduallyInfo?.Enable is bool enabled)
 			{
 			int transitionSeconds = enabled ? SMART_LIGHT_TRANSITION_DEFAULT_MAXIMUM_SECONDS : 0;
-			return new LightTransitionState (transitionSeconds, transitionSeconds, JsonSerializer.Serialize (graduallyInfo, JsonSupport.COMPACT_JSON));
+			return new LightTransitionState (enabled, enabled, transitionSeconds, SMART_LIGHT_TRANSITION_DEFAULT_MAXIMUM_SECONDS, enabled, transitionSeconds, SMART_LIGHT_TRANSITION_DEFAULT_MAXIMUM_SECONDS, JsonSerializer.Serialize (graduallyInfo, JsonSupport.COMPACT_JSON));
 			}
 
 		using JsonDocument document = JsonDocument.Parse (response.RawJson);
@@ -102,7 +123,7 @@ internal static partial class KasaResponseParser
 
 		return onTransition is null && offTransition is null
 			? null
-			: new LightTransitionState (onTransition, offTransition, response.RawJson);
+			: new LightTransitionState (null, null, onTransition, null, null, offTransition, null, response.RawJson);
 		}
 
 	private static LightEffectState? CreateSmartBulbLightEffectState (SmartParsedResponse response)

@@ -251,6 +251,37 @@ public sealed class KasaDeviceTests
 		}
 
 	[TestMethod]
+	public async Task SetBrightnessAsync_WithLegacyBulbTransition_SendsRequestedTransitionPeriodAndRefreshesState ()
+		{
+		var transport = new FakeDeviceTransport (
+			sendResponses:
+			[
+				"{" +
+				"\"system\":{\"get_sysinfo\":{\"alias\":\"Bulb\",\"model\":\"KL130\",\"deviceId\":\"bulb-1\",\"light_state\":{\"on_off\":1,\"brightness\":20,\"transition_period\":0}}}}",
+				"{\"smartlife.iot.smartbulb.lightingservice\":{\"transition_light_state\":{\"err_code\":0}}}",
+				"{" +
+				"\"system\":{\"get_sysinfo\":{\"alias\":\"Bulb\",\"model\":\"KL130\",\"deviceId\":\"bulb-1\",\"light_state\":{\"on_off\":1,\"brightness\":60,\"transition_period\":1500}}}}"
+			],
+			sendManyResponses:
+			[
+				"{\"emeter\":{\"err_code\":-1},\"time\":{\"get_time\":{\"year\":2025,\"month\":1,\"mday\":2,\"hour\":3,\"min\":4,\"sec\":5}},\"cnCloud\":{\"get_info\":{\"binded\":1,\"cld_connection\":1}},\"count_down\":{\"get_rules\":{\"rule_list\":[]}},\"schedule\":{\"get_rules\":{\"rule_list\":[]}},\"anti_theft\":{\"get_rules\":{\"rule_list\":[]}}}",
+				"{\"emeter\":{\"err_code\":-1},\"time\":{\"get_time\":{\"year\":2025,\"month\":1,\"mday\":2,\"hour\":3,\"min\":4,\"sec\":5}},\"cnCloud\":{\"get_info\":{\"binded\":1,\"cld_connection\":1}},\"count_down\":{\"get_rules\":{\"rule_list\":[]}},\"schedule\":{\"get_rules\":{\"rule_list\":[]}},\"anti_theft\":{\"get_rules\":{\"rule_list\":[]}}}"
+			]);
+		DeviceConfiguration configuration = new ("127.0.0.1");
+		var device = new KasaDevice (configuration, transport);
+
+		await device.UpdateAsync ().ConfigureAwait (false);
+		await device.SetBrightnessAsync (60, transitionMilliseconds: 1500).ConfigureAwait (false);
+
+		Assert.AreEqual (3, transport.SentCommands.Count);
+		StringAssert.Contains (transport.SentCommands[1], "\"brightness\":60");
+		StringAssert.Contains (transport.SentCommands[1], "\"transition_period\":1500");
+		Assert.IsNotNull (device.LightState);
+		Assert.AreEqual (60, device.LightState.Brightness);
+		Assert.AreEqual (true, device.LightState.IsOn);
+		}
+
+	[TestMethod]
 	public async Task SetHsvAsync_WithSmartBulb_SendsSmartCommandAndRefreshesLightState ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -493,6 +524,684 @@ public sealed class KasaDeviceTests
 		Assert.AreEqual ("L1", device.LightEffect.Identifier);
 		Assert.AreEqual ("Party", device.LightEffect.Name);
 		Assert.AreEqual (2, device.AvailableLightEffects.Count);
+		}
+
+	[TestMethod]
+	public async Task SetLightTransitionsEnabledAsync_WithSmartBulb_SendsEnableCommandAndRefreshesTransitionState ()
+		{
+		const string initialResponse = """
+		{
+		  "result": {
+			 "responses": [
+				{
+				  "method": "get_device_info",
+				  "result": {
+					 "model": "L530",
+					 "type": "SMART.TAPOBULB",
+					 "device_id": "bulb-transition-1",
+					 "nickname": "VHJhbnNpdGlvbiBCdWxi",
+					 "device_on": true,
+					 "brightness": 25,
+					 "hue": 10,
+					 "saturation": 20,
+					 "color_temp": 3000
+				  }
+				},
+				{
+				  "method": "component_nego",
+				  "result": {
+					 "component_list": [
+						{ "id": "brightness", "ver_code": 1 },
+						{ "id": "color", "ver_code": 1 },
+						{ "id": "on_off_gradually", "ver_code": 2 }
+					 ]
+				  }
+				},
+				{
+				  "method": "get_on_off_gradually_info",
+				  "result": {
+					 "on_state": { "enable": false, "duration": 0 },
+					 "off_state": { "enable": false, "duration": 0 }
+				  }
+				}
+			 ]
+		  }
+		}
+		""";
+
+		const string finalResponse = """
+		{
+		  "result": {
+			 "responses": [
+				{
+				  "method": "get_device_info",
+				  "result": {
+					 "model": "L530",
+					 "type": "SMART.TAPOBULB",
+					 "device_id": "bulb-transition-1",
+					 "nickname": "VHJhbnNpdGlvbiBCdWxi",
+					 "device_on": true,
+					 "brightness": 25,
+					 "hue": 10,
+					 "saturation": 20,
+					 "color_temp": 3000
+				  }
+				},
+				{
+				  "method": "component_nego",
+				  "result": {
+					 "component_list": [
+						{ "id": "brightness", "ver_code": 1 },
+						{ "id": "color", "ver_code": 1 },
+						{ "id": "on_off_gradually", "ver_code": 2 }
+					 ]
+				  }
+				},
+				{
+				  "method": "get_on_off_gradually_info",
+				  "result": {
+					 "enable": true,
+					 "on_state": { "enable": true, "duration": 12 },
+					 "off_state": { "enable": true, "duration": 8 }
+				  }
+				}
+			 ]
+		  }
+		}
+		""";
+
+		var transport = new FakeDeviceTransport (
+			sendResponses:
+			[
+				initialResponse,
+				initialResponse,
+				"{" +
+				"\"error_code\":0}",
+				"{" +
+				"\"error_code\":0}",
+				finalResponse,
+				finalResponse
+			]);
+		DeviceConfiguration configuration = new (
+			"127.0.0.1",
+			connectionOptions: new DeviceConnectionOptions (
+				connectionParameters: new DeviceConnectionParameters (DeviceFamilyKind.SmartTapoBulb, DeviceEncryptionKind.Aes)));
+		var device = new KasaDevice (configuration, transport);
+
+		await device.UpdateAsync ().ConfigureAwait (false);
+		await device.SetLightTransitionsEnabledAsync (true).ConfigureAwait (false);
+
+		Assert.AreEqual (6, transport.SentCommands.Count);
+		StringAssert.Contains (transport.SentCommands[2], "\"method\":\"set_on_off_gradually_info\"");
+		StringAssert.Contains (transport.SentCommands[2], "\"on_state\":{");
+		StringAssert.Contains (transport.SentCommands[2], "\"duration\":0");
+		StringAssert.Contains (transport.SentCommands[2], "\"enable\":true");
+		StringAssert.Contains (transport.SentCommands[3], "\"method\":\"set_on_off_gradually_info\"");
+		StringAssert.Contains (transport.SentCommands[3], "\"off_state\":{");
+		StringAssert.Contains (transport.SentCommands[3], "\"duration\":0");
+		StringAssert.Contains (transport.SentCommands[3], "\"enable\":true");
+		Assert.IsNotNull (device.LightTransitionState);
+		Assert.AreEqual (12, device.LightTransitionState.TransitionOnSeconds);
+		Assert.AreEqual (12, device.LightTransitionState.TransitionOnDurationSeconds);
+		Assert.AreEqual (8, device.LightTransitionState.TransitionOffSeconds);
+		Assert.AreEqual (8, device.LightTransitionState.TransitionOffDurationSeconds);
+		}
+
+	[TestMethod]
+	public async Task SetLightTransitionsEnabledAsync_WithSmartBulbV1_SendsTopLevelEnableCommand ()
+		{
+		const string initialResponse = """
+		{
+		  "result": {
+			 "responses": [
+				{
+				  "method": "get_device_info",
+				  "result": {
+					 "model": "L510",
+					 "type": "SMART.TAPOBULB",
+					 "device_id": "bulb-transition-v1",
+					 "nickname": "VjEgVHJhbnNpdGlvbiBCdWxi",
+					 "device_on": true,
+					 "brightness": 25
+				  }
+				},
+				{
+				  "method": "component_nego",
+				  "result": {
+					 "component_list": [
+						{ "id": "brightness", "ver_code": 1 },
+						{ "id": "on_off_gradually", "ver_code": 1 }
+					 ]
+				  }
+				},
+				{
+				  "method": "get_on_off_gradually_info",
+				  "result": {
+					 "enable": false
+				  }
+				}
+			 ]
+		  }
+		}
+		""";
+
+		const string finalResponse = """
+		{
+		  "result": {
+			 "responses": [
+				{
+				  "method": "get_device_info",
+				  "result": {
+					 "model": "L510",
+					 "type": "SMART.TAPOBULB",
+					 "device_id": "bulb-transition-v1",
+					 "nickname": "VjEgVHJhbnNpdGlvbiBCdWxi",
+					 "device_on": true,
+					 "brightness": 25
+				  }
+				},
+				{
+				  "method": "component_nego",
+				  "result": {
+					 "component_list": [
+						{ "id": "brightness", "ver_code": 1 },
+						{ "id": "on_off_gradually", "ver_code": 1 }
+					 ]
+				  }
+				},
+				{
+				  "method": "get_on_off_gradually_info",
+				  "result": {
+					 "enable": true
+				  }
+				}
+			 ]
+		  }
+		}
+		""";
+
+		var transport = new FakeDeviceTransport (
+			sendResponses:
+			[
+				initialResponse,
+				initialResponse,
+				"{" +
+				"\"error_code\":0}",
+				finalResponse,
+				finalResponse
+			]);
+		DeviceConfiguration configuration = new (
+			"127.0.0.1",
+			connectionOptions: new DeviceConnectionOptions (
+				connectionParameters: new DeviceConnectionParameters (DeviceFamilyKind.SmartTapoBulb, DeviceEncryptionKind.Aes)));
+		var device = new KasaDevice (configuration, transport);
+
+		await device.UpdateAsync ().ConfigureAwait (false);
+		await device.SetLightTransitionsEnabledAsync (true).ConfigureAwait (false);
+
+		Assert.AreEqual (5, transport.SentCommands.Count);
+		StringAssert.Contains (transport.SentCommands[2], "\"method\":\"set_on_off_gradually_info\"");
+		StringAssert.Contains (transport.SentCommands[2], "\"enable\":true");
+		Assert.IsFalse (transport.SentCommands[2].Contains ("\"on_state\":"));
+		Assert.IsFalse (transport.SentCommands[2].Contains ("\"off_state\":"));
+		Assert.IsNotNull (device.LightTransitionState);
+		Assert.AreEqual (true, device.LightTransitionState.IsEnabled);
+		}
+
+	[TestMethod]
+	public async Task UpdateAsync_WithSmartBulbV1_ExposesSingleSmoothTransitionsFeature ()
+		{
+		const string response = """
+		{
+		  "result": {
+			 "responses": [
+				{
+				  "method": "get_device_info",
+				  "result": {
+					 "model": "L510",
+					 "type": "SMART.TAPOBULB",
+					 "device_id": "bulb-feature-v1",
+					 "nickname": "VjEgRmVhdHVyZSBCdWxi",
+					 "device_on": true,
+					 "brightness": 25
+				  }
+				},
+				{
+				  "method": "component_nego",
+				  "result": {
+					 "component_list": [
+						{ "id": "brightness", "ver_code": 1 },
+						{ "id": "on_off_gradually", "ver_code": 1 }
+					 ]
+				  }
+				},
+				{
+				  "method": "get_on_off_gradually_info",
+				  "result": {
+					 "enable": true
+				  }
+				}
+			 ]
+		  }
+		}
+		""";
+
+		var transport = new FakeDeviceTransport (sendResponses: [response, response]);
+		DeviceConfiguration configuration = new (
+			"127.0.0.1",
+			connectionOptions: new DeviceConnectionOptions (
+				connectionParameters: new DeviceConnectionParameters (DeviceFamilyKind.SmartTapoBulb, DeviceEncryptionKind.Aes)));
+		var device = new KasaDevice (configuration, transport);
+
+		await device.UpdateAsync ().ConfigureAwait (false);
+
+		Assert.AreEqual (1, device.GetSmartComponentVersion ("on_off_gradually"));
+		Assert.IsNotNull (device.GetFeature ("smooth_transitions"));
+		Assert.IsNull (device.GetFeature ("smooth_transition_on"));
+		Assert.IsNull (device.GetFeature ("smooth_transition_off"));
+		}
+
+	[TestMethod]
+	public async Task UpdateAsync_WithSmartBulbV2_ExposesDirectionalTransitionFeaturesWithDeviceMaximums ()
+		{
+		const string response = """
+		{
+		  "result": {
+			 "responses": [
+				{
+				  "method": "get_device_info",
+				  "result": {
+					 "model": "L530",
+					 "type": "SMART.TAPOBULB",
+					 "device_id": "bulb-feature-v2",
+					 "nickname": "VjIgRmVhdHVyZSBCdWxi",
+					 "device_on": true,
+					 "brightness": 25,
+					 "hue": 10,
+					 "saturation": 20,
+					 "color_temp": 3000
+				  }
+				},
+				{
+				  "method": "component_nego",
+				  "result": {
+					 "component_list": [
+						{ "id": "brightness", "ver_code": 1 },
+						{ "id": "color", "ver_code": 1 },
+						{ "id": "on_off_gradually", "ver_code": 2 }
+					 ]
+				  }
+				},
+				{
+				  "method": "get_on_off_gradually_info",
+				  "result": {
+					 "on_state": { "enable": true, "duration": 12, "max_duration": 40 },
+					 "off_state": { "enable": false, "duration": 8, "max_duration": 45 }
+				  }
+				}
+			 ]
+		  }
+		}
+		""";
+
+		var transport = new FakeDeviceTransport (sendResponses: [response, response]);
+		DeviceConfiguration configuration = new (
+			"127.0.0.1",
+			connectionOptions: new DeviceConnectionOptions (
+				connectionParameters: new DeviceConnectionParameters (DeviceFamilyKind.SmartTapoBulb, DeviceEncryptionKind.Aes)));
+		var device = new KasaDevice (configuration, transport);
+
+		await device.UpdateAsync ().ConfigureAwait (false);
+
+		Assert.AreEqual (2, device.GetSmartComponentVersion ("on_off_gradually"));
+		DeviceFeature? onFeature = device.GetFeature ("smooth_transition_on");
+		DeviceFeature? offFeature = device.GetFeature ("smooth_transition_off");
+		Assert.IsNotNull (onFeature);
+		Assert.IsNotNull (offFeature);
+		Assert.AreEqual (40d, onFeature.MaximumValue);
+		Assert.AreEqual (45d, offFeature.MaximumValue);
+		Assert.IsNull (device.GetFeature ("smooth_transitions"));
+		}
+
+	[TestMethod]
+	public async Task SetLightTurnOnTransitionAsync_WithSmartBulb_UsesDeviceReportedMaximumDuration ()
+		{
+		const string initialResponse = """
+		{
+		  "result": {
+			 "responses": [
+				{
+				  "method": "get_device_info",
+				  "result": {
+					 "model": "L530",
+					 "type": "SMART.TAPOBULB",
+					 "device_id": "bulb-transition-max",
+					 "nickname": "VHJhbnNpdGlvbiBNYXg=",
+					 "device_on": true,
+					 "brightness": 25,
+					 "hue": 10,
+					 "saturation": 20,
+					 "color_temp": 3000
+				  }
+				},
+				{
+				  "method": "component_nego",
+				  "result": {
+					 "component_list": [
+						{ "id": "brightness", "ver_code": 1 },
+						{ "id": "color", "ver_code": 1 },
+						{ "id": "on_off_gradually", "ver_code": 2 }
+					 ]
+				  }
+				},
+				{
+				  "method": "get_on_off_gradually_info",
+				  "result": {
+					 "on_state": { "enable": true, "duration": 12, "max_duration": 90 },
+					 "off_state": { "enable": true, "duration": 8, "max_duration": 45 }
+				  }
+				}
+			 ]
+		  }
+		}
+		""";
+
+		const string finalResponse = """
+		{
+		  "result": {
+			 "responses": [
+				{
+				  "method": "get_device_info",
+				  "result": {
+					 "model": "L530",
+					 "type": "SMART.TAPOBULB",
+					 "device_id": "bulb-transition-max",
+					 "nickname": "VHJhbnNpdGlvbiBNYXg=",
+					 "device_on": true,
+					 "brightness": 25,
+					 "hue": 10,
+					 "saturation": 20,
+					 "color_temp": 3000
+				  }
+				},
+				{
+				  "method": "component_nego",
+				  "result": {
+					 "component_list": [
+						{ "id": "brightness", "ver_code": 1 },
+						{ "id": "color", "ver_code": 1 },
+						{ "id": "on_off_gradually", "ver_code": 2 }
+					 ]
+				  }
+				},
+				{
+				  "method": "get_on_off_gradually_info",
+				  "result": {
+					 "on_state": { "enable": true, "duration": 90, "max_duration": 90 },
+					 "off_state": { "enable": true, "duration": 8, "max_duration": 45 }
+				  }
+				}
+			 ]
+		  }
+		}
+		""";
+
+		var transport = new FakeDeviceTransport (
+			sendResponses:
+			[
+				initialResponse,
+				initialResponse,
+				"{" +
+				"\"error_code\":0}",
+				finalResponse,
+				finalResponse
+			]);
+		DeviceConfiguration configuration = new (
+			"127.0.0.1",
+			connectionOptions: new DeviceConnectionOptions (
+				connectionParameters: new DeviceConnectionParameters (DeviceFamilyKind.SmartTapoBulb, DeviceEncryptionKind.Aes)));
+		var device = new KasaDevice (configuration, transport);
+
+		await device.UpdateAsync ().ConfigureAwait (false);
+		await device.SetLightTurnOnTransitionAsync (90).ConfigureAwait (false);
+
+		Assert.IsNotNull (device.LightTransitionState);
+		Assert.AreEqual (90, device.LightTransitionState.TransitionOnSeconds);
+		Assert.AreEqual (90, device.LightTransitionState.TransitionOnMaximumDurationSeconds);
+		}
+
+	[TestMethod]
+	public async Task SetLightTurnOnTransitionAsync_WithSmartBulb_SendsOnStateCommandAndRefreshesTransitionState ()
+		{
+		const string initialResponse = """
+		{
+		  "result": {
+			 "responses": [
+				{
+				  "method": "get_device_info",
+				  "result": {
+					 "model": "L530",
+					 "type": "SMART.TAPOBULB",
+					 "device_id": "bulb-transition-2",
+					 "nickname": "VHJhbnNpdGlvbiBCdWxiIDI=",
+					 "device_on": true,
+					 "brightness": 25,
+					 "hue": 10,
+					 "saturation": 20,
+					 "color_temp": 3000
+				  }
+				},
+				{
+				  "method": "component_nego",
+				  "result": {
+					 "component_list": [
+						{ "id": "brightness", "ver_code": 1 },
+						{ "id": "color", "ver_code": 1 },
+						{ "id": "on_off_gradually", "ver_code": 2 }
+					 ]
+				  }
+				},
+				{
+				  "method": "get_on_off_gradually_info",
+				  "result": {
+					 "on_state": { "enable": false, "duration": 0 },
+					 "off_state": { "enable": true, "duration": 8 }
+				  }
+				}
+			 ]
+		  }
+		}
+		""";
+
+		const string finalResponse = """
+		{
+		  "result": {
+			 "responses": [
+				{
+				  "method": "get_device_info",
+				  "result": {
+					 "model": "L530",
+					 "type": "SMART.TAPOBULB",
+					 "device_id": "bulb-transition-2",
+					 "nickname": "VHJhbnNpdGlvbiBCdWxiIDI=",
+					 "device_on": true,
+					 "brightness": 25,
+					 "hue": 10,
+					 "saturation": 20,
+					 "color_temp": 3000
+				  }
+				},
+				{
+				  "method": "component_nego",
+				  "result": {
+					 "component_list": [
+						{ "id": "brightness", "ver_code": 1 },
+						{ "id": "color", "ver_code": 1 },
+						{ "id": "on_off_gradually", "ver_code": 2 }
+					 ]
+				  }
+				},
+				{
+				  "method": "get_on_off_gradually_info",
+				  "result": {
+					 "on_state": { "enable": true, "duration": 15 },
+					 "off_state": { "enable": true, "duration": 8 }
+				  }
+				}
+			 ]
+		  }
+		}
+		""";
+
+		var transport = new FakeDeviceTransport (
+			sendResponses:
+			[
+				initialResponse,
+				initialResponse,
+				"{" +
+				"\"error_code\":0}",
+				finalResponse,
+				finalResponse
+			]);
+		DeviceConfiguration configuration = new (
+			"127.0.0.1",
+			connectionOptions: new DeviceConnectionOptions (
+				connectionParameters: new DeviceConnectionParameters (DeviceFamilyKind.SmartTapoBulb, DeviceEncryptionKind.Aes)));
+		var device = new KasaDevice (configuration, transport);
+
+		await device.UpdateAsync ().ConfigureAwait (false);
+		await device.SetLightTurnOnTransitionAsync (15).ConfigureAwait (false);
+
+		Assert.AreEqual (5, transport.SentCommands.Count);
+		StringAssert.Contains (transport.SentCommands[2], "\"method\":\"set_on_off_gradually_info\"");
+		StringAssert.Contains (transport.SentCommands[2], "\"on_state\":{");
+		StringAssert.Contains (transport.SentCommands[2], "\"enable\":true");
+		StringAssert.Contains (transport.SentCommands[2], "\"duration\":15");
+		Assert.IsNotNull (device.LightTransitionState);
+		Assert.AreEqual (true, device.LightTransitionState.IsEnabled);
+		Assert.AreEqual (true, device.LightTransitionState.IsTransitionOnEnabled);
+		Assert.AreEqual (15, device.LightTransitionState.TransitionOnSeconds);
+		Assert.AreEqual (15, device.LightTransitionState.TransitionOnDurationSeconds);
+		Assert.AreEqual (true, device.LightTransitionState.IsTransitionOffEnabled);
+		Assert.AreEqual (8, device.LightTransitionState.TransitionOffSeconds);
+		Assert.AreEqual (8, device.LightTransitionState.TransitionOffDurationSeconds);
+		}
+
+	[TestMethod]
+	public async Task SetLightTurnOffTransitionAsync_WithSmartBulb_SendsOffStateCommandAndRefreshesTransitionState ()
+		{
+		const string initialResponse = """
+		{
+		  "result": {
+			 "responses": [
+				{
+				  "method": "get_device_info",
+				  "result": {
+					 "model": "L530",
+					 "type": "SMART.TAPOBULB",
+					 "device_id": "bulb-transition-3",
+					 "nickname": "VHJhbnNpdGlvbiBCdWxiIDM=",
+					 "device_on": true,
+					 "brightness": 25,
+					 "hue": 10,
+					 "saturation": 20,
+					 "color_temp": 3000
+				  }
+				},
+				{
+				  "method": "component_nego",
+				  "result": {
+					 "component_list": [
+						{ "id": "brightness", "ver_code": 1 },
+						{ "id": "color", "ver_code": 1 },
+						{ "id": "on_off_gradually", "ver_code": 2 }
+					 ]
+				  }
+				},
+				{
+				  "method": "get_on_off_gradually_info",
+				  "result": {
+					 "on_state": { "enable": true, "duration": 12 },
+					 "off_state": { "enable": true, "duration": 8 }
+				  }
+				}
+			 ]
+		  }
+		}
+		""";
+
+		const string finalResponse = """
+		{
+		  "result": {
+			 "responses": [
+				{
+				  "method": "get_device_info",
+				  "result": {
+					 "model": "L530",
+					 "type": "SMART.TAPOBULB",
+					 "device_id": "bulb-transition-3",
+					 "nickname": "VHJhbnNpdGlvbiBCdWxiIDM=",
+					 "device_on": true,
+					 "brightness": 25,
+					 "hue": 10,
+					 "saturation": 20,
+					 "color_temp": 3000
+				  }
+				},
+				{
+				  "method": "component_nego",
+				  "result": {
+					 "component_list": [
+						{ "id": "brightness", "ver_code": 1 },
+						{ "id": "color", "ver_code": 1 },
+						{ "id": "on_off_gradually", "ver_code": 2 }
+					 ]
+				  }
+				},
+				{
+				  "method": "get_on_off_gradually_info",
+				  "result": {
+					 "on_state": { "enable": true, "duration": 12 },
+					 "off_state": { "enable": false, "duration": 8 }
+				  }
+				}
+			 ]
+		  }
+		}
+		""";
+
+		var transport = new FakeDeviceTransport (
+			sendResponses:
+			[
+				initialResponse,
+				initialResponse,
+				"{" +
+				"\"error_code\":0}",
+				finalResponse,
+				finalResponse
+			]);
+		DeviceConfiguration configuration = new (
+			"127.0.0.1",
+			connectionOptions: new DeviceConnectionOptions (
+				connectionParameters: new DeviceConnectionParameters (DeviceFamilyKind.SmartTapoBulb, DeviceEncryptionKind.Aes)));
+		var device = new KasaDevice (configuration, transport);
+
+		await device.UpdateAsync ().ConfigureAwait (false);
+		await device.SetLightTurnOffTransitionAsync (0).ConfigureAwait (false);
+
+		Assert.AreEqual (5, transport.SentCommands.Count);
+		StringAssert.Contains (transport.SentCommands[2], "\"method\":\"set_on_off_gradually_info\"");
+		StringAssert.Contains (transport.SentCommands[2], "\"off_state\":{");
+		StringAssert.Contains (transport.SentCommands[2], "\"enable\":false");
+		StringAssert.Contains (transport.SentCommands[2], "\"duration\":8");
+		Assert.IsNotNull (device.LightTransitionState);
+		Assert.AreEqual (true, device.LightTransitionState.IsEnabled);
+		Assert.AreEqual (true, device.LightTransitionState.IsTransitionOnEnabled);
+		Assert.AreEqual (12, device.LightTransitionState.TransitionOnSeconds);
+		Assert.AreEqual (12, device.LightTransitionState.TransitionOnDurationSeconds);
+		Assert.AreEqual (false, device.LightTransitionState.IsTransitionOffEnabled);
+		Assert.AreEqual (0, device.LightTransitionState.TransitionOffSeconds);
+		Assert.AreEqual (8, device.LightTransitionState.TransitionOffDurationSeconds);
 		}
 
 	[TestMethod]
