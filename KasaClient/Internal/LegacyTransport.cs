@@ -13,12 +13,16 @@ using System.Threading.Tasks;
 
 namespace KasaTapoClient.Internal;
 
-internal sealed class LegacyTransport : IDeviceTransport
+internal sealed class LegacyTransport : IDisposableDeviceTransport
 	{
 	private const int HEADER_SIZE = 4;
 	private const int MAX_RESPONSE_BYTES = 1024 * 1024;
 	private readonly DeviceConfiguration _configuration;
 	private readonly TimeSpan _timeout;
+	private readonly SemaphoreSlim _connectionLock = new (1, 1);
+	private TcpClient? _client;
+	private NetworkStream? _stream;
+	private bool _disposed;
 
 	public LegacyTransport (DeviceConfiguration configuration)
 		{
@@ -28,22 +32,99 @@ internal sealed class LegacyTransport : IDeviceTransport
 
 	public async Task<string> SendAsync (string payload, CancellationToken cancellationToken)
 		{
-		using var client = new TcpClient ();
-		await ConnectAsync (client, _configuration.Host, _configuration.Port, cancellationToken).ConfigureAwait (false);
-		using NetworkStream stream = client.GetStream ();
-
-		byte[] requestBytes = KasaCipher.EncryptWithHeader (payload);
-		await WriteAsync (stream, requestBytes, cancellationToken).ConfigureAwait (false);
-
-		byte[] header = await ReadExactAsync (stream, HEADER_SIZE, cancellationToken).ConfigureAwait (false);
-		int responseLength = ReadLength (header);
-		if (responseLength is < 0 or > MAX_RESPONSE_BYTES)
+		if (_disposed)
 			{
-			throw new InvalidDataException ($"The device returned an invalid payload length of {responseLength} bytes.");
+#if NET7_0_OR_GREATER
+			ObjectDisposedException.ThrowIf (true, this);
+#else
+			throw new ObjectDisposedException (nameof (LegacyTransport));
+#endif
 			}
 
-		byte[] body = await ReadExactAsync (stream, responseLength, cancellationToken).ConfigureAwait (false);
-		return KasaCipher.Decrypt (body);
+		await _connectionLock.WaitAsync (cancellationToken).ConfigureAwait (false);
+		try
+			{
+			NetworkStream stream = await EnsureConnectedAsync (cancellationToken).ConfigureAwait (false);
+			try
+				{
+				byte[] requestBytes = KasaCipher.EncryptWithHeader (payload);
+				await WriteAsync (stream, requestBytes, cancellationToken).ConfigureAwait (false);
+
+				byte[] header = await ReadExactAsync (stream, HEADER_SIZE, cancellationToken).ConfigureAwait (false);
+				int responseLength = ReadLength (header);
+				if (responseLength is < 0 or > MAX_RESPONSE_BYTES)
+					{
+					throw new InvalidDataException ($"The device returned an invalid payload length of {responseLength} bytes.");
+					}
+
+				byte[] body = await ReadExactAsync (stream, responseLength, cancellationToken).ConfigureAwait (false);
+				return KasaCipher.Decrypt (body);
+				}
+			catch
+				{
+				// Any failure on an established connection (reset, timeout, protocol error) may leave the
+				// socket in an unusable state. Drop it so the next call reconnects from scratch.
+				ResetConnection ();
+				throw;
+				}
+			}
+		finally
+			{
+			_connectionLock.Release ();
+			}
+		}
+
+	private async Task<NetworkStream> EnsureConnectedAsync (CancellationToken cancellationToken)
+		{
+		if (_client is { Connected: true } && _stream is not null)
+			{
+			return _stream;
+			}
+
+		ResetConnection ();
+		var client = new TcpClient ();
+		try
+			{
+			await ConnectAsync (client, _configuration.Host, _configuration.Port, cancellationToken).ConfigureAwait (false);
+			}
+		catch
+			{
+			client.Dispose ();
+			throw;
+			}
+
+		_client = client;
+		_stream = client.GetStream ();
+		return _stream;
+		}
+
+	private void ResetConnection ()
+		{
+		_stream?.Dispose ();
+		_stream = null;
+		_client?.Dispose ();
+		_client = null;
+		}
+
+	public void Dispose ()
+		{
+		if (_disposed)
+			{
+			return;
+			}
+
+		_disposed = true;
+		_connectionLock.Wait ();
+		try
+			{
+			ResetConnection ();
+			}
+		finally
+			{
+			_connectionLock.Release ();
+			}
+
+		_connectionLock.Dispose ();
 		}
 
 	public Task<string> SendManyAsync (IReadOnlyList<string> commandJsonPayloads, CancellationToken cancellationToken)

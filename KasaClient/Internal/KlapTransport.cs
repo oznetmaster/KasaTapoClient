@@ -27,7 +27,7 @@ internal sealed class KlapTransport : IDisposableDeviceTransport
 	private readonly Uri _appUri;
 	private readonly Uri _requestUri;
 	private readonly CookieContainer _cookies = new ();
-	private readonly HttpClient _httpClient;
+	private static readonly HttpClient HTTP_CLIENT = CreateHttpClient ();
 	private readonly object _handshakeLockOwner = new ();
 	private SemaphoreSlim? _handshakeLock;
 	private KlapEncryptionSession? _session;
@@ -39,17 +39,16 @@ internal sealed class KlapTransport : IDisposableDeviceTransport
 		_configuration = configuration;
 		_appUri = CreateApplicationUri (configuration);
 		_requestUri = new Uri (_appUri, "request");
+		}
+
+	private static HttpClient CreateHttpClient ()
+		{
 		var handler = new HttpClientHandler
 			{
 			AllowAutoRedirect = false,
-			#if NETFRAMEWORK
 			UseCookies = false,
-			#else
-			UseCookies = true,
-			CookieContainer = _cookies,
-			#endif
 			};
-		_httpClient = new HttpClient (handler);
+		return new HttpClient (handler);
 		}
 
 	public async Task<string> SendAsync (string commandJson, CancellationToken cancellationToken)
@@ -76,7 +75,10 @@ internal sealed class KlapTransport : IDisposableDeviceTransport
 		return mergedResponse.ToJsonString (JsonSupport.COMPACT_JSON);
 		}
 
-	public void Dispose () => _httpClient.Dispose ();
+	public void Dispose ()
+		{
+		// HTTP_CLIENT is shared/static across all KlapTransport instances and must not be disposed here.
+		}
 
 	private async Task EnsureHandshakeAsync (CancellationToken cancellationToken)
 		{
@@ -235,15 +237,13 @@ internal sealed class KlapTransport : IDisposableDeviceTransport
 			Version = HttpVersion.Version11,
 			Content = new ByteArrayContent (payload),
 			};
-		#if NETFRAMEWORK
 		string? cookieHeader = GetSessionCookieHeader ();
 		if (!string.IsNullOrWhiteSpace (cookieHeader))
 			{
 			request.Headers.TryAddWithoutValidation ("Cookie", cookieHeader);
 			}
-		#endif
 
-		return await _httpClient.SendAsync (request, HttpCompletionOption.ResponseContentRead, cancellationToken).ConfigureAwait (false);
+		return await HTTP_CLIENT.SendAsync (request, HttpCompletionOption.ResponseContentRead, cancellationToken).ConfigureAwait (false);
 		#endif
 		}
 
@@ -258,7 +258,9 @@ internal sealed class KlapTransport : IDisposableDeviceTransport
 		request.ContentType = "application/octet-stream";
 		request.ContentLength = payload.Length;
 		request.CookieContainer = _cookies;
-		request.KeepAlive = true;
+		// KeepAlive must be false to avoid a documented Crestron/Mono HttpWebRequest leak
+		// (a Timer/DelayPromise object that is never released when KeepAlive is true).
+		request.KeepAlive = false;
 		request.ServicePoint.Expect100Continue = false;
 
 		if (!string.IsNullOrWhiteSpace (_sessionCookieValue))

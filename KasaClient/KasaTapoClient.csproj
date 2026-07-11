@@ -10,7 +10,7 @@
 		<TargetFrameworks>net472;net10.0</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<PackageId>KasaTapoClient</PackageId>
-		<Version>1.1.0</Version>
+		<Version>1.1.1</Version>
 		<Authors>Neil Colvin</Authors>
 		<Company>Neil Colvin</Company>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -21,7 +21,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>Add smart light transition support aligned with python-kasa semantics, expose negotiated smart module versions in the console, and improve transition diagnostics in status output.</PackageReleaseNotes>
+		<PackageReleaseNotes>Reduce network resource usage by sharing a single static HttpClient per HTTP-based transport (HttpTokenTransport, KlapTransport, TpapTransport) and reusing a persistent connection in LegacyTransport instead of opening a new TCP connection per command. Benchmark projects now also target net472 in addition to net10.0.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>

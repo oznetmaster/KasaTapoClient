@@ -64,7 +64,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 		};
 	private static readonly SecureRandom RANDOM = new ();
 	private readonly DeviceConfiguration _configuration;
-	private readonly HttpClient _httpClient;
+	private static readonly HttpClient HTTP_CLIENT = CreateHttpClient ();
 	private readonly Uri _bootstrapUri;
 	private readonly object _handshakeLockOwner = new ();
 	private readonly object _sendLockOwner = new ();
@@ -106,7 +106,6 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 		_knownTpapTls = configuration.ConnectionOptions.UseSsl ? 1 : 0;
 		_knownTpapPort = configuration.Port;
 		_keepAliveInterval = ResolveKeepAliveInterval (configuration.ConnectionOptions.TpapKeepAliveInterval);
-		_httpClient = CreateHttpClient (configuration.Timeout);
 		Reset ();
 		}
 
@@ -140,7 +139,10 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 		return merged.ToJsonString (JsonSupport.COMPACT_JSON);
 		}
 
-	public void Dispose () => _httpClient.Dispose ();
+	public void Dispose ()
+		{
+		// HTTP_CLIENT is shared/static across all TpapTransport instances and must not be disposed here.
+		}
 
 	private async Task<string> SendOnceAsync (string commandJson, CancellationToken cancellationToken)
 		{
@@ -170,7 +172,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 				};
 			request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue ("application/octet-stream");
 
-			using HttpResponseMessage response = await _httpClient.SendAsync (request, HttpCompletionOption.ResponseContentRead, operationCancellationToken).ConfigureAwait (false);
+			using HttpResponseMessage response = await HTTP_CLIENT.SendAsync (request, HttpCompletionOption.ResponseContentRead, operationCancellationToken).ConfigureAwait (false);
 			if ((int)response.StatusCode != 200)
 				{
 				throw new InvalidOperationException ($"TPAP secure request failed for '{_configuration.Host}': status {(int)response.StatusCode}.");
@@ -342,7 +344,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			{
 			Content = new StringContent (body.ToJsonString (JsonSupport.COMPACT_JSON), Encoding.UTF8, "application/json"),
 			};
-		using HttpResponseMessage response = await _httpClient.SendAsync (request, HttpCompletionOption.ResponseContentRead, operationCancellationToken).ConfigureAwait (false);
+		using HttpResponseMessage response = await HTTP_CLIENT.SendAsync (request, HttpCompletionOption.ResponseContentRead, operationCancellationToken).ConfigureAwait (false);
 		string responseText = await ReadStringAsync (response, operationCancellationToken).ConfigureAwait (false);
 		if ((int)response.StatusCode != 200)
 			{
@@ -521,7 +523,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 		return (_dsUri, _key, _baseNonce, _cipherId, _sequence.Value);
 		}
 
-	private static HttpClient CreateHttpClient (TimeSpan timeout)
+	private static HttpClient CreateHttpClient ()
 		{
 		var handler = new HttpClientHandler
 			{
@@ -743,7 +745,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 				};
 			request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue ("application/octet-stream");
 
-			using HttpResponseMessage response = await _httpClient.SendAsync (request, HttpCompletionOption.ResponseContentRead, cancellationToken).ConfigureAwait (false);
+			using HttpResponseMessage response = await HTTP_CLIENT.SendAsync (request, HttpCompletionOption.ResponseContentRead, cancellationToken).ConfigureAwait (false);
 			if ((int)response.StatusCode != 200)
 				{
 				throw new InvalidOperationException ($"TPAP keepalive failed for '{_configuration.Host}': status {(int)response.StatusCode}.");

@@ -44,6 +44,15 @@ To address this, the TPAP connection includes a keepalive mechanism so an establ
 
 During the benchmark and live-device validation work in this repository, the keepalive-backed path reduced long-idle reconnect behavior from a clearly noticeable delay to sub-100 ms behavior for the next command in the measured scenarios. The exact timing will still depend on device model, network conditions, and idle duration, but the keepalive was a significant improvement in observed real-device timings.
 
+## Connection Reuse and Network Resource Usage
+
+Transport implementations minimize redundant connection setup:
+
+- `HttpTokenTransport`, `KlapTransport`, and `TpapTransport` each share a single static `HttpClient` instance per transport type, allowing the underlying handler to pool and reuse TCP/TLS connections across requests instead of establishing a new connection per device instance.
+- `LegacyTransport` (the raw XOR/TCP protocol on port 9999) maintains a persistent socket connection per device instance, reconnecting only when a failure is detected, instead of opening a new TCP connection for every command.
+
+These changes reduce TCP and TLS handshake overhead and OS-level socket churn without changing observed command latency or benchmark throughput.
+
 ## Installation
 
 The library is available as the `KasaTapoClient` NuGet package.
