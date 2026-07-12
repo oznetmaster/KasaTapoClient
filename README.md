@@ -49,7 +49,7 @@ During the benchmark and live-device validation work in this repository, the kee
 Transport implementations minimize redundant connection setup:
 
 - `HttpTokenTransport`, `KlapTransport`, and `TpapTransport` each share a single static `HttpClient` instance per transport type, allowing the underlying handler to pool and reuse TCP/TLS connections across requests instead of establishing a new connection per device instance.
-- `LegacyTransport` (the raw XOR/TCP protocol on port 9999) maintains a persistent socket connection per device instance, reconnecting only when a failure is detected, instead of opening a new TCP connection for every command.
+- `LegacyTransport` (the raw XOR/TCP protocol on port 9999) maintains a persistent socket connection per device instance, reconnecting only when a failure is detected or when the connection has been idle for more than 10 seconds, instead of opening a new TCP connection for every command. The idle timeout protects against the device silently closing the socket on its end after a period of inactivity.
 
 These changes reduce TCP and TLS handshake overhead and OS-level socket churn without changing observed command latency or benchmark throughput.
 

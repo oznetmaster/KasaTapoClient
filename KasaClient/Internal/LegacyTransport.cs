@@ -17,11 +17,13 @@ internal sealed class LegacyTransport : IDisposableDeviceTransport
 	{
 	private const int HEADER_SIZE = 4;
 	private const int MAX_RESPONSE_BYTES = 1024 * 1024;
+	private static readonly TimeSpan IDLE_CONNECTION_LIFETIME = TimeSpan.FromSeconds (10);
 	private readonly DeviceConfiguration _configuration;
 	private readonly TimeSpan _timeout;
 	private readonly SemaphoreSlim _connectionLock = new (1, 1);
 	private TcpClient? _client;
 	private NetworkStream? _stream;
+	private DateTime _lastActivityUtc;
 	private bool _disposed;
 
 	public LegacyTransport (DeviceConfiguration configuration)
@@ -58,6 +60,7 @@ internal sealed class LegacyTransport : IDisposableDeviceTransport
 					}
 
 				byte[] body = await ReadExactAsync (stream, responseLength, cancellationToken).ConfigureAwait (false);
+				_lastActivityUtc = DateTime.UtcNow;
 				return KasaCipher.Decrypt (body);
 				}
 			catch
@@ -78,7 +81,15 @@ internal sealed class LegacyTransport : IDisposableDeviceTransport
 		{
 		if (_client is { Connected: true } && _stream is not null)
 			{
-			return _stream;
+			if (DateTime.UtcNow - _lastActivityUtc <= IDLE_CONNECTION_LIFETIME)
+				{
+				return _stream;
+				}
+
+			// The connection has been idle long enough that the device may have closed it
+			// on its end already. Proactively close and reconnect rather than risk a failed
+			// write/read against a half-open socket.
+			ResetConnection ();
 			}
 
 		ResetConnection ();
@@ -95,6 +106,7 @@ internal sealed class LegacyTransport : IDisposableDeviceTransport
 
 		_client = client;
 		_stream = client.GetStream ();
+		_lastActivityUtc = DateTime.UtcNow;
 		return _stream;
 		}
 
