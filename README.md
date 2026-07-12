@@ -53,6 +53,10 @@ Transport implementations minimize redundant connection setup:
 
 These changes reduce TCP and TLS handshake overhead and OS-level socket churn without changing observed command latency or benchmark throughput.
 
+## Request Timeouts and Cancellation
+
+All transports honor the configured `DeviceConfiguration.Timeout` and an external `CancellationToken` on every network request, including the .NET Framework 4.7.2 `HttpWebRequest`-based fallback path used by `KlapTransport` and the periodic keepalive requests sent by `TpapTransport`. Previously, these two code paths could fall back to a runtime-default timeout (around 100 seconds) instead of the caller's configured timeout, and were not reliably cancellable once a request was in flight.
+
 ## Installation
 
 The library is available as the `KasaTapoClient` NuGet package.

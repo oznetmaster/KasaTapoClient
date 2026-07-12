@@ -739,19 +739,22 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			byte[] requestPayload = Combine (GetBigEndian (sequence), encrypted);
 			_sequence = sequence + 1;
 
+			using CancellationTokenSource? timeoutSource = CreateOperationTimeoutSource (_configuration.Timeout, cancellationToken);
+			CancellationToken operationCancellationToken = timeoutSource?.Token ?? cancellationToken;
+
 			using var request = new HttpRequestMessage (HttpMethod.Post, dsUri)
 				{
 				Content = new ByteArrayContent (requestPayload),
 				};
 			request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue ("application/octet-stream");
 
-			using HttpResponseMessage response = await HTTP_CLIENT.SendAsync (request, HttpCompletionOption.ResponseContentRead, cancellationToken).ConfigureAwait (false);
+			using HttpResponseMessage response = await HTTP_CLIENT.SendAsync (request, HttpCompletionOption.ResponseContentRead, operationCancellationToken).ConfigureAwait (false);
 			if ((int)response.StatusCode != 200)
 				{
 				throw new InvalidOperationException ($"TPAP keepalive failed for '{_configuration.Host}': status {(int)response.StatusCode}.");
 				}
 
-			byte[] body = await ReadBytesAsync (response, cancellationToken).ConfigureAwait (false);
+			byte[] body = await ReadBytesAsync (response, operationCancellationToken).ConfigureAwait (false);
 			if (LooksLikeJson (body))
 				{
 				JsonObject root = JsonSupport.ParseObject (Encoding.UTF8.GetString (body));

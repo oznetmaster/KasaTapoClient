@@ -263,40 +263,56 @@ internal sealed class KlapTransport : IDisposableDeviceTransport
 		request.KeepAlive = false;
 		request.ServicePoint.Expect100Continue = false;
 
+		int timeoutMilliseconds = ResolveTimeoutMilliseconds ();
+		request.Timeout = timeoutMilliseconds;
+		request.ReadWriteTimeout = timeoutMilliseconds;
+
 		if (!string.IsNullOrWhiteSpace (_sessionCookieValue))
 			{
 			request.CookieContainer.Add (uri, new Cookie (SESSION_COOKIE_NAME, _sessionCookieValue));
 			}
 
-		using (Stream requestStream = await request.GetRequestStreamAsync ().ConfigureAwait (false))
+		using (cancellationToken.Register (static state => ((HttpWebRequest)state!).Abort (), request))
 			{
-				await requestStream.WriteAsync (payload, 0, payload.Length, cancellationToken).ConfigureAwait (false);
-			}
+			using (Stream requestStream = await request.GetRequestStreamAsync ().ConfigureAwait (false))
+				{
+					await requestStream.WriteAsync (payload, 0, payload.Length, cancellationToken).ConfigureAwait (false);
+				}
 
-		HttpWebResponse response;
-		try
-			{
-				response = (HttpWebResponse)await request.GetResponseAsync ().ConfigureAwait (false);
-			}
-		catch (WebException ex) when (ex.Response is HttpWebResponse errorResponse)
-			{
-				response = errorResponse;
-			}
+			HttpWebResponse response;
+			try
+				{
+					response = (HttpWebResponse)await request.GetResponseAsync ().ConfigureAwait (false);
+				}
+			catch (WebException ex) when (ex.Response is HttpWebResponse errorResponse)
+				{
+					response = errorResponse;
+				}
+			catch (WebException ex) when (ex.Status == WebExceptionStatus.RequestCanceled && cancellationToken.IsCancellationRequested)
+				{
+				// HttpWebRequest.Abort() (triggered by our cancellation registration) surfaces as a
+				// WebException with Status == RequestCanceled. Only translate to OperationCanceledException
+				// when the abort was actually caused by our token, so a genuine request.Timeout (Status ==
+				// Timeout) or other network failure that merely races with an unrelated token cancellation
+				// is not misreported as a cancellation.
+				throw new OperationCanceledException ("The KLAP request was canceled.", ex, cancellationToken);
+				}
 
-		using (response)
-			{
-				byte[] responseBytes = await ReadResponseBytesAsync (response).ConfigureAwait (false);
-				var message = new HttpResponseMessage (response.StatusCode)
-					{
-					Content = new ByteArrayContent (responseBytes),
-					};
+			using (response)
+				{
+					byte[] responseBytes = await ReadResponseBytesAsync (response).ConfigureAwait (false);
+					var message = new HttpResponseMessage (response.StatusCode)
+						{
+						Content = new ByteArrayContent (responseBytes),
+						};
 
-				foreach (string? headerName in response.Headers.AllKeys)
-					{
-						if (string.IsNullOrWhiteSpace (headerName))
-							{
-							continue;
-							}
+					foreach (string? headerName in response.Headers.AllKeys)
+						{
+							if (string.IsNullOrWhiteSpace (headerName))
+								{
+								continue;
+								}
+
 
 						string[]? headerValues = response.Headers.GetValues (headerName);
 						if (headerValues is null || headerValues.Length == 0)
@@ -308,10 +324,23 @@ internal sealed class KlapTransport : IDisposableDeviceTransport
 							{
 							message.Content.Headers.TryAddWithoutValidation (headerName, headerValues);
 							}
-					}
+						}
 
-				return message;
+					return message;
+					}
+				}
 			}
+
+	private int ResolveTimeoutMilliseconds ()
+		{
+		TimeSpan timeout = _configuration.Timeout;
+		if (timeout <= TimeSpan.Zero || timeout == Timeout.InfiniteTimeSpan)
+			{
+			return Timeout.Infinite;
+			}
+
+		double totalMilliseconds = timeout.TotalMilliseconds;
+		return totalMilliseconds > int.MaxValue ? int.MaxValue : (int)totalMilliseconds;
 		}
 
 	private static async Task<byte[]> ReadResponseBytesAsync (HttpWebResponse response)
