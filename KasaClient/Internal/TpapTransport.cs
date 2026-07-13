@@ -787,11 +787,13 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 	#pragma warning disable CA2249
 	private static bool ShouldRetryLiveSession (Exception exception)
 		{
-		if (exception is TaskCanceledException)
-			{
-			return true;
-			}
-
+		// Note: TaskCanceledException/OperationCanceledException are deliberately NOT treated as
+		// retryable here. SendOnceAsync/SendKeepAliveCoreAsync race the request against an internal
+		// per-request timeout (CreateOperationTimeoutSource) that is separate from the caller's outer
+		// CancellationToken. If that internal timeout fires first, retrying here would wipe the session
+		// and perform a full, non-cancellable PAKE handshake (PBKDF2/EC math checks no CancellationToken)
+		// before the caller's own deadline is ever observed again, potentially blocking far longer than
+		// the caller requested. A timeout or cancellation should propagate immediately instead.
 		if (exception is IOException ioException)
 			{
 			string ioMessage = ioException.Message;
@@ -809,8 +811,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			string message = requestException.Message;
 			if (!string.IsNullOrEmpty (message)
 				&& (message.IndexOf ("Connection reset", StringComparison.OrdinalIgnoreCase) >= 0
-					|| message.IndexOf ("operation has been aborted", StringComparison.OrdinalIgnoreCase) >= 0
-					|| message.IndexOf ("A task was canceled", StringComparison.OrdinalIgnoreCase) >= 0))
+					|| message.IndexOf ("operation has been aborted", StringComparison.OrdinalIgnoreCase) >= 0))
 				{
 				return true;
 				}
