@@ -652,11 +652,20 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 
 		webRequest.ContentLength = payload.Length;
 
+		// Fine-grained timing diagnostics: GetRequestStreamAsync completing is effectively the TCP
+		// connect/ARP-resolution phase, while GetResponseAsync completing afterwards is the device's
+		// own processing/response time. Splitting these out lets production logs distinguish a
+		// network/ARP-layer stall (slow GetRequestStreamAsync) from a device-side stall (fast connect,
+		// slow response) when startup connects to multiple hosts intermittently take far longer than
+		// expected.
+		var stopwatch = Stopwatch.StartNew ();
 		using (cancellationToken.Register (static state => ((HttpWebRequest)state!).Abort (), webRequest))
 			{
 			if (payload.Length > 0 || string.Equals (request.Method.Method, "POST", StringComparison.OrdinalIgnoreCase))
 				{
 				using Stream requestStream = await WaitWithCancellationAsync (webRequest.GetRequestStreamAsync (), cancellationToken).ConfigureAwait (false);
+				long connectElapsedMs = stopwatch.ElapsedMilliseconds;
+				Debug.WriteLine ($"[KasaTapoClient.Tpap] '{request.RequestUri?.Host}' http: request stream acquired (connect) after {connectElapsedMs} ms.");
 				await requestStream.WriteAsync (payload, 0, payload.Length, cancellationToken).ConfigureAwait (false);
 				}
 
@@ -671,8 +680,11 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 				}
 			catch (WebException ex) when (ex.Status == WebExceptionStatus.RequestCanceled && cancellationToken.IsCancellationRequested)
 				{
+				Debug.WriteLine ($"[KasaTapoClient.Tpap] '{request.RequestUri?.Host}' http: request canceled after {stopwatch.ElapsedMilliseconds} ms total (status={ex.Status}).");
 				throw new OperationCanceledException ("The TPAP request was canceled.", ex, cancellationToken);
 				}
+
+			Debug.WriteLine ($"[KasaTapoClient.Tpap] '{request.RequestUri?.Host}' http: response received after {stopwatch.ElapsedMilliseconds} ms total.");
 
 			using (webResponse)
 				{
