@@ -178,13 +178,22 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 				};
 			request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue ("application/octet-stream");
 
-			using HttpResponseMessage response = await HTTP_CLIENT.SendAsync (request, HttpCompletionOption.ResponseContentRead, operationCancellationToken).ConfigureAwait (false);
-			if ((int)response.StatusCode != 200)
+			byte[] body;
+			try
 				{
-				throw new InvalidOperationException ($"TPAP secure request failed for '{_configuration.Host}': status {(int)response.StatusCode}.");
+				using HttpResponseMessage response = await HTTP_CLIENT.SendAsync (request, HttpCompletionOption.ResponseContentRead, operationCancellationToken).ConfigureAwait (false);
+				if ((int)response.StatusCode != 200)
+					{
+					throw new InvalidOperationException ($"TPAP secure request failed for '{_configuration.Host}': status {(int)response.StatusCode}.");
+					}
+
+				body = await ReadBytesAsync (response, operationCancellationToken).ConfigureAwait (false);
+				}
+			catch (Exception ex) when (ex is not OperationCanceledException && operationCancellationToken.IsCancellationRequested)
+				{
+				throw ToCancellationException (ex, operationCancellationToken);
 				}
 
-			byte[] body = await ReadBytesAsync (response, operationCancellationToken).ConfigureAwait (false);
 			if (LooksLikeJson (body))
 				{
 				string jsonResponse = Encoding.UTF8.GetString (body);
@@ -204,6 +213,17 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			{
 			sendLock.Release ();
 			}
+		}
+
+	// When the internal per-request timeout (CreateOperationTimeoutSource) elapses, SocketsHttpHandler
+	// aborts the underlying socket and throws IOException/HttpRequestException (commonly with a message
+	// like "operation has been aborted"), NOT an OperationCanceledException, even though the failure is
+	// really a timeout. ShouldRetryLiveSession() must not misclassify that as a genuine transport reset,
+	// so any such exception observed while operationCancellationToken is already cancelled is translated
+	// into an OperationCanceledException here before it can reach the retry policy.
+	internal static OperationCanceledException ToCancellationException (Exception exception, CancellationToken operationCancellationToken)
+		{
+		return new OperationCanceledException ("The TPAP request was aborted because the request timeout elapsed.", exception, operationCancellationToken);
 		}
 
 	private async Task EnsureHandshakeAsync (CancellationToken cancellationToken)
@@ -350,11 +370,19 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			{
 			Content = new StringContent (body.ToJsonString (JsonSupport.COMPACT_JSON), Encoding.UTF8, "application/json"),
 			};
-		using HttpResponseMessage response = await HTTP_CLIENT.SendAsync (request, HttpCompletionOption.ResponseContentRead, operationCancellationToken).ConfigureAwait (false);
-		string responseText = await ReadStringAsync (response, operationCancellationToken).ConfigureAwait (false);
-		if ((int)response.StatusCode != 200)
+		string responseText;
+		try
 			{
-			throw new InvalidOperationException ($"TPAP {stepName} failed for '{_configuration.Host}': {(int)response.StatusCode}.");
+			using HttpResponseMessage response = await HTTP_CLIENT.SendAsync (request, HttpCompletionOption.ResponseContentRead, operationCancellationToken).ConfigureAwait (false);
+			responseText = await ReadStringAsync (response, operationCancellationToken).ConfigureAwait (false);
+			if ((int)response.StatusCode != 200)
+				{
+				throw new InvalidOperationException ($"TPAP {stepName} failed for '{_configuration.Host}': {(int)response.StatusCode}.");
+				}
+			}
+		catch (Exception ex) when (ex is not OperationCanceledException && operationCancellationToken.IsCancellationRequested)
+			{
+			throw ToCancellationException (ex, operationCancellationToken);
 			}
 
 		JsonObject root = JsonSupport.ParseObject (responseText);
@@ -754,13 +782,22 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 				};
 			request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue ("application/octet-stream");
 
-			using HttpResponseMessage response = await HTTP_CLIENT.SendAsync (request, HttpCompletionOption.ResponseContentRead, operationCancellationToken).ConfigureAwait (false);
-			if ((int)response.StatusCode != 200)
+			byte[] body;
+			try
 				{
-				throw new InvalidOperationException ($"TPAP keepalive failed for '{_configuration.Host}': status {(int)response.StatusCode}.");
+				using HttpResponseMessage response = await HTTP_CLIENT.SendAsync (request, HttpCompletionOption.ResponseContentRead, operationCancellationToken).ConfigureAwait (false);
+				if ((int)response.StatusCode != 200)
+					{
+					throw new InvalidOperationException ($"TPAP keepalive failed for '{_configuration.Host}': status {(int)response.StatusCode}.");
+					}
+
+				body = await ReadBytesAsync (response, operationCancellationToken).ConfigureAwait (false);
+				}
+			catch (Exception ex) when (ex is not OperationCanceledException && operationCancellationToken.IsCancellationRequested)
+				{
+				throw ToCancellationException (ex, operationCancellationToken);
 				}
 
-			byte[] body = await ReadBytesAsync (response, operationCancellationToken).ConfigureAwait (false);
 			if (LooksLikeJson (body))
 				{
 				JsonObject root = JsonSupport.ParseObject (Encoding.UTF8.GetString (body));
@@ -785,7 +822,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 		}
 
 	#pragma warning disable CA2249
-	private static bool ShouldRetryLiveSession (Exception exception)
+	internal static bool ShouldRetryLiveSession (Exception exception)
 		{
 		// Note: TaskCanceledException/OperationCanceledException are deliberately NOT treated as
 		// retryable here. SendOnceAsync/SendKeepAliveCoreAsync race the request against an internal
@@ -1520,9 +1557,9 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			}
 		}
 
-	private sealed class TpapProtocolException : InvalidOperationException
+	internal sealed class TpapProtocolException : InvalidOperationException
 		{
-		public TpapProtocolException (string message, int errorCode, bool retryable, bool authentication)
+		internal TpapProtocolException (string message, int errorCode, bool retryable, bool authentication)
 			: base (message)
 			{
 			ErrorCode = errorCode;

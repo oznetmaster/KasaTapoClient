@@ -10,7 +10,7 @@
 		<TargetFrameworks>net472;net10.0</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<PackageId>KasaTapoClient</PackageId>
-		<Version>1.1.8</Version>
+		<Version>1.1.9</Version>
 		<Authors>Neil Colvin</Authors>
 		<Company>Neil Colvin</Company>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -21,7 +21,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>Fix TpapTransport still absorbing a caller's cancellation/timeout on the first request after a previous fix in 1.1.5: ShouldRetryLiveSession unconditionally treated TaskCanceledException (and an HttpRequestException message containing "A task was canceled") as retryable, and the 1.1.5 fix only guarded against the caller's outer CancellationToken already being canceled. SendOnceAsync races each request against its own internal per-request timeout, separate from the caller's outer token; when that internal timeout fired first, the outer token was not yet canceled, so the retry path still triggered a full session Reset() and a brand-new PAKE handshake (whose PBKDF2/EC math performs no cancellation checks at all), potentially running far longer than the caller's configured deadline before an OperationCanceledException finally surfaced. TaskCanceledException/OperationCanceledException (and the related HttpRequestException message) are no longer treated as retryable by ShouldRetryLiveSession; only genuine connection-reset/abort signals and explicit TPAP protocol session-error codes trigger a session reset and retry, so a timeout or cancellation now propagates immediately.</PackageReleaseNotes>
+		<PackageReleaseNotes>Fix TpapTransport still absorbing an internal per-request timeout after the 1.1.8 fix: ShouldRetryLiveSession no longer treats TaskCanceledException/OperationCanceledException as retryable, but it still treated IOException/HttpRequestException messages containing "operation has been aborted" as retryable to allow genuine transport resets to recover. However, when SendOnceAsync's internal per-request timeout (CreateOperationTimeoutSource, separate from the caller's outer CancellationToken) elapses, SocketsHttpHandler aborts the socket and throws that exact same IOException/HttpRequestException shape rather than an OperationCanceledException, so the internal timeout was still misclassified as a retryable transport reset, triggering Reset() plus a full non-cancellable PAKE handshake instead of propagating the timeout. SendOnceAsync, PostLoginAsync, and SendKeepAliveCoreAsync now detect when the internal operation token (not the caller's outer token) has fired and translate any resulting exception into an OperationCanceledException before ShouldRetryLiveSession is consulted, so an internal timeout always propagates immediately while genuine transport resets observed before the timeout still retry as before. Added unit tests covering ShouldRetryLiveSession's retry classification and the timeout-to-cancellation translation.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>
