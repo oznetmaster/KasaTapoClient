@@ -10,7 +10,7 @@
 		<TargetFrameworks>net472;net10.0</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<PackageId>KasaTapoClient</PackageId>
-		<Version>1.1.9</Version>
+		<Version>1.1.10</Version>
 		<Authors>Neil Colvin</Authors>
 		<Company>Neil Colvin</Company>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -21,7 +21,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>Fix TpapTransport still absorbing an internal per-request timeout after the 1.1.8 fix: ShouldRetryLiveSession no longer treats TaskCanceledException/OperationCanceledException as retryable, but it still treated IOException/HttpRequestException messages containing "operation has been aborted" as retryable to allow genuine transport resets to recover. However, when SendOnceAsync's internal per-request timeout (CreateOperationTimeoutSource, separate from the caller's outer CancellationToken) elapses, SocketsHttpHandler aborts the socket and throws that exact same IOException/HttpRequestException shape rather than an OperationCanceledException, so the internal timeout was still misclassified as a retryable transport reset, triggering Reset() plus a full non-cancellable PAKE handshake instead of propagating the timeout. SendOnceAsync, PostLoginAsync, and SendKeepAliveCoreAsync now detect when the internal operation token (not the caller's outer token) has fired and translate any resulting exception into an OperationCanceledException before ShouldRetryLiveSession is consulted, so an internal timeout always propagates immediately while genuine transport resets observed before the timeout still retry as before. Added unit tests covering ShouldRetryLiveSession's retry classification and the timeout-to-cancellation translation.</PackageReleaseNotes>
+		<PackageReleaseNotes>Fixed a startup performance issue in the TPAP transport where the first secure handshake per process could take several minutes on slower/embedded CPU hosts. The internal SecureRandom instance previously relied on BouncyCastle's default timing-based entropy seeding, which is CPU-speed dependent; it now seeds from the platform's cryptographically secure RNG (CryptoApiRandomGenerator) instead, eliminating the delay with no change to cryptographic security. This is an internal-only change with no public API impact. Added unit tests verifying fast, non-degenerate SecureRandom seeding.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>
@@ -57,6 +57,12 @@
 		<Reference Include="System.Configuration" />
 		<Reference Include="System.Data.DataSetExtensions" />
 		<Reference Include="Microsoft.CSharp" />
+	</ItemGroup>
+
+	<!-- DEBUG-only: exposes internal discovery diagnostics to the Crestron driver for local debugging.
+		  Never present in the Release/NuGet-published assembly. -->
+	<ItemGroup Condition="'$(Configuration)' == 'Debug'">
+		<InternalsVisibleTo Include="KasaTapoCrestronDriver" />
 	</ItemGroup>
 
 	<ItemGroup>

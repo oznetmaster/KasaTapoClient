@@ -28,17 +28,18 @@ internal sealed class DiscoveryClient
 	private static readonly byte[] NEW_DISCOVERY_QUERY = CreateNewDiscoveryQuery ();
 	private readonly TimeSpan _timeout;
 
-	public DiscoveryClient (TimeSpan timeout) => _timeout = timeout;
+	public DiscoveryClient (TimeSpan timeout)
+		{
+		_timeout = timeout;
+		}
 
 	public async Task<IReadOnlyList<DiscoveryResult>> DiscoverAsync (string target, CancellationToken cancellationToken)
 		{
 		IPAddress targetAddress = ResolveTarget (target);
-		#if DEBUG
 		int receivedPacketCount = 0;
 		int parseSuccessCount = 0;
 		int parseFailureCount = 0;
 		int ignoredSocketExceptionCount = 0;
-		#endif
 		using var kasaClient = new UdpClient (AddressFamily.InterNetwork)
 			{
 			EnableBroadcast = true,
@@ -65,9 +66,7 @@ internal sealed class DiscoveryClient
 		DateTimeOffset expiresAt = DateTimeOffset.UtcNow.Add (_timeout);
 		Task<UdpReceiveResult>? kasaReceiveTask = null;
 		Task<UdpReceiveResult>? smartReceiveTask = null;
-		#if DEBUG
-		Trace.WriteLine ($"[KasaTapoClient.Discovery] target={targetAddress} timeout={_timeout} buffer={UDP_RECEIVE_BUFFER_SIZE}");
-		#endif
+		LogDiagnostic ($"[KasaTapoClient.Discovery] target={targetAddress} timeout={_timeout} buffer={UDP_RECEIVE_BUFFER_SIZE}");
 		Task broadcastTask = BroadcastAsync (kasaClient, smartClient, kasaRequest, kasaEndpoint, tapoEndpoint, klapEndpoint, cancellationToken);
 		while (DateTimeOffset.UtcNow < expiresAt)
 			{
@@ -87,24 +86,20 @@ internal sealed class DiscoveryClient
 				try
 					{
 					UdpReceiveResult packet = await kasaReceiveTask.ConfigureAwait (false);
-					#if DEBUG
 					receivedPacketCount++;
-					#endif
 					string response = KasaCipher.Decrypt (packet.Buffer);
 					KasaResponseParser.ParsedResponse parsedResponse = KasaResponseParser.ParseResponse (response);
 					if (KasaResponseParser.TryParseDiscoveryResult (parsedResponse, packet.RemoteEndPoint, out DiscoveryResult? result)
 						&& result is not null)
 						{
 						StorePreferredDiscoveryResult (results, result);
-						#if DEBUG
 						parseSuccessCount++;
-						#endif
+						LogDiagnostic ($"[KasaTapoClient.Discovery] legacy packet parsed host={packet.RemoteEndPoint} deviceId={result.DeviceId ?? "<null>"} alias={result.Alias ?? "<null>"}");
 						}
 					else
 						{
-						#if DEBUG
 						parseFailureCount++;
-						#endif
+						LogDiagnostic ($"[KasaTapoClient.Discovery] legacy packet failed to parse host={packet.RemoteEndPoint}");
 						}
 					}
 				catch (OperationCanceledException)
@@ -113,16 +108,13 @@ internal sealed class DiscoveryClient
 					}
 				catch (SocketException ex) when (IsTransientDiscoverySocketException (ex.SocketErrorCode))
 					{
-					#if DEBUG
 					ignoredSocketExceptionCount++;
-					Trace.WriteLine ($"[KasaTapoClient.Discovery] ignored legacy receive socket error={ex.SocketErrorCode}");
-					#endif
+					LogDiagnostic ($"[KasaTapoClient.Discovery] ignored legacy receive socket error={ex.SocketErrorCode}");
 					}
-				catch
+				catch (Exception ex)
 					{
-					#if DEBUG
 					parseFailureCount++;
-					#endif
+					LogDiagnostic ($"[KasaTapoClient.Discovery] legacy receive exception={ex.GetType ().Name}: {ex.Message}");
 					}
 				kasaReceiveTask = null;
 				}
@@ -131,22 +123,18 @@ internal sealed class DiscoveryClient
 				try
 					{
 					UdpReceiveResult packet = await smartReceiveTask.ConfigureAwait (false);
-					#if DEBUG
 					receivedPacketCount++;
-					#endif
 					if (TryParseTapoDiscoveryResult (packet, out DiscoveryResult? result)
 						&& result is not null)
 						{
 						StorePreferredDiscoveryResult (results, result);
-						#if DEBUG
 						parseSuccessCount++;
-						#endif
+						LogDiagnostic ($"[KasaTapoClient.Discovery] smart packet parsed host={packet.RemoteEndPoint} deviceId={result.DeviceId ?? "<null>"} alias={result.Alias ?? "<null>"}");
 						}
 					else
 						{
-						#if DEBUG
 						parseFailureCount++;
-						#endif
+						LogDiagnostic ($"[KasaTapoClient.Discovery] smart packet failed to parse host={packet.RemoteEndPoint}");
 						}
 					}
 				catch (OperationCanceledException)
@@ -155,27 +143,27 @@ internal sealed class DiscoveryClient
 					}
 				catch (SocketException ex) when (IsTransientDiscoverySocketException (ex.SocketErrorCode))
 					{
-					#if DEBUG
 					ignoredSocketExceptionCount++;
-					Trace.WriteLine ($"[KasaTapoClient.Discovery] ignored smart receive socket error={ex.SocketErrorCode}");
-					#endif
+					LogDiagnostic ($"[KasaTapoClient.Discovery] ignored smart receive socket error={ex.SocketErrorCode}");
 					}
-				catch
+				catch (Exception ex)
 					{
-					#if DEBUG
 					parseFailureCount++;
-					#endif
+					LogDiagnostic ($"[KasaTapoClient.Discovery] smart receive exception={ex.GetType ().Name}: {ex.Message}");
 					}
 				smartReceiveTask = null;
 				}
 			}
 
 		await broadcastTask.ConfigureAwait (false);
-		#if DEBUG
-		Trace.WriteLine ($"[KasaTapoClient.Discovery] completed target={targetAddress} timeout={_timeout} packets={receivedPacketCount} parseSuccess={parseSuccessCount} parseFailure={parseFailureCount} ignoredSocketExceptions={ignoredSocketExceptionCount}");
-		#endif
+		LogDiagnostic ($"[KasaTapoClient.Discovery] completed target={targetAddress} timeout={_timeout} packets={receivedPacketCount} parseSuccess={parseSuccessCount} parseFailure={parseFailureCount} ignoredSocketExceptions={ignoredSocketExceptionCount} resultCount={results.Count}");
 
 		return results.Values.OrderBy (static result => result.Host, StringComparer.OrdinalIgnoreCase).ToArray ();
+		}
+
+	private static void LogDiagnostic (string message)
+		{
+		Debug.WriteLine (message);
 		}
 
 	private static void StorePreferredDiscoveryResult (Dictionary<string, DiscoveryResult> results, DiscoveryResult candidate)

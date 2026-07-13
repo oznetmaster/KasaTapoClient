@@ -3,9 +3,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
@@ -62,7 +64,24 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			Encoding.ASCII.GetBytes ("tp-kdf-info-aes256-iv"),
 			32),
 		};
-	private static readonly SecureRandom RANDOM = new ();
+	// SecureRandom's parameterless constructor triggers BouncyCastle's default seeding path, which on
+	// some platforms (notably slower/embedded CPUs such as Crestron processors) performs an expensive
+	// entropy-gathering routine (e.g. a counter/timing-based generator) that can take a long time on
+	// first use. Since this field is static, that cost is paid exactly once per process, right when the
+	// very first TPAP handshake runs during driver startup - this matches the observed multi-minute
+	// delay that only happens once per driver (re)load and never again afterward. Using the platform's
+	// cryptographically secure RNG (RNGCryptoServiceProvider on .NET Framework, RandomNumberGenerator on
+	// modern .NET) to seed a FixedPointCombinedRandomGenerator-free SecureRandom via SecureRandom.GetInstance
+	// avoids BouncyCastle's slow default entropy-gathering estimator while still producing cryptographically
+	// secure randomness suitable for the SPAKE2+ handshake's random scalar generation.
+	private static readonly SecureRandom RANDOM = CreateSecureRandom ();
+
+	internal static SecureRandom CreateSecureRandom ()
+		{
+		var random = new SecureRandom (new Org.BouncyCastle.Crypto.Prng.CryptoApiRandomGenerator ());
+		random.SetSeed (random.GenerateSeed (32));
+		return random;
+		}
 	private readonly DeviceConfiguration _configuration;
 	private static readonly HttpClient HTTP_CLIENT = CreateHttpClient ();
 	private readonly Uri _bootstrapUri;
@@ -181,7 +200,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			byte[] body;
 			try
 				{
-				using HttpResponseMessage response = await HTTP_CLIENT.SendAsync (request, HttpCompletionOption.ResponseContentRead, operationCancellationToken).ConfigureAwait (false);
+				using HttpResponseMessage response = await SendHttpAsync (request, operationCancellationToken).ConfigureAwait (false);
 				if ((int)response.StatusCode != 200)
 					{
 					throw new InvalidOperationException ($"TPAP secure request failed for '{_configuration.Host}': status {(int)response.StatusCode}.");
@@ -247,9 +266,13 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 				return;
 				}
 
+			Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' handshake starting.");
 			Reset ();
+			Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' handshake: calling DiscoverAsync.");
 			await DiscoverAsync (cancellationToken).ConfigureAwait (false);
+			Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' handshake: DiscoverAsync completed; calling PerformAuthHandshakeAsync.");
 			await PerformAuthHandshakeAsync (cancellationToken).ConfigureAwait (false);
+			Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' handshake: PerformAuthHandshakeAsync completed.");
 			RecordActivity ();
 			}
 		finally
@@ -268,7 +291,9 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 				["sub_method"] = "discover",
 				},
 			};
+		Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' discover: posting login/discover to '{_appUri}'.");
 		JsonObject response = await PostLoginAsync (body, "discover", cancellationToken).ConfigureAwait (false);
+		Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' discover: login/discover responded.");
 		JsonObject result = RequireResultObject (response);
 		if (result["tpap"] is not JsonObject tpap)
 			{
@@ -329,21 +354,29 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 
 				try
 					{
+					Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' handshake: calling pake_register.");
 					JsonObject registerResult = await LoginAsync (registerParams, "pake_register", cancellationToken).ConfigureAwait (false);
+					Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' handshake: pake_register responded; resolving credentials.");
 					string credentialsString = ResolveCredentialsString (registerResult, candidateSecret, resolvedPasscodeType);
+					Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' handshake: credentials resolved; building share params (PBKDF2/EC math).");
 					JsonObject shareParams = BuildShareParamsFromRegister (registerResult, credentialsString);
+					Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' handshake: share params built.");
 					if (UseDacCertification ())
 						{
 						_dacNonceBase64 = Convert.ToBase64String (CreateRandomBytes (16));
 						shareParams["dac_nonce"] = _dacNonceBase64;
 						}
 
+					Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' handshake: calling pake_share.");
 					JsonObject shareResult = await LoginAsync (shareParams, "pake_share", cancellationToken).ConfigureAwait (false);
+					Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' handshake: pake_share responded; establishing session.");
 					EstablishSessionFromShareResult (shareResult);
+					Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' handshake: session established.");
 					return;
 					}
 				catch (Exception ex) when (ex is not OperationCanceledException)
 					{
+					Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' handshake candidate failed: {ex.GetType ().Name}: {ex.Message}");
 					lastError = ex;
 					}
 			}
@@ -373,7 +406,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 		string responseText;
 		try
 			{
-			using HttpResponseMessage response = await HTTP_CLIENT.SendAsync (request, HttpCompletionOption.ResponseContentRead, operationCancellationToken).ConfigureAwait (false);
+			using HttpResponseMessage response = await SendHttpAsync (request, operationCancellationToken).ConfigureAwait (false);
 			responseText = await ReadStringAsync (response, operationCancellationToken).ConfigureAwait (false);
 			if ((int)response.StatusCode != 200)
 				{
@@ -569,6 +602,142 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			Timeout = Timeout.InfiniteTimeSpan,
 			};
 		}
+
+	// On .NET Framework, HttpClientHandler is backed by HttpWebRequest, whose in-flight
+	// GetRequestStreamAsync/GetResponseAsync calls do not reliably unblock when the supplied
+	// CancellationToken is cancelled (see the identical, previously diagnosed issue in
+	// KlapTransport.PostBytesNetFrameworkAsync). Left unaddressed, cancelling
+	// operationCancellationToken here (e.g. via CreateOperationTimeoutSource's 8-second startup
+	// connect timeout) does not actually abort the request; the call instead blocks until a much
+	// longer OS/runtime-level socket timeout elapses (observed as ~2 minute stalls in production
+	// logs for TPAP devices such as the Tapo L900, instead of the configured timeout). Route
+	// through an HttpWebRequest-based path with an explicit Abort() registration on .NET Framework
+	// to guarantee prompt cancellation, matching the proven KlapTransport approach.
+	private static Task<HttpResponseMessage> SendHttpAsync (HttpRequestMessage request, CancellationToken cancellationToken)
+		{
+		#if NETFRAMEWORK
+		return SendHttpNetFrameworkAsync (request, cancellationToken);
+		#else
+		return HTTP_CLIENT.SendAsync (request, HttpCompletionOption.ResponseContentRead, cancellationToken);
+		#endif
+		}
+
+	#if NETFRAMEWORK
+	private static async Task<HttpResponseMessage> SendHttpNetFrameworkAsync (HttpRequestMessage request, CancellationToken cancellationToken)
+		{
+		cancellationToken.ThrowIfCancellationRequested ();
+
+		byte[] payload = request.Content is null
+			? Array.Empty<byte> ()
+			: await request.Content.ReadAsByteArrayAsync ().ConfigureAwait (false);
+
+		var webRequest = (HttpWebRequest)WebRequest.Create (request.RequestUri);
+		webRequest.Method = request.Method.Method;
+		webRequest.AllowAutoRedirect = false;
+		webRequest.KeepAlive = false;
+		webRequest.ServicePoint.Expect100Continue = false;
+		// Matches the HttpClientHandler.ServerCertificateCustomValidationCallback behavior used by
+		// the non-.NET Framework HttpClient path above: these are local-network TPAP devices that
+		// commonly present self-signed certificates, so certificate identity is intentionally not
+		// validated here.
+		#pragma warning disable CA5359
+		webRequest.ServerCertificateValidationCallback = (_, _, _, _) => true;
+		#pragma warning restore CA5359
+
+		string? contentType = request.Content?.Headers.ContentType?.ToString ();
+		if (!string.IsNullOrWhiteSpace (contentType))
+			{
+			webRequest.ContentType = contentType;
+			}
+
+		webRequest.ContentLength = payload.Length;
+
+		using (cancellationToken.Register (static state => ((HttpWebRequest)state!).Abort (), webRequest))
+			{
+			if (payload.Length > 0 || string.Equals (request.Method.Method, "POST", StringComparison.OrdinalIgnoreCase))
+				{
+				using Stream requestStream = await WaitWithCancellationAsync (webRequest.GetRequestStreamAsync (), cancellationToken).ConfigureAwait (false);
+				await requestStream.WriteAsync (payload, 0, payload.Length, cancellationToken).ConfigureAwait (false);
+				}
+
+			HttpWebResponse webResponse;
+			try
+				{
+				webResponse = (HttpWebResponse)await WaitWithCancellationAsync (webRequest.GetResponseAsync (), cancellationToken).ConfigureAwait (false);
+				}
+			catch (WebException ex) when (ex.Response is HttpWebResponse errorResponse)
+				{
+				webResponse = errorResponse;
+				}
+			catch (WebException ex) when (ex.Status == WebExceptionStatus.RequestCanceled && cancellationToken.IsCancellationRequested)
+				{
+				throw new OperationCanceledException ("The TPAP request was canceled.", ex, cancellationToken);
+				}
+
+			using (webResponse)
+				{
+				byte[] responseBytes;
+				using (Stream responseStream = webResponse.GetResponseStream () ?? Stream.Null)
+					{
+					using var memoryStream = new MemoryStream ();
+					await responseStream.CopyToAsync (memoryStream).ConfigureAwait (false);
+					responseBytes = memoryStream.ToArray ();
+					}
+
+				var message = new HttpResponseMessage (webResponse.StatusCode)
+					{
+					Content = new ByteArrayContent (responseBytes),
+					};
+
+				foreach (string? headerName in webResponse.Headers.AllKeys)
+					{
+					if (string.IsNullOrWhiteSpace (headerName))
+						{
+						continue;
+						}
+
+					string[]? headerValues = webResponse.Headers.GetValues (headerName);
+					if (headerValues is null || headerValues.Length == 0)
+						{
+						continue;
+						}
+
+					if (!message.Headers.TryAddWithoutValidation (headerName, headerValues))
+						{
+						message.Content.Headers.TryAddWithoutValidation (headerName, headerValues);
+						}
+					}
+
+				return message;
+				}
+			}
+		}
+
+	// HttpWebRequest.Abort() (registered against the CancellationToken above) does not always
+	// promptly unblock an in-flight GetRequestStreamAsync/GetResponseAsync call on .NET Framework;
+	// the underlying task can remain pending until the request's own Timeout elapses. Racing the
+	// task against the cancellation token here ensures the caller observes cancellation as soon as
+	// the token fires, rather than waiting for Abort() to take effect on the original task.
+	private static async Task<T> WaitWithCancellationAsync<T> (Task<T> task, CancellationToken cancellationToken)
+		{
+		if (task.IsCompleted || !cancellationToken.CanBeCanceled)
+			{
+			return await task.ConfigureAwait (false);
+			}
+
+		var cancellationCompletionSource = new TaskCompletionSource<bool> (TaskCreationOptions.RunContinuationsAsynchronously);
+		using (cancellationToken.Register (static state => ((TaskCompletionSource<bool>)state!).TrySetResult (true), cancellationCompletionSource))
+			{
+			Task completedTask = await Task.WhenAny (task, cancellationCompletionSource.Task).ConfigureAwait (false);
+			if (completedTask == cancellationCompletionSource.Task)
+				{
+				cancellationToken.ThrowIfCancellationRequested ();
+				}
+
+			return await task.ConfigureAwait (false);
+			}
+		}
+	#endif
 
 	private TimeSpan GetSecureRequestTimeout (string commandJson)
 		{
@@ -785,7 +954,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			byte[] body;
 			try
 				{
-				using HttpResponseMessage response = await HTTP_CLIENT.SendAsync (request, HttpCompletionOption.ResponseContentRead, operationCancellationToken).ConfigureAwait (false);
+				using HttpResponseMessage response = await SendHttpAsync (request, operationCancellationToken).ConfigureAwait (false);
 				if ((int)response.StatusCode != 200)
 					{
 					throw new InvalidOperationException ($"TPAP keepalive failed for '{_configuration.Host}': status {(int)response.StatusCode}.");
