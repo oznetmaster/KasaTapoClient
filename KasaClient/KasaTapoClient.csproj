@@ -10,7 +10,7 @@
 		<TargetFrameworks>net472;net10.0</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<PackageId>KasaTapoClient</PackageId>
-		<Version>1.1.4</Version>
+		<Version>1.1.5</Version>
 		<Authors>Neil Colvin</Authors>
 		<Company>Neil Colvin</Company>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -21,7 +21,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>Fix a cancellation gap introduced in 1.1.3: on .NET Framework 4.7.2, the KlapTransport HttpWebRequest-based fallback registered HttpWebRequest.Abort() against the CancellationToken, but Abort() does not always promptly unblock an in-flight GetRequestStreamAsync/GetResponseAsync call, so a canceled request could still block until the request's own Timeout elapsed instead of being canceled immediately. The net472 fallback now races the underlying request against the CancellationToken directly and throws OperationCanceledException as soon as the token fires, without waiting for Abort() to take effect.</PackageReleaseNotes>
+		<PackageReleaseNotes>Fix TpapTransport swallowing caller cancellation: SendAsync and the keepalive path caught TaskCanceledException as a generically "retryable" condition and unconditionally reset the session and retried the request (including a full handshake), even when the exception was caused by the caller's own external CancellationToken rather than the internal per-request timeout. This meant an external cancellation request could be silently absorbed by a retry attempt instead of propagating immediately, causing callers with a short requested cancellation timeout to still experience the full duration of a new handshake+request cycle. Both paths now only reset/retry when the external token was not the cause of the cancellation; a genuine external cancellation now propagates immediately as OperationCanceledException.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>

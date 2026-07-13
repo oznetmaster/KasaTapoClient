@@ -115,8 +115,14 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			{
 			return await SendOnceAsync (commandJson, cancellationToken).ConfigureAwait (false);
 			}
-		catch (Exception ex) when (ShouldRetryLiveSession (ex))
+		catch (Exception ex) when (!cancellationToken.IsCancellationRequested && ShouldRetryLiveSession (ex))
 			{
+			// Only retry when the failure was NOT caused by the caller's own CancellationToken.
+			// ShouldRetryLiveSession() treats TaskCanceledException/OperationCanceledException as
+			// retryable because SendOnceAsync uses an internal per-request timeout CancellationTokenSource
+			// linked to the caller's token; without this guard, a genuine external cancellation would be
+			// swallowed and silently retried (including a full Reset()+handshake) instead of propagating
+			// to the caller immediately.
 			Reset ();
 			return await SendOnceAsync (commandJson, cancellationToken).ConfigureAwait (false);
 			}
@@ -768,7 +774,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 
 			RecordActivity ();
 			}
-		catch (Exception ex) when (ShouldRetryLiveSession (ex))
+		catch (Exception ex) when (!cancellationToken.IsCancellationRequested && ShouldRetryLiveSession (ex))
 			{
 			Reset ();
 			}
