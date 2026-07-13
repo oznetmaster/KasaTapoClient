@@ -157,7 +157,24 @@ internal sealed class LegacyTransport : IDisposableDeviceTransport
 
 	private async Task ConnectAsync (TcpClient client, string host, int port, CancellationToken cancellationToken)
 		{
-		Task connectTask = client.ConnectAsync (host, port);
+#if NET10_0_OR_GREATER
+		using CancellationTokenSource timeoutSource = CancellationTokenSource.CreateLinkedTokenSource (cancellationToken);
+		timeoutSource.CancelAfter (_timeout);
+		try
+			{
+			await client.ConnectAsync (host, port, timeoutSource.Token).ConfigureAwait (false);
+			}
+		catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+			{
+			throw new TimeoutException ($"Timed out while connecting to {host}:{port}.");
+			}
+#else
+		// TcpClient.ConnectAsync(string, int) performs synchronous DNS resolution on the calling
+		// thread before the returned Task even exists, so a slow/hanging DNS lookup would block this
+		// method (and starve the Task.WhenAny race below) before the timeout/cancellation could ever
+		// take effect. Running the call on a background thread ensures the DNS phase cannot bypass
+		// the timeout race.
+		Task connectTask = Task.Run (() => client.ConnectAsync (host, port), CancellationToken.None);
 		Task completedTask = await Task.WhenAny (connectTask, Task.Delay (_timeout, cancellationToken)).ConfigureAwait (false);
 		if (completedTask != connectTask)
 			{
@@ -166,6 +183,7 @@ internal sealed class LegacyTransport : IDisposableDeviceTransport
 			}
 
 		await connectTask.ConfigureAwait (false);
+#endif
 		}
 
 	private async Task WriteAsync (NetworkStream stream, byte[] buffer, CancellationToken cancellationToken)
