@@ -103,12 +103,30 @@ jobs:
               }
           }
 
+      - name: Extract package release notes
+        id: notes
+        shell: pwsh
+        run: |
+          [xml]$xml = Get-Content -Path '${{ env.PROJECT_PATH }}' -Raw
+          $releaseNotes = $xml.Project.PropertyGroup.PackageReleaseNotes | Where-Object { $_ } | Select-Object -First 1
+
+          $notesPath = "${{ env.ARTIFACT_DIR }}/RELEASE_NOTES.md"
+          if ([string]::IsNullOrWhiteSpace($releaseNotes)) {
+              Write-Warning 'No PackageReleaseNotes found in the project file.'
+              '' | Out-File -FilePath $notesPath -Encoding utf8
+          } else {
+              $releaseNotes.Trim() | Out-File -FilePath $notesPath -Encoding utf8
+          }
+
+          "notes_path=$notesPath" >> $env:GITHUB_OUTPUT
+
       - name: Create GitHub release from tag
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.raw_version }}
           name: ${{ steps.version.outputs.raw_version }}
+          body_path: ${{ steps.notes.outputs.notes_path }}
           generate_release_notes: true
           prerelease: ${{ contains(steps.version.outputs.package_version, '-') }}
           files: |
