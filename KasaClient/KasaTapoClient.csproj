@@ -10,7 +10,7 @@
 		<TargetFrameworks>net472;net10.0</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<PackageId>KasaTapoClient</PackageId>
-		<Version>1.1.6</Version>
+		<Version>1.1.7</Version>
 		<Authors>Neil Colvin</Authors>
 		<Company>Neil Colvin</Company>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -21,7 +21,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>Fix LegacyTransport (KL130 and other legacy XOR/TCP devices) not honoring a connect timeout/cancellation promptly: on .NET Framework, TcpClient.ConnectAsync(host, port) performs synchronous DNS resolution on the calling thread before the returned Task exists, so a slow or hanging DNS lookup could block the connect attempt entirely before the Task.WhenAny timeout/cancellation race was ever armed. The connect call is now dispatched to a background thread (net472) or uses the cancellation-aware TcpClient.ConnectAsync overload directly (net10.0+), so a configured connect timeout or an external CancellationToken is honored promptly even when DNS resolution is slow.</PackageReleaseNotes>
+		<PackageReleaseNotes>Fix KlapTransport not honoring DeviceConfiguration.Timeout on .NET 10: the non-net472 HttpClient-based request path (used for handshake and encrypted requests) only respected whatever CancellationToken the caller supplied and never derived a deadline from the configured Timeout, unlike the net472 HttpWebRequest fallback and TpapTransport. A caller that did not supply its own deadline (e.g. CancellationToken.None) would silently fall back to the shared HttpClient's runtime default of about 100 seconds instead of the configured timeout. KlapTransport now wraps every non-net472 request with a per-call timeout derived from DeviceConfiguration.Timeout, matching the behavior already present in TpapTransport and the net472 KLAP fallback.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>

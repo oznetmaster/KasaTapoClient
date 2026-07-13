@@ -243,9 +243,28 @@ internal sealed class KlapTransport : IDisposableDeviceTransport
 			request.Headers.TryAddWithoutValidation ("Cookie", cookieHeader);
 			}
 
-		return await HTTP_CLIENT.SendAsync (request, HttpCompletionOption.ResponseContentRead, cancellationToken).ConfigureAwait (false);
+		// HTTP_CLIENT is shared/static with no Timeout set, so DeviceConfiguration.Timeout must be
+		// enforced per-call here; otherwise a caller that does not supply its own deadline (e.g.
+		// CancellationToken.None) would fall back to the runtime HttpClient default (~100 seconds).
+		using CancellationTokenSource? timeoutSource = CreateOperationTimeoutSource (_configuration.Timeout, cancellationToken);
+		CancellationToken operationCancellationToken = timeoutSource?.Token ?? cancellationToken;
+		return await HTTP_CLIENT.SendAsync (request, HttpCompletionOption.ResponseContentRead, operationCancellationToken).ConfigureAwait (false);
 		#endif
 		}
+
+	#if !NETFRAMEWORK
+	private static CancellationTokenSource? CreateOperationTimeoutSource (TimeSpan timeout, CancellationToken cancellationToken)
+		{
+		if (timeout <= TimeSpan.Zero || timeout == Timeout.InfiniteTimeSpan)
+			{
+			return null;
+			}
+
+		CancellationTokenSource timeoutSource = CancellationTokenSource.CreateLinkedTokenSource (cancellationToken);
+		timeoutSource.CancelAfter (timeout);
+		return timeoutSource;
+		}
+	#endif
 
 	#if NETFRAMEWORK
 	private async Task<HttpResponseMessage> PostBytesNetFrameworkAsync (Uri uri, byte[] payload, CancellationToken cancellationToken)
