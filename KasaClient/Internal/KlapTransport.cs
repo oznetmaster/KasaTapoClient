@@ -274,7 +274,7 @@ internal sealed class KlapTransport : IDisposableDeviceTransport
 
 		using (cancellationToken.Register (static state => ((HttpWebRequest)state!).Abort (), request))
 			{
-			using (Stream requestStream = await request.GetRequestStreamAsync ().ConfigureAwait (false))
+			using (Stream requestStream = await WaitWithCancellationAsync (request.GetRequestStreamAsync (), cancellationToken).ConfigureAwait (false))
 				{
 					await requestStream.WriteAsync (payload, 0, payload.Length, cancellationToken).ConfigureAwait (false);
 				}
@@ -282,7 +282,7 @@ internal sealed class KlapTransport : IDisposableDeviceTransport
 			HttpWebResponse response;
 			try
 				{
-					response = (HttpWebResponse)await request.GetResponseAsync ().ConfigureAwait (false);
+					response = (HttpWebResponse)await WaitWithCancellationAsync (request.GetResponseAsync (), cancellationToken).ConfigureAwait (false);
 				}
 			catch (WebException ex) when (ex.Response is HttpWebResponse errorResponse)
 				{
@@ -349,6 +349,31 @@ internal sealed class KlapTransport : IDisposableDeviceTransport
 		using var memoryStream = new MemoryStream ();
 		await responseStream.CopyToAsync (memoryStream).ConfigureAwait (false);
 		return memoryStream.ToArray ();
+		}
+
+	// HttpWebRequest.Abort() (registered against the CancellationToken above) does not always
+	// promptly unblock an in-flight GetRequestStreamAsync/GetResponseAsync call on .NET Framework;
+	// the underlying task can remain pending until the request's own Timeout elapses. Racing the
+	// task against the cancellation token here ensures the caller observes cancellation as soon as
+	// the token fires, rather than waiting for Abort() to take effect on the original task.
+	private static async Task<T> WaitWithCancellationAsync<T> (Task<T> task, CancellationToken cancellationToken)
+		{
+		if (task.IsCompleted || !cancellationToken.CanBeCanceled)
+			{
+			return await task.ConfigureAwait (false);
+			}
+
+		var cancellationCompletionSource = new TaskCompletionSource<bool> (TaskCreationOptions.RunContinuationsAsynchronously);
+		using (cancellationToken.Register (static state => ((TaskCompletionSource<bool>)state!).TrySetResult (true), cancellationCompletionSource))
+			{
+			Task completedTask = await Task.WhenAny (task, cancellationCompletionSource.Task).ConfigureAwait (false);
+			if (completedTask == cancellationCompletionSource.Task)
+				{
+				cancellationToken.ThrowIfCancellationRequested ();
+				}
+
+			return await task.ConfigureAwait (false);
+			}
 		}
 	#endif
 
