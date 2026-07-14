@@ -6,6 +6,8 @@ TP-Link, Kasa, and Tapo are trademarks of their respective owners. This project 
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+See [CHANGELOG.md](CHANGELOG.md) for a summary of all release history, or the [GitHub releases](https://github.com/oznetmaster/KasaTapoClient/releases) page for full per-version details and build assets.
+
 ## Supported Platforms
 
 | Target Framework | Supported |
