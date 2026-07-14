@@ -19,7 +19,7 @@ This repository uses the public `python-kasa` project as an upstream reference f
 The upstream `python-kasa` project carries its own copyright and license terms.
 Those terms apply to that project and its source distribution, not automatically to this repository.
 
-At the time of local release preparation, the upstream repository includes GPLv3 licensing text and project-level copyright notices in its root `LICENSE` file. If code is copied directly from upstream in future changes, the licensing impact must be reviewed before release.
+At the time of local release preparation, the upstream repository includes GPLv3 licensing text and project-level copyright notices in its root `LICENSE` file. No source code from `python-kasa` has been copied into this repository; source file header comments referencing `python-kasa` describe independently-written code whose behavior was modeled after the upstream project for protocol/compatibility purposes only. If code is copied directly from upstream in future changes, the licensing impact must be reviewed before release.
 
 ## Referenced support and documentation material
 

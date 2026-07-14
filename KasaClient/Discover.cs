@@ -1,7 +1,7 @@
 // Copyright © 2026 Neil Colvin.
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
-// Adapted from python-kasa (https://github.com/python-kasa/python-kasa)
-// Original work Copyright (c) python-kasa contributors, MIT License
+// Behavior modeled after the independent python-kasa project (https://github.com/python-kasa/python-kasa)
+// for protocol/compatibility reference only; no python-kasa source was copied. See ATTRIBUTIONS.md.
 
 using System;
 using System.Collections.Generic;
