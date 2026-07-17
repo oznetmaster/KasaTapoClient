@@ -65,7 +65,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			32),
 		};
 	// SecureRandom's parameterless constructor triggers BouncyCastle's default seeding path, which on
-	// some platforms (notably slower/embedded CPUs such as Crestron processors) performs an expensive
+	// some platforms (notably slower/embedded CPUs) performs an expensive
 	// entropy-gathering routine (e.g. a counter/timing-based generator) that can take a long time on
 	// first use. Since this field is static, that cost is paid exactly once per process, right when the
 	// very first TPAP handshake runs during driver startup - this matches the observed multi-minute
@@ -635,7 +635,38 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 		webRequest.Method = request.Method.Method;
 		webRequest.AllowAutoRedirect = false;
 		webRequest.KeepAlive = false;
+		// On .NET Framework, HttpWebRequest.Proxy is NOT null by default -- it returns
+		// WebRequest.DefaultWebProxy, and the very first access of HttpWebRequest.ServicePoint
+		// resolves the ServicePoint using the CURRENT proxy (ServicePointManager.FindServicePoint),
+		// which triggers system proxy auto-detection (WPAD: probing for a 'wpad' host, reading proxy
+		// configuration, etc.). On a Windows PC this resolves instantly, but on an embedded Mono/Linux
+		// host the probe stalls until it times out; because the negative proxy
+		// result is cached process-wide, the FIRST connects each hang for the full outer
+		// StartupConnectTimeout (~20s, logs stop at "acquiring request stream" and never reach
+		// "request stream acquired"), then every request after the cache is populated connects in
+		// milliseconds -- and multiple queued devices all release together at that moment. These are
+		// direct local-network device connections by IP; a proxy is never wanted. Force the proxy to
+		// null BEFORE touching webRequest.ServicePoint below so no WPAD/system-proxy detection is ever
+		// attempted. NOTE: this assignment MUST precede the ServicePoint accesses that follow, because
+		// the ServicePoint is bound to whatever proxy is in effect at the moment it is first accessed.
+		webRequest.Proxy = null;
 		webRequest.ServicePoint.Expect100Continue = false;
+		// On .NET Framework the per-host ServicePoint.ConnectionLimit defaults to 2, and an
+		// HttpWebRequest.Abort() (used above to enforce cancellation/timeouts) does not reliably
+		// return its underlying connection to the ServicePoint pool. When a startup connect to a
+		// device repeatedly times out and aborts, those leaked connections permanently occupy the
+		// two available slots for that host, after which every subsequent GetRequestStreamAsync
+		// call for the SAME host blocks forever waiting for a free connection slot (observed as a
+		// single device, e.g. an L530, that never reconnects while every other host connects fine,
+		// with logs stopping at "posting login/discover" and never reaching "request stream
+		// acquired"). Raise the per-host connection limit so leaked/aborted connections cannot
+		// starve the pool and deadlock future requests to that device. A bounded-but-generous value
+		// (rather than int.MaxValue) is used deliberately: this transport may run on a resource-constrained
+		// embedded Mono/Linux host, and each leaked/aborted connection still holds an OS socket
+		// until finalization. Capping at 20 gives ample headroom over the default 2 (the transport
+		// serializes requests via _handshakeLock, so real concurrency stays near 1) while bounding
+		// worst-case socket/handle accumulation from repeated connect-timeout/abort cycles.
+		webRequest.ServicePoint.ConnectionLimit = 20;
 		// Matches the HttpClientHandler.ServerCertificateCustomValidationCallback behavior used by
 		// the non-.NET Framework HttpClient path above: these are local-network TPAP devices that
 		// commonly present self-signed certificates, so certificate identity is intentionally not
@@ -663,6 +694,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			{
 			if (payload.Length > 0 || string.Equals (request.Method.Method, "POST", StringComparison.OrdinalIgnoreCase))
 				{
+				Debug.WriteLine ($"[KasaTapoClient.Tpap] '{request.RequestUri?.Host}' http: acquiring request stream (connecting, proxy disabled)...");
 				using Stream requestStream = await WaitWithCancellationAsync (webRequest.GetRequestStreamAsync (), cancellationToken).ConfigureAwait (false);
 				long connectElapsedMs = stopwatch.ElapsedMilliseconds;
 				Debug.WriteLine ($"[KasaTapoClient.Tpap] '{request.RequestUri?.Host}' http: request stream acquired (connect) after {connectElapsedMs} ms.");

@@ -7,6 +7,10 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
@@ -45,9 +49,111 @@ static async Task<int> RunAsync (IReadOnlyList<string> arguments)
 			"exit" => 0,
 			"quit" => 0,
 			"discover" => await RunDiscoverAsync (arguments).ConfigureAwait (false),
+			"rawdiscover" => await RunRawDiscoverAsync (arguments).ConfigureAwait (false),
 			"host" => await RunHostAsync (arguments).ConfigureAwait (false),
 			_ => Fail ($"Unknown command '{arguments[0]}'."),
 			};
+	}
+
+static async Task<int> RunRawDiscoverAsync (IReadOnlyList<string> arguments)
+	{
+	List<string> positional = arguments.Skip (1).Where (argument => !argument.StartsWith ("--", StringComparison.Ordinal)).ToList ();
+	string protocol = positional.Count > 0 ? ResolveKeyword (positional[0], ConsoleCommandLexicon.RawDiscoveryProtocols) : "smart";
+	int polls = positional.Count > 1 && int.TryParse (positional[1], out int parsedPolls) ? parsedPolls : 3;
+	int timeoutSeconds = positional.Count > 2 && int.TryParse (positional[2], out int parsedTimeout) ? parsedTimeout : 10;
+	bool sameRequest = arguments.Any (argument => string.Equals (argument, "--same", StringComparison.OrdinalIgnoreCase));
+	if (polls < 1 || polls > 10) throw new ArgumentException ("Polls must be between 1 and 10.", nameof (arguments));
+	if (timeoutSeconds < 1 || timeoutSeconds > 60) throw new ArgumentException ("Timeout must be between 1 and 60 seconds.", nameof (arguments));
+
+	bool legacy = protocol == "legacy";
+	var endpoint = new IPEndPoint (IPAddress.Broadcast, legacy ? 9999 : 20002);
+	byte[]? sharedRequest = sameRequest ? (legacy ? CreateRawLegacyDiscoveryQuery () : CreateRawSmartDiscoveryQuery ()) : null;
+	Console.WriteLine ($"Raw UDP discovery: {endpoint} (no Kasa client code, request={(sameRequest ? "same" : "new")})");
+	for (int poll = 1; poll <= polls; poll++)
+		{
+		using var client = new UdpClient (AddressFamily.InterNetwork) { EnableBroadcast = true };
+		client.Client.Bind (new IPEndPoint (IPAddress.Any, 0));
+		byte[] request = sharedRequest ?? (legacy ? CreateRawLegacyDiscoveryQuery () : CreateRawSmartDiscoveryQuery ());
+		Stopwatch stopwatch = Stopwatch.StartNew ();
+		await client.SendAsync (request, request.Length, endpoint).ConfigureAwait (false);
+		var responders = new HashSet<string> (StringComparer.OrdinalIgnoreCase);
+		DateTime expires = DateTime.UtcNow.AddSeconds (timeoutSeconds);
+		while (DateTime.UtcNow < expires)
+			{
+			if (client.Available == 0)
+				{
+				await Task.Delay (50).ConfigureAwait (false);
+				continue;
+				}
+			UdpReceiveResult response = await client.ReceiveAsync ().ConfigureAwait (false);
+			responders.Add (response.RemoteEndPoint.ToString ());
+			}
+		Console.WriteLine ($"Poll {poll}: {responders.Count} response endpoint(s) [{(responders.Count == 0 ? "none" : string.Join (", ", responders))}] {stopwatch.Elapsed.TotalSeconds:0.00}s");
+		}
+	return 0;
+	}
+
+static byte[] CreateRawLegacyDiscoveryQuery ()
+	{
+	byte[] plain = Encoding.UTF8.GetBytes ("{\"system\":{\"get_sysinfo\":{}}}");
+	var encrypted = new byte[plain.Length];
+	byte key = 171;
+	for (int index = 0; index < plain.Length; index++)
+		{
+		encrypted[index] = (byte)(plain[index] ^ key);
+		key = encrypted[index];
+		}
+	return encrypted;
+	}
+
+static byte[] CreateRawSmartDiscoveryQuery ()
+	{
+	byte[] secret = new byte[4];
+	using (RandomNumberGenerator random = RandomNumberGenerator.Create ()) random.GetBytes (secret);
+	using RSA rsa = RSA.Create (2048);
+	RSAParameters parameters = rsa.ExportParameters (false);
+	byte[] publicKeyInfo = EncodeRawSequence (
+		EncodeRawSequence (EncodeRawObjectIdentifier (new byte[] { 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x01 }), new byte[] { 0x05, 0x00 }),
+		EncodeRawBitString (EncodeRawSequence (EncodeRawInteger (parameters.Modulus!), EncodeRawInteger (parameters.Exponent!))));
+	string pem = "-----BEGIN PUBLIC KEY-----\n" + Convert.ToBase64String (publicKeyInfo, Base64FormattingOptions.InsertLineBreaks) + "\n-----END PUBLIC KEY-----\n";
+	byte[] payload = Encoding.UTF8.GetBytes (new JsonObject { ["params"] = new JsonObject { ["rsa_key"] = pem } }.ToJsonString ());
+	var query = new byte[16 + payload.Length];
+	query[0] = 2; query[3] = 1; query[4] = (byte)(payload.Length >> 8); query[5] = (byte)payload.Length; query[6] = 17;
+	Buffer.BlockCopy (secret, 0, query, 8, secret.Length);
+	query[12] = 0x5A; query[13] = 0x6B; query[14] = 0x7C; query[15] = 0x8D;
+	Buffer.BlockCopy (payload, 0, query, 16, payload.Length);
+	uint crc = ComputeRawCrc32 (query);
+	query[12] = (byte)(crc >> 24); query[13] = (byte)(crc >> 16); query[14] = (byte)(crc >> 8); query[15] = (byte)crc;
+	return query;
+	}
+
+static byte[] EncodeRawSequence (params byte[][] values) => EncodeRawAsn1 (0x30, CombineRaw (values));
+static byte[] EncodeRawObjectIdentifier (byte[] value) => EncodeRawAsn1 (0x06, value);
+static byte[] EncodeRawBitString (byte[] value) => EncodeRawAsn1 (0x03, CombineRaw (new byte[] { 0 }, value));
+static byte[] EncodeRawInteger (byte[] value)
+	{
+	int start = 0;
+	while (start < value.Length - 1 && value[start] == 0) start++;
+	byte[] normalized = value.Skip (start).ToArray ();
+	return EncodeRawAsn1 (0x02, (normalized[0] & 0x80) == 0 ? normalized : CombineRaw (new byte[] { 0 }, normalized));
+	}
+static byte[] EncodeRawAsn1 (byte tag, byte[] value)
+	{
+	byte[] length = value.Length < 128 ? new byte[] { (byte)value.Length } : new byte[] { 0x82, (byte)(value.Length >> 8), (byte)value.Length };
+	return CombineRaw (new byte[] { tag }, length, value);
+	}
+static byte[] CombineRaw (params byte[][] values)
+	{
+	byte[] result = new byte[values.Sum (value => value.Length)];
+	int offset = 0;
+	foreach (byte[] value in values) { Buffer.BlockCopy (value, 0, result, offset, value.Length); offset += value.Length; }
+	return result;
+	}
+static uint ComputeRawCrc32 (byte[] data)
+	{
+	uint crc = 0xFFFFFFFF;
+	foreach (byte value in data) { crc ^= value; for (int bit = 0; bit < 8; bit++) crc = (crc & 1) != 0 ? (crc >> 1) ^ 0xEDB88320u : crc >> 1; }
+	return ~crc;
 	}
 
 static async Task<int> RunDiscoverAsync (IReadOnlyList<string> arguments)
@@ -58,10 +164,11 @@ static async Task<int> RunDiscoverAsync (IReadOnlyList<string> arguments)
 		return 0;
 		}
 
-	bool verbose = arguments.Any (static argument => IsDiscoverVerboseOption (argument));
+	bool discoveryOnly = arguments.Any (static argument => IsDiscoverForceOption (argument));
+	bool verbose = !discoveryOnly && arguments.Any (static argument => IsDiscoverVerboseOption (argument));
 	List<string> positionalArguments = arguments
 		.Skip (1)
-		.Where (static argument => !IsDiscoverVerboseOption (argument))
+		.Where (static argument => !IsDiscoverVerboseOption (argument) && !IsDiscoverForceOption (argument))
 		.ToList ();
 
 	TimeSpan timeout = positionalArguments.Count > 0 && int.TryParse (positionalArguments[0], out int timeoutMilliseconds)
@@ -78,6 +185,12 @@ static async Task<int> RunDiscoverAsync (IReadOnlyList<string> arguments)
 
 	foreach (DiscoveryResult device in devices)
 		{
+		if (discoveryOnly)
+			{
+			Console.WriteLine ($"{device.Host} | {device.DeviceType} | {device.Alias ?? "(no alias)"} | {device.Model ?? "(unknown model)"}");
+			continue;
+			}
+
 		string? displayAlias = device.Alias;
 		bool shouldExpandChildren = device.DeviceType == DeviceType.Hub || IsDiscoveryChildExpansionCandidate (device);
 		KasaDevice? connectedDevice = null;
@@ -2418,6 +2531,10 @@ static bool IsDiscoverVerboseOption (string value)
 		&& "verbose".StartsWith (optionText, StringComparison.OrdinalIgnoreCase);
 	}
 
+static bool IsDiscoverForceOption (string value) =>
+	string.Equals (value, "-f", StringComparison.OrdinalIgnoreCase)
+	|| string.Equals (value, "--discovery-only", StringComparison.OrdinalIgnoreCase);
+
 static bool HasHelpArgument (IReadOnlyList<string> arguments, int index) =>
 	arguments.Count > index && IsHelpCommand (arguments[index].Trim ().ToLowerInvariant ());
 
@@ -2428,7 +2545,8 @@ static void PrintGeneralUsage ()
 	Console.WriteLine ("  he[lp]");
 	Console.WriteLine ("  e[xit]");
 	Console.WriteLine ("  q[uit]");
-	Console.WriteLine ("  d[iscover] [timeoutMs] [target] [--[v]erbose]");
+	Console.WriteLine ("  d[iscover] [timeoutMs] [target] [-f|--discovery-only] [--[v]erbose]");
+	Console.WriteLine ("  r[awdiscover] [l[egacy]|s[mart]] [polls] [timeoutSeconds] [--same]");
 	Console.WriteLine ("  ho[st] <address> [s[tate]|on|of[f]|r[aw] <json> [--update]|sm[art] <method> [paramsJson] [--update]|ser[ialize] [count]] [options]");
 	Console.WriteLine ("  ho[st] <address> c[hild] <childId|index> [s[tate]|on|of[f]|l[ogs]|w[atch]] [options]");
 	Console.WriteLine ("  ho[st] <address> l[ight] [s[tate]|on [--t[ransition] <ms>]|of[f] [--t[ransition] <ms>]|b[rightness] <0-100> [--t[ransition] <ms>]|tr|transition <on|off>|tr-on|transition-on <seconds>|tr-off|transition-off <seconds>|t[emp] <kelvin>|h[sv] <hue> <saturation> <value>|c[olor] <name>|c[olor] <hue> <saturation> <value>|e[ffect] [name|off|list]] [options]");
@@ -2438,9 +2556,10 @@ static void PrintGeneralUsage ()
 
 static void PrintDiscoverUsage ()
 	{
-	Console.WriteLine ("d[iscover] [timeoutMs] [target] [--[v]erbose]");
+	Console.WriteLine ("d[iscover] [timeoutMs] [target] [-f|--discovery-only] [--[v]erbose]");
 	Console.WriteLine ($"  timeoutMs  Optional discovery timeout in milliseconds. Default: {DEFAULT_DISCOVERY_TIMEOUT_MILLISECONDS}");
 	Console.WriteLine ("  target     Optional IPv4 target or broadcast address. Default: 255.255.255.255");
+	Console.WriteLine ("  -f, --discovery-only  Print only UDP discovery response data; do not connect to devices.");
 	Console.WriteLine ("  --[v]erbose  Connect to each discovered device and print full status output.");
 	}
 
@@ -2774,7 +2893,8 @@ static class ConsoleImplicitProfileStore
 
 static class ConsoleCommandLexicon
 	{
-	public static readonly string[] TopLevelCommands = ["help", "exit", "quit", "discover", "host"];
+	public static readonly string[] TopLevelCommands = ["help", "exit", "quit", "discover", "rawdiscover", "host"];
+	public static readonly string[] RawDiscoveryProtocols = ["legacy", "smart"];
 	public static readonly string[] HostCommands = ["child", "light", "setup", "profiles", "state", "on", "off", "raw", "smart", "serialize"];
 	public static readonly string[] HostActions = ["state", "on", "off", "scan", "detected", "pair", "unpair", "raw", "smart", "serialize"];
 	public static readonly string[] ChildActions = ["state", "on", "off", "logs", "watch"];

@@ -46,34 +46,63 @@ internal sealed class LegacyTransport : IDisposableDeviceTransport
 		await _connectionLock.WaitAsync (cancellationToken).ConfigureAwait (false);
 		try
 			{
-			NetworkStream stream = await EnsureConnectedAsync (cancellationToken).ConfigureAwait (false);
+			byte[] requestBytes = KasaCipher.EncryptWithHeader (payload);
+
+			// Stale legacy connections are handled with two complementary safeguards. First,
+			// EnsureConnectedAsync proactively drops any connection that has been idle longer than
+			// IDLE_CONNECTION_LIFETIME, since the device may have already closed its end. Second, a
+			// legacy device is free to close an idle connection at any time (even within that window),
+			// so a reused connection failing on its first write/read is a normal, expected "idle
+			// timeout on the far end" condition -- not a real offline/failure signal. When that happens
+			// on a *reused* connection we transparently reconnect and retry once before giving up. Only
+			// a failure against a freshly established connection indicates the device is genuinely
+			// unreachable/offline.
+			bool isReusedConnection = _client is { Connected: true } && _stream is not null
+				&& DateTime.UtcNow - _lastActivityUtc <= IDLE_CONNECTION_LIFETIME;
+
 			try
 				{
-				byte[] requestBytes = KasaCipher.EncryptWithHeader (payload);
-				await WriteAsync (stream, requestBytes, cancellationToken).ConfigureAwait (false);
-
-				byte[] header = await ReadExactAsync (stream, HEADER_SIZE, cancellationToken).ConfigureAwait (false);
-				int responseLength = ReadLength (header);
-				if (responseLength is < 0 or > MAX_RESPONSE_BYTES)
-					{
-					throw new InvalidDataException ($"The device returned an invalid payload length of {responseLength} bytes.");
-					}
-
-				byte[] body = await ReadExactAsync (stream, responseLength, cancellationToken).ConfigureAwait (false);
-				_lastActivityUtc = DateTime.UtcNow;
-				return KasaCipher.Decrypt (body);
+				NetworkStream stream = await EnsureConnectedAsync (cancellationToken).ConfigureAwait (false);
+				return await SendOverStreamAsync (stream, requestBytes, cancellationToken).ConfigureAwait (false);
 				}
-			catch
+			catch (Exception) when (isReusedConnection)
 				{
-				// Any failure on an established connection (reset, timeout, protocol error) may leave the
-				// socket in an unusable state. Drop it so the next call reconnects from scratch.
+				// The reused connection was likely closed by the device while idle. Drop it and retry
+				// once against a freshly established connection before treating this as a real failure.
 				ResetConnection ();
-				throw;
+				NetworkStream stream = await EnsureConnectedAsync (cancellationToken).ConfigureAwait (false);
+				return await SendOverStreamAsync (stream, requestBytes, cancellationToken).ConfigureAwait (false);
 				}
 			}
 		finally
 			{
 			_connectionLock.Release ();
+			}
+		}
+
+	private async Task<string> SendOverStreamAsync (NetworkStream stream, byte[] requestBytes, CancellationToken cancellationToken)
+		{
+		try
+			{
+			await WriteAsync (stream, requestBytes, cancellationToken).ConfigureAwait (false);
+
+			byte[] header = await ReadExactAsync (stream, HEADER_SIZE, cancellationToken).ConfigureAwait (false);
+			int responseLength = ReadLength (header);
+			if (responseLength is < 0 or > MAX_RESPONSE_BYTES)
+				{
+				throw new InvalidDataException ($"The device returned an invalid payload length of {responseLength} bytes.");
+				}
+
+			byte[] body = await ReadExactAsync (stream, responseLength, cancellationToken).ConfigureAwait (false);
+			_lastActivityUtc = DateTime.UtcNow;
+			return KasaCipher.Decrypt (body);
+			}
+		catch
+			{
+			// Any failure on an established connection (reset, timeout, protocol error) may leave the
+			// socket in an unusable state. Drop it so the next call reconnects from scratch.
+			ResetConnection ();
+			throw;
 			}
 		}
 
@@ -86,9 +115,9 @@ internal sealed class LegacyTransport : IDisposableDeviceTransport
 				return _stream;
 				}
 
-			// The connection has been idle long enough that the device may have closed it
-			// on its end already. Proactively close and reconnect rather than risk a failed
-			// write/read against a half-open socket.
+			// The connection has been idle long enough that the device may have closed it on its
+			// end already. Proactively close and reconnect rather than risk a failed write/read
+			// against a half-open socket.
 			ResetConnection ();
 			}
 
@@ -193,7 +222,10 @@ internal sealed class LegacyTransport : IDisposableDeviceTransport
 #if NET10_0_OR_GREATER
 		await stream.WriteAsync(buffer.AsMemory(), timeoutSource.Token).ConfigureAwait(false);
 #else
-		await stream.WriteAsync (buffer, 0, buffer.Length, timeoutSource.Token).ConfigureAwait (false);
+		using (timeoutSource.Token.Register (() => ResetConnection ()))
+			{
+			await stream.WriteAsync (buffer, 0, buffer.Length, timeoutSource.Token).ConfigureAwait (false);
+			}
 #endif
 		}
 
@@ -208,7 +240,11 @@ internal sealed class LegacyTransport : IDisposableDeviceTransport
 #if NET10_0_OR_GREATER
 			int bytesRead = await stream.ReadAsync(buffer.AsMemory(offset, length - offset), timeoutSource.Token).ConfigureAwait(false);
 #else
-			int bytesRead = await stream.ReadAsync (buffer, offset, length - offset, timeoutSource.Token).ConfigureAwait (false);
+			int bytesRead;
+			using (timeoutSource.Token.Register (() => ResetConnection ()))
+				{
+				bytesRead = await stream.ReadAsync (buffer, offset, length - offset, timeoutSource.Token).ConfigureAwait (false);
+				}
 #endif
 			if (bytesRead == 0)
 				{

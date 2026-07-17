@@ -35,6 +35,18 @@ public static class Discover
 		}
 
 	/// <summary>
+	/// Broadcasts only the legacy UDP discovery request on port 9999.
+	/// </summary>
+	public static async Task<IReadOnlyList<DiscoveryResult>> DiscoverLegacyAsync (
+		TimeSpan? timeout = null,
+		string target = "255.255.255.255",
+		CancellationToken cancellationToken = default)
+		{
+		var client = new DiscoveryClient (timeout ?? TimeSpan.FromSeconds (3));
+		return await client.DiscoverLegacyAsync (target, cancellationToken).ConfigureAwait (false);
+		}
+
+	/// <summary>
 	/// Connects to a single device host and returns a ready-to-use device instance.
 	/// </summary>
 	/// <param name="host">The device host name or IP address.</param>

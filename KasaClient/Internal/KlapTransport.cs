@@ -277,7 +277,7 @@ internal sealed class KlapTransport : IDisposableDeviceTransport
 		request.ContentType = "application/octet-stream";
 		request.ContentLength = payload.Length;
 		request.CookieContainer = _cookies;
-		// KeepAlive must be false to avoid a documented Crestron/Mono HttpWebRequest leak
+		// KeepAlive must be false to avoid a documented Mono HttpWebRequest leak
 		// (a Timer/DelayPromise object that is never released when KeepAlive is true).
 		request.KeepAlive = false;
 		request.ServicePoint.Expect100Continue = false;
