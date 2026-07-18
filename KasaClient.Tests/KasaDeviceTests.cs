@@ -1756,7 +1756,7 @@ public sealed class KasaDeviceTests
 				connectionParameters: new DeviceConnectionParameters (DeviceFamilyKind.SmartTapoPlug, DeviceEncryptionKind.Aes)));
 		var device = new KasaDevice (configuration, transport);
 
-		await Assert.ThrowsExceptionAsync<InvalidOperationException> (() => device.SetLightEffectAsync ("Aurora")).ConfigureAwait (false);
+		await Assert.ThrowsExactlyAsync<InvalidOperationException> (() => device.SetLightEffectAsync ("Aurora")).ConfigureAwait (false);
 		}
 
 	[TestMethod]
@@ -1777,7 +1777,7 @@ public sealed class KasaDeviceTests
 		var device = new KasaDevice (configuration, transport);
 
 		await device.UpdateAsync ().ConfigureAwait (false);
-		await Assert.ThrowsExceptionAsync<InvalidOperationException> (() => device.TurnChildOnAsync ("missing-child")).ConfigureAwait (false);
+		await Assert.ThrowsExactlyAsync<InvalidOperationException> (() => device.TurnChildOnAsync ("missing-child")).ConfigureAwait (false);
 		}
 
 	[TestMethod]
@@ -1820,7 +1820,7 @@ public sealed class KasaDeviceTests
 		var device = new KasaDevice (configuration, transport);
 
 		await device.UpdateAsync ().ConfigureAwait (false);
-		await Assert.ThrowsExceptionAsync<InvalidOperationException> (() => device.GetScannedChildDevicesAsync ()).ConfigureAwait (false);
+		await Assert.ThrowsExactlyAsync<InvalidOperationException> (() => device.GetScannedChildDevicesAsync ()).ConfigureAwait (false);
 		}
 
 	[TestMethod]

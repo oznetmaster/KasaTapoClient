@@ -126,12 +126,12 @@ internal static class LiveTestSupport
 		LiveTestSettings? settings = SETTINGS.Value;
 		if (settings is null || !settings.Enabled)
 			{
-			return new[] { new object?[] { null } };
+			return new[] { new object[] { null! } };
 			}
 
 		if (!settings.Devices.TryGetValue (role, out LiveDeviceSettings? singleDevice) || singleDevice is null)
 			{
-			return new[] { new object?[] { null } };
+			return new[] { new object[] { null! } };
 			}
 
 		IReadOnlyList<LiveDeviceSettings> devices = singleDevice.Hosts is { Count: > 0 }
@@ -146,7 +146,7 @@ internal static class LiveTestSupport
 
 		if (hosts.Length == 0)
 			{
-			return new[] { new object?[] { null } };
+			return new[] { new object[] { null! } };
 			}
 
 		return devices

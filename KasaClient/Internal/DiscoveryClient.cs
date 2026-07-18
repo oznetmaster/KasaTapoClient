@@ -23,7 +23,7 @@ internal sealed class DiscoveryClient
 	private const int KASA_DISCOVERY_PORT = 9999;
 	private const int TAPO_DISCOVERY_PORT = 20002;
 	private const int KLAP_DISCOVERY_PORT = 20004;
-	private const int DISCOVERY_PACKET_COUNT = 1;
+	private const int DISCOVERY_PACKET_COUNT = 3;
 	private const int UDP_RECEIVE_BUFFER_SIZE = 256 * 1024;
 	#if DEBUG
 	private static int _nextDiagnosticSessionId;
@@ -74,11 +74,11 @@ internal sealed class DiscoveryClient
 		var kasaEndpoint = new IPEndPoint (targetAddress, KASA_DISCOVERY_PORT);
 		IPEndPoint? tapoEndpoint = includeSmart ? new IPEndPoint (targetAddress, TAPO_DISCOVERY_PORT) : null;
 
-		var results = new Dictionary<string, DiscoveryResult> (StringComparer.OrdinalIgnoreCase);
+		var results = new Dictionary<(string Host, DeviceTransportKind TransportKind), DiscoveryResult> ();
 		DateTimeOffset expiresAt = DateTimeOffset.UtcNow.Add (_timeout);
 		Task<UdpReceiveResult>? kasaReceiveTask = null;
 		Task<UdpReceiveResult>? smartReceiveTask = null;
-		LogDiagnostic ($"[KasaTapoClient.Discovery:{diagnosticSessionId}] target={targetAddress} timeout={_timeout} buffer={UDP_RECEIVE_BUFFER_SIZE} legacyLocal={kasaClient.Client.LocalEndPoint} smartLocal={smartClient?.Client.LocalEndPoint?.ToString () ?? "disabled"} smartRequestLength={smartRequest?.Length ?? 0} smartRequestFingerprint={(smartRequest is null ? "disabled" : CreateFingerprint (smartRequest))}");
+		LogDiagnostic ($"[KasaTapoClient.Discovery:{diagnosticSessionId}] target={targetAddress} timeout={_timeout} buffer={UDP_RECEIVE_BUFFER_SIZE} smart={(smartClient is not null ? "enabled" : "disabled")}");
 		Task broadcastTask = BroadcastAsync (diagnosticSessionId, kasaClient, smartClient, kasaRequest, smartRequest, kasaEndpoint, tapoEndpoint, cancellationToken);
 		try
 			{
@@ -117,14 +117,14 @@ internal sealed class DiscoveryClient
 							#if DEBUG
 							parseSuccessCount++;
 							#endif
-							LogDiagnostic ($"[KasaTapoClient.Discovery:{diagnosticSessionId}] legacy packet parsed host={packet.RemoteEndPoint} deviceId={result.DeviceId ?? "<null>"} alias={result.Alias ?? "<null>"}");
+							LogDiagnostic ($"[KasaTapoClient.Discovery:{diagnosticSessionId}] legacy packet parsed host={packet.RemoteEndPoint} bytes={packet.Buffer.Length} deviceId={result.DeviceId ?? "<null>"} alias={result.Alias ?? "<null>"}");
 							}
 						else
 							{
 							#if DEBUG
 							parseFailureCount++;
 							#endif
-							LogDiagnostic ($"[KasaTapoClient.Discovery:{diagnosticSessionId}] legacy packet failed to parse host={packet.RemoteEndPoint}");
+							LogDiagnostic ($"[KasaTapoClient.Discovery:{diagnosticSessionId}] legacy packet failed to parse host={packet.RemoteEndPoint} bytes={packet.Buffer.Length}");
 							}
 						}
 					catch (OperationCanceledException)
@@ -162,14 +162,14 @@ internal sealed class DiscoveryClient
 							#if DEBUG
 							parseSuccessCount++;
 							#endif
-							LogDiagnostic ($"[KasaTapoClient.Discovery:{diagnosticSessionId}] smart packet parsed host={packet.RemoteEndPoint} deviceId={result.DeviceId ?? "<null>"} alias={result.Alias ?? "<null>"}");
+							LogDiagnostic ($"[KasaTapoClient.Discovery:{diagnosticSessionId}] smart packet parsed host={packet.RemoteEndPoint} bytes={packet.Buffer.Length} deviceId={result.DeviceId ?? "<null>"} alias={result.Alias ?? "<null>"}");
 							}
 						else
 							{
 							#if DEBUG
 							parseFailureCount++;
 							#endif
-							LogDiagnostic ($"[KasaTapoClient.Discovery:{diagnosticSessionId}] smart packet failed to parse host={packet.RemoteEndPoint}");
+							LogDiagnostic ($"[KasaTapoClient.Discovery:{diagnosticSessionId}] smart packet failed to parse host={packet.RemoteEndPoint} bytes={packet.Buffer.Length}");
 							}
 						}
 					catch (OperationCanceledException)
@@ -244,11 +244,12 @@ internal sealed class DiscoveryClient
 			}
 		}
 
-	private static void StorePreferredDiscoveryResult (Dictionary<string, DiscoveryResult> results, DiscoveryResult candidate)
+	private static void StorePreferredDiscoveryResult (Dictionary<(string Host, DeviceTransportKind TransportKind), DiscoveryResult> results, DiscoveryResult candidate)
 		{
-		if (!results.TryGetValue (candidate.Host, out DiscoveryResult? existing))
+		var key = (candidate.Host, candidate.TransportKind);
+		if (!results.ContainsKey (key))
 			{
-			results[candidate.Host] = candidate;
+			results[key] = candidate;
 			}
 		}
 
@@ -266,11 +267,11 @@ internal sealed class DiscoveryClient
 		for (int attempt = 0; attempt < DISCOVERY_PACKET_COUNT; attempt++)
 			{
 			int kasaBytes = await kasaClient.SendAsync (kasaRequest, kasaRequest.Length, kasaEndpoint).ConfigureAwait (false);
-			LogDiagnostic ($"[KasaTapoClient.Discovery:{diagnosticSessionId}] send attempt={attempt + 1} protocol=legacy local={kasaClient.Client.LocalEndPoint} remote={kasaEndpoint} bytes={kasaBytes}");
+			LogDiagnostic ($"[KasaTapoClient.Discovery:{diagnosticSessionId}] send attempt={attempt + 1} protocol=legacy remote={kasaEndpoint} bytes={kasaBytes}");
 			if (smartClient is not null && smartRequest is not null && tapoEndpoint is not null)
 				{
 				int tapoBytes = await smartClient.SendAsync (smartRequest, smartRequest.Length, tapoEndpoint).ConfigureAwait (false);
-				LogDiagnostic ($"[KasaTapoClient.Discovery:{diagnosticSessionId}] send attempt={attempt + 1} protocol=tapo local={smartClient.Client.LocalEndPoint} remote={tapoEndpoint} bytes={tapoBytes}");
+				LogDiagnostic ($"[KasaTapoClient.Discovery:{diagnosticSessionId}] send attempt={attempt + 1} protocol=tapo remote={tapoEndpoint} bytes={tapoBytes}");
 				}
 
 			if (attempt == DISCOVERY_PACKET_COUNT - 1 || delay <= TimeSpan.Zero)
@@ -280,18 +281,6 @@ internal sealed class DiscoveryClient
 
 			await Task.Delay (delay, cancellationToken).ConfigureAwait (false);
 			}
-		}
-
-	private static string CreateFingerprint (byte[] value)
-		{
-		#if NET10_0_OR_GREATER
-		byte[] hash = SHA256.HashData (value);
-		return Convert.ToHexString (hash, 0, 8);
-		#else
-		using SHA256 sha256 = SHA256.Create ();
-		byte[] hash = sha256.ComputeHash (value);
-		return BitConverter.ToString (hash, 0, 8).Replace ("-", string.Empty);
-		#endif
 		}
 
 	private static bool TryParseTapoDiscoveryResult (UdpReceiveResult packet, out DiscoveryResult? result)

@@ -86,11 +86,17 @@ dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework ne
 ```csharp
 using KasaTapoClient;
 
-IReadOnlyList<DiscoveryResult> discoveredDevices = await Discover.DiscoverDevicesAsync().ConfigureAwait(false);
+IReadOnlyList<DiscoveryResult> discoveredDevices = await Discover.DiscoverAsync().ConfigureAwait(false);
 DiscoveryResult firstDevice = discoveredDevices[0];
 
 using KasaDevice discoveredDevice = await Discover.ConnectAsync(firstDevice.Configuration).ConfigureAwait(false);
 await discoveredDevice.UpdateAsync().ConfigureAwait(false);
+```
+
+To broadcast only the legacy (port 9999) discovery request, e.g. when smart/Tapo discovery is not needed or not desired on a given network:
+
+```csharp
+IReadOnlyList<DiscoveryResult> legacyDevices = await Discover.DiscoverLegacyAsync().ConfigureAwait(false);
 ```
 
 If you already know the device host or want a deterministic connection path, resolve the configuration directly:

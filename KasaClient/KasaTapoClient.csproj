@@ -10,7 +10,7 @@
 		<TargetFrameworks>net472;net10.0</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<PackageId>KasaTapoClient</PackageId>
-		<Version>1.1.10</Version>
+		<Version>1.1.11</Version>
 		<Authors>Neil Colvin</Authors>
 		<Company>Neil Colvin</Company>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -21,7 +21,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>Fixed a startup performance issue in the TPAP transport where the first secure handshake per process could take several minutes on slower/embedded CPU hosts. The internal SecureRandom instance previously relied on BouncyCastle's default timing-based entropy seeding, which is CPU-speed dependent; it now seeds from the platform's cryptographically secure RNG (CryptoApiRandomGenerator) instead, eliminating the delay with no change to cryptographic security. This is an internal-only change with no public API impact. Added unit tests verifying fast, non-degenerate SecureRandom seeding.</PackageReleaseNotes>
+		<PackageReleaseNotes>Fixed a discovery result bug where a device that replied to both the legacy and smart/Tapo discovery broadcasts would only have one of the two results kept; both are now kept, keyed by host and transport kind. Added Discover.DiscoverLegacyAsync/DiscoveryClient.DiscoverLegacyAsync for broadcasting only the legacy (port 9999) discovery request. Fixed LegacyTransport to transparently reconnect and retry once when a reused idle connection was closed by the device, and to reliably drop the connection on a write/read timeout on .NET Framework. Fixed TpapTransport to disable system proxy auto-detection (which could stall the first connect for up to the full startup timeout on embedded Mono/Linux hosts) and raised its per-host connection limit to avoid connection-pool starvation after repeated timeout/abort cycles.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>

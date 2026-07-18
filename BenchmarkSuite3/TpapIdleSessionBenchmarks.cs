@@ -132,7 +132,7 @@ public class TpapIdleSessionBenchmarks
             return null!;
         }
 
-        return JsonSerializer.Deserialize<BenchmarkConnectionProfile>(File.ReadAllText(path));
+        return JsonSerializer.Deserialize<BenchmarkConnectionProfile>(File.ReadAllText(path))!;
     }
 
     private static async Task<DeviceConfiguration> CreateResolvedConfigurationAsync(BenchmarkConnectionProfile profile)
