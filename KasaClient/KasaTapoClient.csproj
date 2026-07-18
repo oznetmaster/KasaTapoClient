@@ -21,7 +21,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>Migrated the JSON serialization stack from System.Text.Json to Newtonsoft.Json across the core library, console app, tests, benchmarks, and Crestron driver, improving compatibility on .NET Framework 4.7.2 and embedded Mono/Crestron hosts (avoids extra binding-redirect dependencies and resolves ambiguity with SimplSharpNewtonsoft in the Crestron driver). No public behavior changes; validated with a full solution build and live device integration tests.</PackageReleaseNotes>
+		<PackageReleaseNotes>Migrated the JSON serialization stack from System.Text.Json to Newtonsoft.Json across the core library, console app, tests, and benchmarks, improving compatibility on .NET Framework 4.7.2 and embedded Mono hosts (avoids extra binding-redirect dependencies). No public behavior changes; validated with a full solution build and live device integration tests.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>
