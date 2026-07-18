@@ -462,6 +462,27 @@ internal static partial class KasaResponseParser
 
 		[JsonPropertyName ("lighting_effect")]
 		public LegacyLightingEffectDto? LightingEffect { get; set; }
+
+		[JsonPropertyName ("overheated")]
+		public bool? Overheated { get; set; }
+
+		[JsonPropertyName ("power_protection")]
+		public bool? PowerProtection { get; set; }
+
+		[JsonPropertyName ("power_protect")]
+		public bool? PowerProtect { get; set; }
+
+		[JsonPropertyName ("speaker")]
+		public bool? Speaker { get; set; }
+
+		[JsonPropertyName ("smooth_transition_on")]
+		public int? SmoothTransitionOn { get; set; }
+
+		[JsonPropertyName ("smooth_transition_off")]
+		public int? SmoothTransitionOff { get; set; }
+
+		[JsonPropertyName ("transition_period")]
+		public int? TransitionPeriod { get; set; }
 		}
 
 	internal sealed class SmartMethodResponseDto
@@ -484,7 +505,7 @@ internal static partial class KasaResponseParser
 
 	internal sealed class SmartDeviceInfoDto
 		{
-		internal SmartDeviceInfoDto (string? model, string? type, string? deviceId, string? nickname, bool? deviceOn, string? firmwareVersion, string? hardwareVersion, string? mac, int? signalLevel, int? rssi, string? ssid, string? specs, List<SmartChildSetupCategoryDto>? deviceCategoryList, int? brightness, int? hue, int? saturation, int? colorTemperature, LegacyLightingEffectDto? lightingEffect)
+		internal SmartDeviceInfoDto (string? model, string? type, string? deviceId, string? nickname, bool? deviceOn, string? firmwareVersion, string? hardwareVersion, string? mac, int? signalLevel, int? rssi, string? ssid, string? specs, List<SmartChildSetupCategoryDto>? deviceCategoryList, int? brightness, int? hue, int? saturation, int? colorTemperature, LegacyLightingEffectDto? lightingEffect, bool? overheated, bool? powerProtection, bool? powerProtect, bool? speaker, int? smoothTransitionOn, int? smoothTransitionOff, int? transitionPeriod)
 			{
 			Model = model;
 			Type = type;
@@ -504,6 +525,13 @@ internal static partial class KasaResponseParser
 			Saturation = saturation;
 			ColorTemperature = colorTemperature;
 			LightingEffect = lightingEffect;
+			Overheated = overheated;
+			PowerProtection = powerProtection;
+			PowerProtect = powerProtect;
+			Speaker = speaker;
+			SmoothTransitionOn = smoothTransitionOn;
+			SmoothTransitionOff = smoothTransitionOff;
+			TransitionPeriod = transitionPeriod;
 			}
 
 		internal string? Model { get; }
@@ -525,6 +553,13 @@ internal static partial class KasaResponseParser
 		internal int? Saturation { get; }
 		internal int? ColorTemperature { get; }
 		internal LegacyLightingEffectDto? LightingEffect { get; }
+		internal bool? Overheated { get; }
+		internal bool? PowerProtection { get; }
+		internal bool? PowerProtect { get; }
+		internal bool? Speaker { get; }
+		internal int? SmoothTransitionOn { get; }
+		internal int? SmoothTransitionOff { get; }
+		internal int? TransitionPeriod { get; }
 		}
 
 	internal sealed class SmartChildDeviceListDto
@@ -836,6 +871,48 @@ internal static partial class KasaResponseParser
 		{
 		[JsonPropertyName ("child_lock_status")]
 		public bool? ChildLockStatus { get; set; }
+		}
+
+	internal sealed class SmartAlarmInfoDto
+		{
+		[JsonPropertyName ("in_alarm")]
+		public bool? InAlarm { get; set; }
+
+		[JsonPropertyName ("alarm")]
+		public bool? Alarm { get; set; }
+
+		[JsonPropertyName ("guard_on")]
+		public bool? GuardOn { get; set; }
+
+		[JsonPropertyName ("alarm_source")]
+		public string? AlarmSource { get; set; }
+
+		[JsonPropertyName ("guard_mode")]
+		public string? GuardMode { get; set; }
+
+		[JsonPropertyName ("alarm_type")]
+		public string? AlarmType { get; set; }
+
+		[JsonPropertyName ("alarm_sound")]
+		public string? AlarmSound { get; set; }
+
+		[JsonPropertyName ("type")]
+		public string? Type { get; set; }
+
+		[JsonPropertyName ("alarm_volume")]
+		public string? AlarmVolume { get; set; }
+
+		[JsonPropertyName ("volume")]
+		public string? Volume { get; set; }
+
+		[JsonPropertyName ("alarm_volume_level")]
+		public int? AlarmVolumeLevel { get; set; }
+
+		[JsonPropertyName ("alarm_duration")]
+		public int? AlarmDuration { get; set; }
+
+		[JsonPropertyName ("duration")]
+		public int? Duration { get; set; }
 		}
 
 	internal sealed class SmartPresetRulesDto
@@ -1391,6 +1468,12 @@ internal static partial class KasaResponseParser
 		{
 		[JsonPropertyName ("on_off")]
 		public int? OnOff
+			{
+			get; set;
+			}
+
+		[JsonPropertyName ("transition_period")]
+		public int? TransitionPeriod
 			{
 			get; set;
 			}

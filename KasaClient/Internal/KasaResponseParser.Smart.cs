@@ -111,15 +111,9 @@ internal static partial class KasaResponseParser
 			return new LightTransitionState (enabled, enabled, transitionSeconds, SMART_LIGHT_TRANSITION_DEFAULT_MAXIMUM_SECONDS, enabled, transitionSeconds, SMART_LIGHT_TRANSITION_DEFAULT_MAXIMUM_SECONDS, JsonSerializer.Serialize (graduallyInfo, JsonSupport.COMPACT_JSON));
 			}
 
-		using JsonDocument document = JsonDocument.Parse (response.RawJson);
-		JsonElement root = document.RootElement;
-		int? onTransition = TryGetNamedTransitionMilliseconds (root, "smooth_transition_on");
-		int? offTransition = TryGetNamedTransitionMilliseconds (root, "smooth_transition_off");
-		if (onTransition is null && offTransition is null && TryGetTransitionMilliseconds (root, out int? transitionMilliseconds))
-			{
-			onTransition = transitionMilliseconds;
-			offTransition = transitionMilliseconds;
-			}
+		SmartDeviceInfoDto info = response.DeviceInfo;
+		int? onTransition = info.SmoothTransitionOn ?? info.TransitionPeriod;
+		int? offTransition = info.SmoothTransitionOff ?? info.TransitionPeriod;
 
 		return onTransition is null && offTransition is null
 			? null
@@ -270,14 +264,18 @@ internal static partial class KasaResponseParser
 			return null;
 			}
 
-		using JsonDocument document = JsonDocument.Parse (alarmResult.ToJsonString ());
-		JsonElement root = document.RootElement;
-		bool? isActive = TryGetNamedBoolean (root, "in_alarm") ?? TryGetNamedBoolean (root, "alarm") ?? TryGetNamedBoolean (root, "guard_on");
-		string? source = TryGetNamedString (root, "alarm_source") ?? TryGetNamedString (root, "guard_mode");
-		string? sound = TryGetNamedString (root, "alarm_type") ?? TryGetNamedString (root, "alarm_sound") ?? TryGetNamedString (root, "type");
-		string? volume = TryGetNamedString (root, "alarm_volume") ?? TryGetNamedString (root, "volume");
-		int? volumeLevel = TryGetNamedInt32 (root, "alarm_volume_level");
-		int? durationSeconds = TryGetNamedInt32 (root, "alarm_duration") ?? TryGetNamedInt32 (root, "duration");
+		SmartAlarmInfoDto? alarmInfo = JsonSerializer.Deserialize<SmartAlarmInfoDto> (alarmResult.ToJsonString (JsonSupport.COMPACT_JSON), JsonSupport.COMPACT_JSON);
+		if (alarmInfo is null)
+			{
+			return null;
+			}
+
+		bool? isActive = alarmInfo.InAlarm ?? alarmInfo.Alarm ?? alarmInfo.GuardOn;
+		string? source = alarmInfo.AlarmSource ?? alarmInfo.GuardMode;
+		string? sound = alarmInfo.AlarmType ?? alarmInfo.AlarmSound ?? alarmInfo.Type;
+		string? volume = alarmInfo.AlarmVolume ?? alarmInfo.Volume;
+		int? volumeLevel = alarmInfo.AlarmVolumeLevel;
+		int? durationSeconds = alarmInfo.AlarmDuration ?? alarmInfo.Duration;
 		if (isActive is null && source is null && sound is null && volume is null && volumeLevel is null && durationSeconds is null)
 			{
 			return null;
@@ -288,16 +286,13 @@ internal static partial class KasaResponseParser
 
 	private static OverheatProtectionState? CreateSmartOverheatProtectionState (SmartParsedResponse response)
 		{
-		using JsonDocument document = JsonDocument.Parse (response.RawJson);
-		bool? overheated = TryGetNamedBoolean (document.RootElement, "overheated");
+		bool? overheated = response.DeviceInfo.Overheated;
 		return overheated is null ? null : new OverheatProtectionState (overheated, response.RawJson);
 		}
 
 	private static PowerProtectionState? CreateSmartPowerProtectionState (SmartParsedResponse response)
 		{
-		using JsonDocument document = JsonDocument.Parse (response.RawJson);
-		bool? protectionActive = TryGetNamedBoolean (document.RootElement, "power_protection")
-			?? TryGetNamedBoolean (document.RootElement, "power_protect");
+		bool? protectionActive = response.DeviceInfo.PowerProtection ?? response.DeviceInfo.PowerProtect;
 		return protectionActive is null ? null : new PowerProtectionState (protectionActive, response.RawJson);
 		}
 
@@ -313,10 +308,21 @@ internal static partial class KasaResponseParser
 
 	private static SpeakerState? CreateSmartSpeakerState (SmartParsedResponse response)
 		{
-		using JsonDocument document = JsonDocument.Parse (response.RawJson);
-		bool? isAvailable = TryGetNamedBoolean (document.RootElement, "speaker")
-			?? (TryGetNamedString (document.RootElement, "alarm_sound") is not null ? true : null);
+		bool? isAvailable = response.DeviceInfo.Speaker
+			?? (!string.IsNullOrEmpty (GetAlarmSound (response)) ? true : null);
 		return isAvailable is null ? null : new SpeakerState (isAvailable, response.RawJson);
+		}
+
+	private static string? GetAlarmSound (SmartParsedResponse response)
+		{
+		JsonObject? alarmResult = GetModuleResult (response.ModuleResults, "get_alarm_configure", "get_alarm_config", "get_alarm_info", "get_guard_mode");
+		if (alarmResult is null)
+			{
+			return null;
+			}
+
+		SmartAlarmInfoDto? alarmInfo = JsonSerializer.Deserialize<SmartAlarmInfoDto> (alarmResult.ToJsonString (JsonSupport.COMPACT_JSON), JsonSupport.COMPACT_JSON);
+		return alarmInfo?.AlarmSound;
 		}
 
 	private static JsonObject? GetModuleResult (IReadOnlyDictionary<string, JsonObject> moduleResults, params string[] methodNames)
@@ -326,143 +332,6 @@ internal static partial class KasaResponseParser
 			if (moduleResults.TryGetValue (methodName, out JsonObject? result))
 				{
 				return result;
-				}
-			}
-
-		return null;
-		}
-
-	private static bool? TryGetNamedBoolean (JsonElement element, string propertyName)
-		{
-		JsonElement? value = FindNamedElement (element, propertyName);
-		if (value is null)
-			{
-			return null;
-			}
-
-		return value.Value.ValueKind switch
-			{
-				JsonValueKind.True => true,
-				JsonValueKind.False => false,
-				JsonValueKind.Number when value.Value.TryGetInt32 (out int intValue) => intValue != 0,
-				JsonValueKind.String when bool.TryParse (value.Value.GetString (), out bool boolValue) => boolValue,
-				JsonValueKind.String when int.TryParse (value.Value.GetString (), NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsedValue) => parsedValue != 0,
-				_ => null,
-			};
-		}
-
-	private static string? TryGetNamedString (JsonElement element, string propertyName)
-		{
-		JsonElement? value = FindNamedElement (element, propertyName);
-		if (value is null)
-			{
-			return null;
-			}
-
-		return value.Value.ValueKind switch
-			{
-				JsonValueKind.String => value.Value.GetString (),
-				JsonValueKind.Number => value.Value.ToString (),
-				JsonValueKind.True => bool.TrueString,
-				JsonValueKind.False => bool.FalseString,
-				_ => null,
-			};
-		}
-
-	private static int? TryGetNamedInt32 (JsonElement element, string propertyName)
-		{
-		JsonElement? value = FindNamedElement (element, propertyName);
-		if (value is null)
-			{
-			return null;
-			}
-
-		if (value.Value.ValueKind == JsonValueKind.Number && value.Value.TryGetInt32 (out int intValue))
-			{
-			return intValue;
-			}
-
-		return value.Value.ValueKind == JsonValueKind.String
-			&& int.TryParse (value.Value.GetString (), NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsedValue)
-			? parsedValue
-			: null;
-		}
-
-	private static JsonElement? FindNamedElement (JsonElement element, string propertyName)
-		{
-		if (element.ValueKind == JsonValueKind.Object)
-			{
-			foreach (JsonProperty property in element.EnumerateObject ())
-				{
-				if (string.Equals (property.Name, propertyName, StringComparison.OrdinalIgnoreCase))
-					{
-					return property.Value;
-					}
-
-				JsonElement? nested = FindNamedElement (property.Value, propertyName);
-				if (nested is not null)
-					{
-					return nested;
-					}
-				}
-			}
-		else if (element.ValueKind == JsonValueKind.Array)
-			{
-			foreach (JsonElement child in element.EnumerateArray ())
-				{
-				JsonElement? nested = FindNamedElement (child, propertyName);
-				if (nested is not null)
-					{
-					return nested;
-					}
-				}
-			}
-
-		return null;
-		}
-
-	private static bool TryGetTransitionMilliseconds (JsonElement element, out int? transitionMilliseconds)
-		{
-		transitionMilliseconds = TryGetNamedTransitionMilliseconds (element, "transition_period");
-		return transitionMilliseconds is not null;
-		}
-
-	private static int? TryGetNamedTransitionMilliseconds (JsonElement element, string propertyName)
-		{
-		if (element.ValueKind == JsonValueKind.Object)
-			{
-			foreach (JsonProperty property in element.EnumerateObject ())
-				{
-				if (string.Equals (property.Name, propertyName, StringComparison.OrdinalIgnoreCase))
-					{
-					if (property.Value.ValueKind == JsonValueKind.Number && property.Value.TryGetInt32 (out int intValue))
-						{
-						return intValue;
-						}
-
-					if (property.Value.ValueKind == JsonValueKind.String
-						&& int.TryParse (property.Value.GetString (), NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsedValue))
-						{
-						return parsedValue;
-						}
-					}
-
-				int? nested = TryGetNamedTransitionMilliseconds (property.Value, propertyName);
-				if (nested is not null)
-					{
-					return nested;
-					}
-				}
-			}
-		else if (element.ValueKind == JsonValueKind.Array)
-			{
-			foreach (JsonElement child in element.EnumerateArray ())
-				{
-				int? nested = TryGetNamedTransitionMilliseconds (child, propertyName);
-				if (nested is not null)
-					{
-					return nested;
-					}
 				}
 			}
 

@@ -241,13 +241,7 @@ internal static partial class KasaResponseParser
 
 	private static LightTransitionState? CreateLegacyLightTransitionState (LegacyLightStateDto? lightState, string rawJson)
 		{
-		if (lightState is null)
-			{
-			return null;
-			}
-
-		using JsonDocument document = JsonDocument.Parse (rawJson);
-		if (!TryGetTransitionMilliseconds (document.RootElement, out int? transitionMilliseconds))
+		if (lightState?.TransitionPeriod is not int transitionMilliseconds)
 			{
 			return null;
 			}

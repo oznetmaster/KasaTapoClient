@@ -79,6 +79,7 @@
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="KasaClient.Tests" />
+		<InternalsVisibleTo Include="KasaTapoCrestronDriver.Tests" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'net472'">
