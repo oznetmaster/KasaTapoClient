@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Each entry summarizes t
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - Migrated to Newtonsoft.Json
+
+- **JSON stack**: Replaced `System.Text.Json` with `Newtonsoft.Json` (13.0.3) across the core library, `KasaClient.Console`, tests, benchmarks, the discovery simulator, and the Crestron driver. This avoids the extra binding-redirect dependencies (`System.Buffers`, `System.Memory`, `System.Runtime.CompilerServices.Unsafe`, `System.Text.Encodings.Web`) that `System.Text.Json` requires on .NET Framework 4.7.2 and improves reliability on embedded Mono/Crestron hosts.
+- **Crestron driver**: Resolved `CS0433` type ambiguity between the `Newtonsoft.Json` NuGet package and the Crestron SDK's bundled `SimplSharpNewtonsoft` assembly.
+- No public API or behavior changes. Validated with a full solution build across `net472`/`net10.0` and live device integration tests against real plugs, bulbs, light strips, and hubs.
+
 ## [1.1.11] - Discovery result fix, legacy-only discovery, transport reliability fixes
 
 - **Discovery**: Fixed a bug where a device that replied to both the legacy (port 9999) and smart/Tapo (port 20002) discovery broadcasts would only have one of the two results kept; results are now kept per (host, transport kind), so both are retained. Added `Discover.DiscoverLegacyAsync` / `DiscoveryClient.DiscoverLegacyAsync` for broadcasting only the legacy discovery request.

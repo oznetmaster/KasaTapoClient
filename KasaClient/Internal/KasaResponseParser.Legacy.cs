@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Text.Json;
+using Newtonsoft.Json;
 
 namespace KasaTapoClient.Internal;
 
@@ -92,7 +92,7 @@ internal static partial class KasaResponseParser
 			hsv,
 			availablePresets,
 			activePreset,
-			JsonSerializer.Serialize (lightState, JsonSupport.COMPACT_JSON));
+			JsonConvert.SerializeObject (lightState, JsonSupport.COMPACT_JSON));
 		}
 
 	private static LegacyLightStateDto CreateEffectiveLightState (LegacyLightStateDto lightState)
@@ -135,7 +135,7 @@ internal static partial class KasaResponseParser
 				lightingEffect.Enable is int enabled ? enabled != 0 : null,
 				lightingEffect.Brightness,
 				availableEffects,
-				JsonSerializer.Serialize (lightingEffect, JsonSupport.COMPACT_JSON));
+				JsonConvert.SerializeObject (lightingEffect, JsonSupport.COMPACT_JSON));
 			}
 
 		if (lightState.DynamicLightEffectEnable is int || !string.IsNullOrWhiteSpace (lightState.DynamicLightEffectId))
@@ -161,7 +161,7 @@ internal static partial class KasaResponseParser
 				isEnabled,
 				lightState.Brightness,
 				availableEffects,
-				JsonSerializer.Serialize (new
+				JsonConvert.SerializeObject (new
 					{
 					lightState.DynamicLightEffectEnable,
 					lightState.DynamicLightEffectId,
@@ -223,7 +223,7 @@ internal static partial class KasaResponseParser
 				preset.ColorTemperature,
 				preset.Hue,
 				preset.Saturation,
-				JsonSerializer.Serialize (preset, JsonSupport.COMPACT_JSON)));
+				JsonConvert.SerializeObject (preset, JsonSupport.COMPACT_JSON)));
 			}
 
 		return presets;
@@ -340,7 +340,7 @@ internal static partial class KasaResponseParser
 			cloudInfo.Binded is int provisioned ? provisioned != 0 : null,
 			cloudInfo.Server,
 			cloudInfo.UserName,
-			JsonSerializer.Serialize (cloudInfo, JsonSupport.COMPACT_JSON));
+			JsonConvert.SerializeObject (cloudInfo, JsonSupport.COMPACT_JSON));
 		}
 
 	private static DeviceTimeState? CreateLegacyDeviceTimeState (ParsedResponse response)
@@ -352,7 +352,7 @@ internal static partial class KasaResponseParser
 			}
 
 		DateTime? localTime = TryCreateLegacyDateTime (time);
-		return new DeviceTimeState (localTime, region: null, timeDifferenceMinutes: null, JsonSerializer.Serialize (response.Time, JsonSupport.COMPACT_JSON));
+		return new DeviceTimeState (localTime, region: null, timeDifferenceMinutes: null, JsonConvert.SerializeObject (response.Time, JsonSupport.COMPACT_JSON));
 		}
 
 	private static HomeKitSetupInfo? CreateLegacyHomeKitSetupInfo (ParsedResponse response)
@@ -363,7 +363,7 @@ internal static partial class KasaResponseParser
 			return null;
 			}
 
-		return new HomeKitSetupInfo (homeKit.SetupCode, homeKit.SetupPayload, JsonSerializer.Serialize (homeKit, JsonSupport.COMPACT_JSON));
+		return new HomeKitSetupInfo (homeKit.SetupCode, homeKit.SetupPayload, JsonConvert.SerializeObject (homeKit, JsonSupport.COMPACT_JSON));
 		}
 
 	private static AutoOffState? CreateLegacyAutoOffState (ParsedResponse response)
@@ -478,7 +478,7 @@ internal static partial class KasaResponseParser
 		bool? isEnabled = rules.Enable is int enabled ? enabled != 0 : null;
 		bool? isActive = countdown.RemainingSeconds is int remaining ? remaining > 0 : null;
 		bool? actionTurnsOn = countdown.Action is int action ? action != 0 : null;
-		return new CountdownRuleState (isEnabled, isActive, countdown.DelaySeconds, actionTurnsOn, JsonSerializer.Serialize (countdown, JsonSupport.COMPACT_JSON));
+		return new CountdownRuleState (isEnabled, isActive, countdown.DelaySeconds, actionTurnsOn, JsonConvert.SerializeObject (countdown, JsonSupport.COMPACT_JSON));
 		}
 
 	private static IReadOnlyList<ScheduledRule> CreateScheduledRules (LegacyRuleListDto? rules)
@@ -499,7 +499,7 @@ internal static partial class KasaResponseParser
 
 			bool? isEnabled = rule.Enable is int enabled ? enabled != 0 : null;
 			bool? actionTurnsOn = rule.Action is int action ? action != 0 : null;
-			schedules.Add (new ScheduledRule (id!, rule.Name, isEnabled, actionTurnsOn, rule.StartMinute, rule.EndMinute, JsonSerializer.Serialize (rule, JsonSupport.COMPACT_JSON)));
+			schedules.Add (new ScheduledRule (id!, rule.Name, isEnabled, actionTurnsOn, rule.StartMinute, rule.EndMinute, JsonConvert.SerializeObject (rule, JsonSupport.COMPACT_JSON)));
 			}
 
 		return schedules;
@@ -551,7 +551,7 @@ internal static partial class KasaResponseParser
 					FirstNonEmpty (child.Model, child.DeviceModel),
 					DetermineChildDeviceType (FirstNonEmpty (child.Model, child.DeviceModel)),
 					ReadPowerState (child),
-					JsonSerializer.Serialize (child, JsonSupport.COMPACT_JSON)));
+					JsonConvert.SerializeObject (child, JsonSupport.COMPACT_JSON)));
 			}
 
 		return children;
@@ -659,7 +659,7 @@ internal static partial class KasaResponseParser
 
 	private static LegacyResponseDto DeserializeResponse (string responseJson)
 		{
-		LegacyResponseDto? response = JsonSerializer.Deserialize<LegacyResponseDto> (responseJson, JsonSupport.COMPACT_JSON);
+		LegacyResponseDto? response = JsonConvert.DeserializeObject<LegacyResponseDto> (responseJson, JsonSupport.COMPACT_JSON);
 		return response ?? throw new InvalidDataException ("The device response could not be deserialized.");
 		}
 

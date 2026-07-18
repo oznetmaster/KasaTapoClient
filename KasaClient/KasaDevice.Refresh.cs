@@ -5,7 +5,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Text.Json.Nodes;
+using Newtonsoft.Json.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -73,7 +73,7 @@ public sealed partial class KasaDevice
 			|| connectionParameters?.DeviceFamily == DeviceFamilyKind.SmartTapoHub
 			|| connectionParameters?.DeviceFamily == DeviceFamilyKind.SmartKasaHub;
 
-		var coreRequests = new Dictionary<string, JsonObject?>
+		var coreRequests = new Dictionary<string, JObject?>
 			{
 			[KasaCommands.SMART_GET_DEVICE_INFO_METHOD] = null,
 			[KasaCommands.SMART_COMPONENT_NEGO_METHOD] = null,
@@ -125,7 +125,7 @@ public sealed partial class KasaDevice
 		KasaResponseParser.SmartParsedResponse parsedResponse,
 		CancellationToken cancellationToken)
 		{
-		Dictionary<string, JsonObject?> parentRequests = CreateSmartParentRefreshRequests (parsedResponse.ComponentVersions);
+		Dictionary<string, JObject?> parentRequests = CreateSmartParentRefreshRequests (parsedResponse.ComponentVersions);
 		if (parentRequests.Count == 0)
 			{
 			return parsedResponse;
@@ -134,18 +134,18 @@ public sealed partial class KasaDevice
 		try
 			{
 			string moduleResponseJson = await _transport.SendAsync (KasaCommands.CreateSmartMultipleRequest (parentRequests), cancellationToken).ConfigureAwait (false);
-			IReadOnlyDictionary<string, JsonObject> moduleResults = KasaResponseParser.ParseSmartModuleResults (moduleResponseJson);
+			IReadOnlyDictionary<string, JObject> moduleResults = KasaResponseParser.ParseSmartModuleResults (moduleResponseJson);
 			if (moduleResults.Count == 0)
 				{
 				return parsedResponse;
 				}
 
-			var mergedModuleResults = new Dictionary<string, JsonObject> (0, StringComparer.Ordinal);
-			foreach (KeyValuePair<string, JsonObject> item in parsedResponse.ModuleResults)
+			var mergedModuleResults = new Dictionary<string, JObject> (0, StringComparer.Ordinal);
+			foreach (KeyValuePair<string, JObject> item in parsedResponse.ModuleResults)
 				{
 				mergedModuleResults[item.Key] = item.Value;
 				}
-			foreach (KeyValuePair<string, JsonObject> item in moduleResults)
+			foreach (KeyValuePair<string, JObject> item in moduleResults)
 				{
 				mergedModuleResults[item.Key] = item.Value;
 				}
@@ -166,9 +166,9 @@ public sealed partial class KasaDevice
 			}
 		}
 
-	private static Dictionary<string, JsonObject?> CreateSmartParentRefreshRequests (IReadOnlyDictionary<string, int> componentVersions)
+	private static Dictionary<string, JObject?> CreateSmartParentRefreshRequests (IReadOnlyDictionary<string, int> componentVersions)
 		{
-		var requests = new Dictionary<string, JsonObject?> (StringComparer.Ordinal);
+		var requests = new Dictionary<string, JObject?> (StringComparer.Ordinal);
 		foreach (SmartRefreshContribution contribution in SMART_PARENT_REFRESH_DEFINITIONS)
 			{
 			if (!TryGetSmartComponentVersion (componentVersions, contribution.RequiredComponent, out int supportedVersion))

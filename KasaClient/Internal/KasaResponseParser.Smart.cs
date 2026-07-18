@@ -8,8 +8,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Nodes;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace KasaTapoClient.Internal;
 
@@ -52,7 +52,7 @@ internal static partial class KasaResponseParser
 					preset.ColorTemperature,
 					preset.Hue,
 					preset.Saturation,
-					JsonSerializer.Serialize (preset, JsonSupport.COMPACT_JSON)));
+					JsonConvert.SerializeObject (preset, JsonSupport.COMPACT_JSON)));
 				}
 			}
 		else if (presetRules?.BrightnessLevels is List<int> brightnessLevels)
@@ -65,7 +65,7 @@ internal static partial class KasaResponseParser
 					colorTemperature: null,
 					hue: null,
 					saturation: null,
-					JsonSerializer.Serialize (brightnessLevels[index], JsonSupport.COMPACT_JSON)));
+					JsonConvert.SerializeObject (brightnessLevels[index], JsonSupport.COMPACT_JSON)));
 				}
 			}
 
@@ -102,13 +102,13 @@ internal static partial class KasaResponseParser
 				offGraduallyState?.Enable,
 				offGraduallyState?.Duration,
 				offGraduallyState?.MaximumDuration,
-				JsonSerializer.Serialize (graduallyInfo, JsonSupport.COMPACT_JSON));
+				JsonConvert.SerializeObject (graduallyInfo, JsonSupport.COMPACT_JSON));
 			}
 
 		if (graduallyInfo?.Enable is bool enabled)
 			{
 			int transitionSeconds = enabled ? SMART_LIGHT_TRANSITION_DEFAULT_MAXIMUM_SECONDS : 0;
-			return new LightTransitionState (enabled, enabled, transitionSeconds, SMART_LIGHT_TRANSITION_DEFAULT_MAXIMUM_SECONDS, enabled, transitionSeconds, SMART_LIGHT_TRANSITION_DEFAULT_MAXIMUM_SECONDS, JsonSerializer.Serialize (graduallyInfo, JsonSupport.COMPACT_JSON));
+			return new LightTransitionState (enabled, enabled, transitionSeconds, SMART_LIGHT_TRANSITION_DEFAULT_MAXIMUM_SECONDS, enabled, transitionSeconds, SMART_LIGHT_TRANSITION_DEFAULT_MAXIMUM_SECONDS, JsonConvert.SerializeObject (graduallyInfo, JsonSupport.COMPACT_JSON));
 			}
 
 		SmartDeviceInfoDto info = response.DeviceInfo;
@@ -172,7 +172,7 @@ internal static partial class KasaResponseParser
 			isEnabled,
 			brightness,
 			availableEffects,
-			JsonSerializer.Serialize (effectRules, JsonSupport.COMPACT_JSON));
+			JsonConvert.SerializeObject (effectRules, JsonSupport.COMPACT_JSON));
 		}
 
 	private static int? GetSmartBulbEffectBrightness (SmartDynamicLightEffectRuleDto rule)
@@ -258,13 +258,13 @@ internal static partial class KasaResponseParser
 			return null;
 			}
 
-		JsonObject? alarmResult = GetModuleResult (response.ModuleResults, "get_alarm_configure", "get_alarm_config", "get_alarm_info", "get_guard_mode");
+		JObject? alarmResult = GetModuleResult (response.ModuleResults, "get_alarm_configure", "get_alarm_config", "get_alarm_info", "get_guard_mode");
 		if (alarmResult is null)
 			{
 			return null;
 			}
 
-		SmartAlarmInfoDto? alarmInfo = JsonSerializer.Deserialize<SmartAlarmInfoDto> (alarmResult.ToJsonString (JsonSupport.COMPACT_JSON), JsonSupport.COMPACT_JSON);
+		SmartAlarmInfoDto? alarmInfo = JsonConvert.DeserializeObject<SmartAlarmInfoDto> (alarmResult.ToJsonString (JsonSupport.COMPACT_JSON), JsonSupport.COMPACT_JSON);
 		if (alarmInfo is null)
 			{
 			return null;
@@ -315,21 +315,21 @@ internal static partial class KasaResponseParser
 
 	private static string? GetAlarmSound (SmartParsedResponse response)
 		{
-		JsonObject? alarmResult = GetModuleResult (response.ModuleResults, "get_alarm_configure", "get_alarm_config", "get_alarm_info", "get_guard_mode");
+		JObject? alarmResult = GetModuleResult (response.ModuleResults, "get_alarm_configure", "get_alarm_config", "get_alarm_info", "get_guard_mode");
 		if (alarmResult is null)
 			{
 			return null;
 			}
 
-		SmartAlarmInfoDto? alarmInfo = JsonSerializer.Deserialize<SmartAlarmInfoDto> (alarmResult.ToJsonString (JsonSupport.COMPACT_JSON), JsonSupport.COMPACT_JSON);
+		SmartAlarmInfoDto? alarmInfo = JsonConvert.DeserializeObject<SmartAlarmInfoDto> (alarmResult.ToJsonString (JsonSupport.COMPACT_JSON), JsonSupport.COMPACT_JSON);
 		return alarmInfo?.AlarmSound;
 		}
 
-	private static JsonObject? GetModuleResult (IReadOnlyDictionary<string, JsonObject> moduleResults, params string[] methodNames)
+	private static JObject? GetModuleResult (IReadOnlyDictionary<string, JObject> moduleResults, params string[] methodNames)
 		{
 		foreach (string methodName in methodNames)
 			{
-			if (moduleResults.TryGetValue (methodName, out JsonObject? result))
+			if (moduleResults.TryGetValue (methodName, out JObject? result))
 				{
 				return result;
 				}
@@ -385,7 +385,7 @@ internal static partial class KasaResponseParser
 			return null;
 			}
 
-		JsonObject rawEnergy = new ()
+		JObject rawEnergy = new ()
 			{
 			["get_energy_usage"] = SerializeModuleResultNode (energyUsage),
 			["get_current_power"] = SerializeModuleResultNode (currentPower),
@@ -425,7 +425,7 @@ internal static partial class KasaResponseParser
 			return null;
 			}
 
-		return new CloudConnectionState (status == 0, isProvisioned: null, server: null, userName: null, JsonSerializer.Serialize (cloudState, JsonSupport.COMPACT_JSON));
+		return new CloudConnectionState (status == 0, isProvisioned: null, server: null, userName: null, JsonConvert.SerializeObject (cloudState, JsonSupport.COMPACT_JSON));
 		}
 
 	private static DeviceTimeState? CreateSmartDeviceTimeState (SmartParsedResponse response)
@@ -437,7 +437,7 @@ internal static partial class KasaResponseParser
 			}
 
 		DateTime localTime = DateTimeOffset.FromUnixTimeSeconds (timestamp).LocalDateTime;
-		return new DeviceTimeState (localTime, time.Region, time.TimeDifferenceMinutes, JsonSerializer.Serialize (time, JsonSupport.COMPACT_JSON));
+		return new DeviceTimeState (localTime, time.Region, time.TimeDifferenceMinutes, JsonConvert.SerializeObject (time, JsonSupport.COMPACT_JSON));
 		}
 
 	private static MatterSetupInfo? CreateSmartMatterSetupInfo (SmartParsedResponse response)
@@ -448,7 +448,7 @@ internal static partial class KasaResponseParser
 			return null;
 			}
 
-		return new MatterSetupInfo (matter.SetupCode, matter.SetupPayload, JsonSerializer.Serialize (matter, JsonSupport.COMPACT_JSON));
+		return new MatterSetupInfo (matter.SetupCode, matter.SetupPayload, JsonConvert.SerializeObject (matter, JsonSupport.COMPACT_JSON));
 		}
 
 	private static HomeKitSetupInfo? CreateSmartHomeKitSetupInfo (SmartParsedResponse response)
@@ -459,7 +459,7 @@ internal static partial class KasaResponseParser
 			return null;
 			}
 
-		return new HomeKitSetupInfo (homeKit.SetupCode, setupPayload: null, JsonSerializer.Serialize (homeKit, JsonSupport.COMPACT_JSON));
+		return new HomeKitSetupInfo (homeKit.SetupCode, setupPayload: null, JsonConvert.SerializeObject (homeKit, JsonSupport.COMPACT_JSON));
 		}
 
 	private static AutoOffState? CreateSmartAutoOffState (SmartParsedResponse response)
@@ -470,7 +470,7 @@ internal static partial class KasaResponseParser
 			return null;
 			}
 
-		return new AutoOffState (autoOff.Enable, autoOff.DelayMinutes, timerActive: null, autoOffAt: null, JsonSerializer.Serialize (autoOff, JsonSupport.COMPACT_JSON));
+		return new AutoOffState (autoOff.Enable, autoOff.DelayMinutes, timerActive: null, autoOffAt: null, JsonConvert.SerializeObject (autoOff, JsonSupport.COMPACT_JSON));
 		}
 
 	private static LedState? CreateSmartLedState (SmartParsedResponse response)
@@ -488,7 +488,7 @@ internal static partial class KasaResponseParser
 			&& led.SunsetOffset is null
 			? null
 			: new LedNightModeSettings (led.StartTime, led.EndTime, led.NightModeType, led.SunriseOffset, led.SunsetOffset);
-		return new LedState (led.LedRule != "never", led.LedRule, nightMode, JsonSerializer.Serialize (led, JsonSupport.COMPACT_JSON));
+		return new LedState (led.LedRule != "never", led.LedRule, nightMode, JsonConvert.SerializeObject (led, JsonSupport.COMPACT_JSON));
 		}
 
 	private static ChildLockState? CreateSmartChildLockState (SmartParsedResponse response)
@@ -499,36 +499,36 @@ internal static partial class KasaResponseParser
 			return null;
 			}
 
-		return new ChildLockState (childLock.ChildLockStatus, JsonSerializer.Serialize (childLock, JsonSupport.COMPACT_JSON));
+		return new ChildLockState (childLock.ChildLockStatus, JsonConvert.SerializeObject (childLock, JsonSupport.COMPACT_JSON));
 		}
 
 	private static TDto? DeserializeModuleResult<TDto> (SmartParsedResponse response, string method)
 		where TDto : class
 		{
-		if (!response.ModuleResults.TryGetValue (method, out JsonObject? result))
+		if (!response.ModuleResults.TryGetValue (method, out JObject? result))
 			{
 			return null;
 			}
 
-		return JsonSerializer.Deserialize<TDto> (result.ToJsonString (JsonSupport.COMPACT_JSON), JsonSupport.COMPACT_JSON);
+		return JsonConvert.DeserializeObject<TDto> (result.ToJsonString (JsonSupport.COMPACT_JSON), JsonSupport.COMPACT_JSON);
 		}
 
-	private static JsonNode? SerializeModuleResultNode<TDto> (TDto? value)
+	private static JToken? SerializeModuleResultNode<TDto> (TDto? value)
 		where TDto : class
 		{
 		return value is null
 			? null
-			: JsonSerializer.SerializeToNode (value, JsonSupport.COMPACT_JSON);
+			: JToken.FromObject (value, JsonSerializer.Create (JsonSupport.COMPACT_JSON));
 		}
 
-	private static SmartEnvelopeResultDto? DeserializeSmartEnvelopeResult (JsonObject? resultObject)
+	private static SmartEnvelopeResultDto? DeserializeSmartEnvelopeResult (JObject? resultObject)
 		{
 		if (resultObject is null)
 			{
 			return null;
 			}
 
-		return JsonSerializer.Deserialize<SmartEnvelopeResultDto> (resultObject.ToJsonString (JsonSupport.COMPACT_JSON), JsonSupport.COMPACT_JSON);
+		return JsonConvert.DeserializeObject<SmartEnvelopeResultDto> (resultObject.ToJsonString (JsonSupport.COMPACT_JSON), JsonSupport.COMPACT_JSON);
 		}
 
 	private static IReadOnlyList<ChildDeviceInfo> CreateSmartChildren (
@@ -557,7 +557,7 @@ internal static partial class KasaResponseParser
 			SmartChildDeviceDto effectiveChild = childOverrides.TryGetValue (id!, out SmartChildDeviceDto? childOverride)
 				? childOverride
 				: child;
-			string childRawJson = JsonSerializer.Serialize (effectiveChild, JsonSupport.COMPACT_JSON);
+			string childRawJson = JsonConvert.SerializeObject (effectiveChild, JsonSupport.COMPACT_JSON);
 
 			result.Add (new ChildDeviceInfo (
 				id!,
@@ -660,7 +660,7 @@ internal static partial class KasaResponseParser
 				lightingEffect?.Enable is int enabled ? enabled != 0 : null,
 				lightingEffect?.Brightness ?? info.Brightness,
 				availableEffects,
-				lightingEffect is null ? response.RawJson : JsonSerializer.Serialize (lightingEffect, JsonSupport.COMPACT_JSON));
+				lightingEffect is null ? response.RawJson : JsonConvert.SerializeObject (lightingEffect, JsonSupport.COMPACT_JSON));
 			}
 
 		return new LightState (

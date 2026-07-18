@@ -7,8 +7,8 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Sockets;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,12 +20,10 @@ namespace KasaClient.Tests;
 
 internal static class LiveTestSupport
 	{
-	private static readonly JsonSerializerOptions JSON_OPTIONS = new ()
+	private static readonly JsonSerializerSettings JSON_OPTIONS = new ()
 		{
-		PropertyNameCaseInsensitive = true,
-		ReadCommentHandling = JsonCommentHandling.Skip,
-		AllowTrailingCommas = true,
-		Converters = { new JsonStringEnumConverter () },
+		Converters = { new StringEnumConverter () },
+		MissingMemberHandling = MissingMemberHandling.Ignore,
 		};
 
 	private static readonly Lazy<LiveTestSettings?> SETTINGS = new (LoadSettings);
@@ -232,7 +230,7 @@ internal static class LiveTestSupport
 			}
 
 		string json = File.ReadAllText (configPath);
-		return JsonSerializer.Deserialize<LiveTestSettings> (json, JSON_OPTIONS);
+		return JsonConvert.DeserializeObject<LiveTestSettings> (json, JSON_OPTIONS);
 		}
 
 	private static string GetRequiredValue (string? value, string settingKey)

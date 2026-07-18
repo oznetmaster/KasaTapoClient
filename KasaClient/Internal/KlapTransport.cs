@@ -10,7 +10,7 @@ using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json.Nodes;
+using Newtonsoft.Json.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -65,7 +65,7 @@ internal sealed class KlapTransport : IDisposableDeviceTransport
 			}
 
 		await EnsureHandshakeAsync (cancellationToken).ConfigureAwait (false);
-		var mergedResponse = new JsonObject ();
+		var mergedResponse = new JObject ();
 		foreach (string payload in commandJsonPayloads)
 			{
 				string responseJson = await SendEncryptedAsync (payload, cancellationToken).ConfigureAwait (false);

@@ -5,8 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using System.Text.Json;
-using System.Text.Json.Nodes;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using KasaTapoClient;
@@ -97,7 +97,7 @@ public class TpapIdleSessionBenchmarks
             return null;
         }
 
-        return JsonSerializer.Deserialize<Dictionary<string, BenchmarkConnectionProfile>>(File.ReadAllText(path));
+        return JsonConvert.DeserializeObject<Dictionary<string, BenchmarkConnectionProfile>>(File.ReadAllText(path));
     }
 
     private static BenchmarkConnectionProfile? LoadNamedProfileByHost(string? host)
@@ -132,7 +132,7 @@ public class TpapIdleSessionBenchmarks
             return null!;
         }
 
-        return JsonSerializer.Deserialize<BenchmarkConnectionProfile>(File.ReadAllText(path))!;
+        return JsonConvert.DeserializeObject<BenchmarkConnectionProfile>(File.ReadAllText(path))!;
     }
 
     private static async Task<DeviceConfiguration> CreateResolvedConfigurationAsync(BenchmarkConnectionProfile profile)
@@ -177,9 +177,9 @@ public class TpapIdleSessionBenchmarks
         return value is null ? default! : (T)value;
     }
 
-    private static string CreateSmartRequest(string method, JsonObject? parameters)
+    private static string CreateSmartRequest(string method, JObject? parameters)
     {
-        var request = new JsonObject
+        var request = new JObject
         {
             ["method"] = method,
             ["request_time_milis"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
@@ -190,7 +190,7 @@ public class TpapIdleSessionBenchmarks
             request["params"] = parameters;
         }
 
-        return request.ToJsonString();
+        return request.ToString(Formatting.None);
     }
 
     private sealed class BenchmarkConnectionProfile

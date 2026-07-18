@@ -5,21 +5,19 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Text.Encodings.Web;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace KasaTapoClient.Internal;
 
 internal static class JsonSupport
 	{
-	public static readonly JsonSerializerOptions COMPACT_JSON = CreateCompactJsonOptions ();
+	public static readonly JsonSerializerSettings COMPACT_JSON = CreateCompactJsonSettings ();
 
-	public static JsonObject ParseObject (string json)
+	public static JObject ParseObject (string json)
 		{
-		JsonNode? node = JsonNode.Parse (json);
-		if (node is not JsonObject jsonObject)
+		JToken? node = JToken.Parse (json);
+		if (node is not JObject jsonObject)
 			{
 			throw new InvalidDataException ("The JSON payload was not an object.");
 			}
@@ -27,12 +25,12 @@ internal static class JsonSupport
 		return jsonObject;
 		}
 
-	public static void MergeObjects (JsonObject target, JsonObject source)
+	public static void MergeObjects (JObject target, JObject source)
 		{
-		foreach (KeyValuePair<string, JsonNode?> property in source)
+		foreach (KeyValuePair<string, JToken?> property in source)
 			{
-			if (target[property.Key] is JsonObject targetObject
-				&& property.Value is JsonObject sourceObject)
+			if (target[property.Key] is JObject targetObject
+				&& property.Value is JObject sourceObject)
 				{
 				MergeObjects (targetObject, sourceObject);
 				continue;
@@ -42,45 +40,54 @@ internal static class JsonSupport
 			}
 		}
 
-	private static JsonSerializerOptions CreateCompactJsonOptions ()
+	private static JsonSerializerSettings CreateCompactJsonSettings ()
 		{
-		var options = new JsonSerializerOptions
+		var settings = new JsonSerializerSettings
 			{
-			Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-			PropertyNamingPolicy = null,
-			WriteIndented = false,
-			DefaultIgnoreCondition = JsonIgnoreCondition.Never,
+			Formatting = Formatting.None,
+			NullValueHandling = NullValueHandling.Include,
 			};
-		return options;
+		return settings;
+		}
+	}
+
+internal static class JsonNodeExtensions
+	{
+	public static string ToJsonString (this JToken token, JsonSerializerSettings? settings = null)
+		{
+		return token.ToString (settings?.Formatting ?? Formatting.Indented);
+		}
+
+	public static T? GetValue<T> (this JToken token)
+		{
+		return token.ToObject<T> ();
 		}
 	}
 
 internal sealed class NullableFlexibleInt32Converter : JsonConverter<int?>
 	{
-	public override int? Read (ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+	public override int? ReadJson (JsonReader reader, Type objectType, int? existingValue, bool hasExistingValue, JsonSerializer serializer)
 		{
 		return reader.TokenType switch
 			{
-				JsonTokenType.Null => null,
-				JsonTokenType.Number => reader.TryGetInt32 (out int intValue)
-					? intValue
-					: (int?)null,
-				JsonTokenType.String => TryParseFlexibleInt32 (reader.GetString ()),
-				JsonTokenType.True => 1,
-				JsonTokenType.False => 0,
-				_ => SkipUnsupportedValue (ref reader),
+				JsonToken.Null => null,
+				JsonToken.Integer => Convert.ToInt32 (reader.Value, CultureInfo.InvariantCulture),
+				JsonToken.Float => TryConvertDoubleToInt32 (Convert.ToDouble (reader.Value, CultureInfo.InvariantCulture)),
+				JsonToken.String => TryParseFlexibleInt32 (reader.Value as string),
+				JsonToken.Boolean => (bool)reader.Value! ? 1 : 0,
+				_ => null,
 			};
 		}
 
-	public override void Write (Utf8JsonWriter writer, int? value, JsonSerializerOptions options)
+	public override void WriteJson (JsonWriter writer, int? value, JsonSerializer serializer)
 		{
 		if (value is int intValue)
 			{
-			writer.WriteNumberValue (intValue);
+			writer.WriteValue (intValue);
 			return;
 			}
 
-		writer.WriteNullValue ();
+		writer.WriteNull ();
 		}
 
 	private static int? TryParseFlexibleInt32 (string? value)
@@ -97,17 +104,16 @@ internal sealed class NullableFlexibleInt32Converter : JsonConverter<int?>
 
 		if (double.TryParse (value, NumberStyles.Float, CultureInfo.InvariantCulture, out double doubleValue))
 			{
-			return !double.IsNaN (doubleValue) && !double.IsInfinity (doubleValue) && doubleValue >= int.MinValue && doubleValue <= int.MaxValue
-				? (int)Math.Round (doubleValue, MidpointRounding.AwayFromZero)
-				: null;
+			return TryConvertDoubleToInt32 (doubleValue);
 			}
 
 		return null;
 		}
 
-	private static int? SkipUnsupportedValue (ref Utf8JsonReader reader)
+	private static int? TryConvertDoubleToInt32 (double doubleValue)
 		{
-		reader.Skip ();
-		return null;
+		return !double.IsNaN (doubleValue) && !double.IsInfinity (doubleValue) && doubleValue >= int.MinValue && doubleValue <= int.MaxValue
+			? (int)Math.Round (doubleValue, MidpointRounding.AwayFromZero)
+			: null;
 		}
 	}

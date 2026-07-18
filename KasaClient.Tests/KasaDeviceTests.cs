@@ -1892,7 +1892,7 @@ public sealed class KasaDeviceTests
 
 		string response = await device.ExecuteSmartCommandAsync (
 			"set_device_info",
-			new System.Text.Json.Nodes.JsonObject { ["device_on"] = true },
+			new Newtonsoft.Json.Linq.JObject { ["device_on"] = true },
 			DeviceStateUpdateMode.UpdateAfterCommand).ConfigureAwait (false);
 
 		Assert.AreEqual ("{\"result\":{\"error_code\":0}}", response);

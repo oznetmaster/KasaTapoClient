@@ -5,7 +5,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Text.Json.Nodes;
+using Newtonsoft.Json.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -22,7 +22,7 @@ public sealed partial class KasaDevice : IDisposable
 	private readonly SemaphoreSlim _operationLock = new (1, 1);
 	private IReadOnlyList<DeviceFeature> _features = Array.Empty<DeviceFeature> ();
 	private IReadOnlyDictionary<string, int> _smartComponentVersions = new Dictionary<string, int> (StringComparer.Ordinal);
-	private static readonly JsonObject SMART_GET_TRIGGER_LOGS_PARAMETERS = new ()
+	private static readonly JObject SMART_GET_TRIGGER_LOGS_PARAMETERS = new ()
 		{
 		["start_id"] = 0,
 		};
@@ -34,7 +34,7 @@ public sealed partial class KasaDevice : IDisposable
 		new SmartRefreshContribution ("energy_monitoring", KasaCommands.SMART_GET_CURRENT_POWER_METHOD, minimumSupportedVersion: 2),
 		new SmartRefreshContribution ("energy_monitoring", KasaCommands.SMART_GET_EMETER_DATA_METHOD, minimumSupportedVersion: 2),
 		new SmartRefreshContribution ("energy_monitoring", KasaCommands.SMART_GET_EMETER_VGAIN_IGAIN_METHOD, minimumSupportedVersion: 2),
-		new SmartRefreshContribution ("auto_off", KasaCommands.SMART_GET_AUTO_OFF_CONFIG_METHOD, static () => new JsonObject { ["start_index"] = 0 }),
+		new SmartRefreshContribution ("auto_off", KasaCommands.SMART_GET_AUTO_OFF_CONFIG_METHOD, static () => new JObject { ["start_index"] = 0 }),
 		new SmartRefreshContribution ("led", KasaCommands.SMART_GET_LED_INFO_METHOD),
 		new SmartRefreshContribution ("time", KasaCommands.SMART_GET_DEVICE_TIME_METHOD),
 		new SmartRefreshContribution ("matter", KasaCommands.SMART_GET_MATTER_SETUP_INFO_METHOD),
@@ -43,12 +43,12 @@ public sealed partial class KasaDevice : IDisposable
 		new SmartRefreshContribution ("alarm", KasaCommands.SMART_GET_ALARM_CONFIG_METHOD),
 		new SmartRefreshContribution ("preset", KasaCommands.SMART_GET_PRESET_RULES_METHOD, minimumSupportedVersion: 1),
 		new SmartRefreshContribution ("on_off_gradually", KasaCommands.SMART_GET_ON_OFF_GRADUALLY_INFO_METHOD),
-		new SmartRefreshContribution ("light_effect", KasaCommands.SMART_GET_DYNAMIC_LIGHT_EFFECT_RULES_METHOD, static () => new JsonObject { ["start_index"] = 0 }),
+		new SmartRefreshContribution ("light_effect", KasaCommands.SMART_GET_DYNAMIC_LIGHT_EFFECT_RULES_METHOD, static () => new JObject { ["start_index"] = 0 }),
 		];
 	private static readonly IReadOnlyDictionary<string, SmartChildRefreshDefinition> SMART_CHILD_REFRESH_DEFINITIONS =
 		new Dictionary<string, SmartChildRefreshDefinition> (StringComparer.OrdinalIgnoreCase)
 			{
-			["trigger_log"] = new SmartChildRefreshDefinition (KasaCommands.SMART_GET_TRIGGER_LOGS_METHOD, static () => (JsonObject)SMART_GET_TRIGGER_LOGS_PARAMETERS.DeepClone (), "trigger_logs"),
+			["trigger_log"] = new SmartChildRefreshDefinition (KasaCommands.SMART_GET_TRIGGER_LOGS_METHOD, static () => (JObject)SMART_GET_TRIGGER_LOGS_PARAMETERS.DeepClone (), "trigger_logs"),
 			["double_click"] = new SmartChildRefreshDefinition (KasaCommands.SMART_GET_DOUBLE_CLICK_INFO_METHOD, static () => null, "double_click_info"),
 			["humidity"] = new SmartChildRefreshDefinition (KasaCommands.SMART_GET_COMFORT_HUMIDITY_CONFIG_METHOD, static () => null, "comfort_humidity_config"),
 			["frost_protection"] = new SmartChildRefreshDefinition (KasaCommands.SMART_GET_FROST_PROTECTION_METHOD, static () => null, "frost_protection"),
@@ -710,7 +710,7 @@ public sealed partial class KasaDevice : IDisposable
 			}
 
 		IReadOnlyList<string> supportedCategories = GetSupportedChildSetupCategories ();
-		var scanList = new JsonArray ();
+		var scanList = new JArray ();
 		foreach (string category in supportedCategories)
 			{
 			scanList.Add (category);
@@ -719,7 +719,7 @@ public sealed partial class KasaDevice : IDisposable
 		string response = await _transport.SendAsync (
 			KasaCommands.CreateSmartRequest (
 				KasaCommands.SMART_GET_SCAN_CHILD_DEVICE_LIST_METHOD,
-				new JsonObject
+				new JObject
 					{
 					["scan_list"] = scanList,
 					}),
@@ -752,10 +752,10 @@ public sealed partial class KasaDevice : IDisposable
 			return Array.Empty<DetectedChildDevice> ();
 			}
 
-		var childDeviceList = new JsonArray ();
+		var childDeviceList = new JArray ();
 		foreach (DetectedChildDevice device in devices)
 			{
-			var item = new JsonObject
+			var item = new JObject
 				{
 				["device_id"] = device.DeviceId,
 				};
@@ -773,7 +773,7 @@ public sealed partial class KasaDevice : IDisposable
 		await ExecuteCommandCoreAsync (
 			KasaCommands.CreateSmartRequest (
 				KasaCommands.SMART_ADD_CHILD_DEVICE_LIST_METHOD,
-				new JsonObject
+				new JObject
 					{
 					["child_device_list"] = childDeviceList,
 					}),
@@ -814,10 +814,10 @@ public sealed partial class KasaDevice : IDisposable
 		await ExecuteCommandCoreAsync (
 			KasaCommands.CreateSmartRequest (
 				KasaCommands.SMART_REMOVE_CHILD_DEVICE_LIST_METHOD,
-				new JsonObject
+				new JObject
 					{
-					["child_device_list"] = new JsonArray (
-						new JsonObject
+					["child_device_list"] = new JArray (
+						new JObject
 							{
 							["device_id"] = childDeviceId,
 							}),
@@ -1081,7 +1081,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <param name="cancellationToken">The cancellation token for the operation.</param>
 	/// <returns>The raw JSON response payload from the device.</returns>
 	/// <exception cref="ArgumentException">Thrown when <paramref name="method" /> is empty or whitespace.</exception>
-	public Task<string> ExecuteSmartCommandAsync (string method, JsonObject? parameters = null, CancellationToken cancellationToken = default) =>
+	public Task<string> ExecuteSmartCommandAsync (string method, JObject? parameters = null, CancellationToken cancellationToken = default) =>
 		ExecuteSmartCommandAsync (method, parameters, DeviceStateUpdateMode.None, cancellationToken);
 
 	/// <summary>
@@ -1094,7 +1094,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <returns>The raw JSON response payload from the device.</returns>
 	/// <exception cref="ArgumentException">Thrown when <paramref name="method" /> is empty or whitespace.</exception>
 	/// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="updateMode" /> is unsupported.</exception>
-	public Task<string> ExecuteSmartCommandAsync (string method, JsonObject? parameters, DeviceStateUpdateMode updateMode, CancellationToken cancellationToken = default)
+	public Task<string> ExecuteSmartCommandAsync (string method, JObject? parameters, DeviceStateUpdateMode updateMode, CancellationToken cancellationToken = default)
 		{
 		if (string.IsNullOrWhiteSpace (method))
 			{
@@ -1147,7 +1147,7 @@ public sealed partial class KasaDevice : IDisposable
 
 	private sealed class SmartChildRefreshDefinition
 		{
-		internal SmartChildRefreshDefinition (string method, Func<JsonObject?> createParameters, string? responsePropertyName = null)
+		internal SmartChildRefreshDefinition (string method, Func<JObject?> createParameters, string? responsePropertyName = null)
 			{
 			Method = method;
 			CreateParameters = createParameters;
@@ -1155,13 +1155,13 @@ public sealed partial class KasaDevice : IDisposable
 			}
 
 		internal string Method { get; }
-		internal Func<JsonObject?> CreateParameters { get; }
+		internal Func<JObject?> CreateParameters { get; }
 		internal string ResponsePropertyName { get; }
 		}
 
 	private sealed class SmartRefreshContribution
 		{
-		internal SmartRefreshContribution (string requiredComponent, string method, Func<JsonObject?>? createParameters = null, int? minimumSupportedVersion = null)
+		internal SmartRefreshContribution (string requiredComponent, string method, Func<JObject?>? createParameters = null, int? minimumSupportedVersion = null)
 			{
 			RequiredComponent = requiredComponent;
 			Method = method;
@@ -1171,7 +1171,7 @@ public sealed partial class KasaDevice : IDisposable
 
 		internal string RequiredComponent { get; }
 		internal string Method { get; }
-		internal Func<JsonObject?> CreateParameters { get; }
+		internal Func<JObject?> CreateParameters { get; }
 		internal int? MinimumSupportedVersion { get; }
 		}
 

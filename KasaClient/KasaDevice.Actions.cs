@@ -22,7 +22,7 @@ public sealed partial class KasaDevice
 		{
 		if (UsesSmartProtocol ())
 			{
-			await ExecuteCommandCoreAsync (KasaTapoClient.Internal.KasaCommands.CreateSmartRequest ("set_device_info", new System.Text.Json.Nodes.JsonObject { ["device_on"] = isOn }), cancellationToken).ConfigureAwait (false);
+			await ExecuteCommandCoreAsync (KasaTapoClient.Internal.KasaCommands.CreateSmartRequest ("set_device_info", new Newtonsoft.Json.Linq.JObject { ["device_on"] = isOn }), cancellationToken).ConfigureAwait (false);
 			await UpdateCoreAsync (cancellationToken).ConfigureAwait (false);
 			return;
 			}
@@ -81,7 +81,7 @@ public sealed partial class KasaDevice
 
 		if (UsesSmartProtocol ())
 			{
-			var parameters = new System.Text.Json.Nodes.JsonObject ();
+			var parameters = new Newtonsoft.Json.Linq.JObject ();
 			bool isColorUpdate = hue is int || saturation is int;
 			if (isOn is bool smartPowerState)
 				{

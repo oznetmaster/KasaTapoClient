@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
-using System.Text.Json.Nodes;
+using Newtonsoft.Json.Linq;
 
 namespace KasaTapoClient.Internal;
 
@@ -49,24 +49,24 @@ internal static partial class KasaResponseParser
 
 	internal static SmartParsedResponse ParseSmartResponse (string responseJson)
 		{
-		JsonObject root = JsonSupport.ParseObject (responseJson);
-		JsonArray responses = root["result"]?["responses"] as JsonArray
+		JObject root = JsonSupport.ParseObject (responseJson);
+		JArray responses = root["result"]?["responses"] as JArray
 			?? throw new InvalidDataException ("The smart device response did not contain result.responses.");
 
 		SmartEnvelopeResultDto? deviceInfoResult = null;
 		SmartEnvelopeResultDto? componentResult = null;
 		SmartEnvelopeResultDto? childDeviceListResult = null;
 		SmartEnvelopeResultDto? childComponentListResult = null;
-		Dictionary<string, JsonObject> moduleResults = new (StringComparer.Ordinal);
-		foreach (JsonNode? responseNode in responses)
+		Dictionary<string, JObject> moduleResults = new (StringComparer.Ordinal);
+		foreach (JToken? responseNode in responses)
 			{
-			if (responseNode is not JsonObject responseObject)
+			if (responseNode is not JObject responseObject)
 				{
 				continue;
 				}
 
 			string? method = responseObject["method"]?.GetValue<string> ();
-			JsonObject? resultObject = responseObject["result"] as JsonObject;
+			JObject? resultObject = responseObject["result"] as JObject;
 			if (!string.IsNullOrWhiteSpace (method) && resultObject is not null)
 				{
 				moduleResults[method!] = resultObject;
@@ -177,22 +177,22 @@ internal static partial class KasaResponseParser
 			moduleResults);
 		}
 
-	internal static IReadOnlyDictionary<string, JsonObject> ParseSmartModuleResults (string responseJson)
+	internal static IReadOnlyDictionary<string, JObject> ParseSmartModuleResults (string responseJson)
 		{
-		JsonObject root = JsonSupport.ParseObject (responseJson);
-		JsonArray responses = root["result"]?["responses"] as JsonArray
+		JObject root = JsonSupport.ParseObject (responseJson);
+		JArray responses = root["result"]?["responses"] as JArray
 			?? throw new InvalidDataException ("The smart device response did not contain result.responses.");
 
-		Dictionary<string, JsonObject> moduleResults = new (StringComparer.Ordinal);
-		foreach (JsonNode? responseNode in responses)
+		Dictionary<string, JObject> moduleResults = new (StringComparer.Ordinal);
+		foreach (JToken? responseNode in responses)
 			{
-			if (responseNode is not JsonObject responseObject)
+			if (responseNode is not JObject responseObject)
 				{
 				continue;
 				}
 
 			string? method = responseObject["method"]?.GetValue<string> ();
-			JsonObject? resultObject = responseObject["result"] as JsonObject;
+			JObject? resultObject = responseObject["result"] as JObject;
 			if (!string.IsNullOrWhiteSpace (method) && resultObject is not null)
 				{
 				moduleResults[method!] = resultObject;
@@ -284,7 +284,7 @@ internal static partial class KasaResponseParser
 
 	internal static ParsedResponse MergeParsedResponse (ParsedResponse primary, ParsedResponse overlay)
 		{
-		JsonObject merged = JsonSupport.ParseObject (primary.RawJson);
+		JObject merged = JsonSupport.ParseObject (primary.RawJson);
 		JsonSupport.MergeObjects (merged, JsonSupport.ParseObject (overlay.RawJson));
 		return new ParsedResponse (
 			merged.ToJsonString (JsonSupport.COMPACT_JSON),

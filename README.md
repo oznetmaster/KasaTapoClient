@@ -149,7 +149,7 @@ string response = await device.ExecuteCommandAsync(
 ```csharp
 string response = await device.ExecuteSmartCommandAsync(
     "set_device_info",
-    new System.Text.Json.Nodes.JsonObject { ["device_on"] = true },
+    new Newtonsoft.Json.Linq.JObject { ["device_on"] = true },
     DeviceStateUpdateMode.UpdateAfterCommand).ConfigureAwait(false);
 ```
 

@@ -5,8 +5,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Text.Json;
-using System.Text.Json.Nodes;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -39,7 +39,7 @@ public sealed partial class KasaDevice
 					continue;
 					}
 
-				Dictionary<string, JsonObject?> childRequests = CreateSmartChildRefreshRequests (componentIds);
+				Dictionary<string, JObject?> childRequests = CreateSmartChildRefreshRequests (componentIds);
 				if (childRequests.Count == 0)
 					{
 					continue;
@@ -70,9 +70,9 @@ public sealed partial class KasaDevice
 			parsedResponse.ModuleResults);
 		}
 
-	private static Dictionary<string, JsonObject?> CreateSmartChildRefreshRequests (IReadOnlyList<string> componentIds)
+	private static Dictionary<string, JObject?> CreateSmartChildRefreshRequests (IReadOnlyList<string> componentIds)
 		{
-		var requests = new Dictionary<string, JsonObject?> (StringComparer.Ordinal);
+		var requests = new Dictionary<string, JObject?> (StringComparer.Ordinal);
 		foreach (string componentId in componentIds)
 			{
 				if (SMART_CHILD_REFRESH_DEFINITIONS.TryGetValue (componentId, out SmartChildRefreshDefinition? definition))
@@ -90,40 +90,40 @@ public sealed partial class KasaDevice
 		out KasaResponseParser.SmartChildDeviceDto? mergedChild)
 		{
 		mergedChild = null;
-		JsonObject childObject = JsonSupport.ParseObject (JsonSerializer.Serialize (child, JsonSupport.COMPACT_JSON));
+		JObject childObject = JsonSupport.ParseObject (JsonConvert.SerializeObject (child, JsonSupport.COMPACT_JSON));
 
-		if (!TryParseSmartChildResponseData (childResponseJson, out JsonObject? responseData))
+		if (!TryParseSmartChildResponseData (childResponseJson, out JObject? responseData))
 			{
 			return false;
 			}
 
 		JsonSupport.MergeObjects (childObject, responseData!);
-		mergedChild = JsonSerializer.Deserialize<KasaResponseParser.SmartChildDeviceDto> (childObject.ToJsonString (JsonSupport.COMPACT_JSON), JsonSupport.COMPACT_JSON);
+		mergedChild = JsonConvert.DeserializeObject<KasaResponseParser.SmartChildDeviceDto> (childObject.ToJsonString (JsonSupport.COMPACT_JSON), JsonSupport.COMPACT_JSON);
 		return mergedChild is not null;
 		}
 
-	private static bool TryParseSmartChildResponseData (string childResponseJson, out JsonObject? responseData)
+	private static bool TryParseSmartChildResponseData (string childResponseJson, out JObject? responseData)
 		{
 		responseData = null;
-		JsonObject root = JsonSupport.ParseObject (childResponseJson);
-		if (root["result"] is not JsonObject resultObject
-			|| resultObject["responseData"] is not JsonObject responseDataObject)
+		JObject root = JsonSupport.ParseObject (childResponseJson);
+		if (root["result"] is not JObject resultObject
+			|| resultObject["responseData"] is not JObject responseDataObject)
 			{
 			return false;
 			}
 
-		JsonNode? responseResultNode = responseDataObject["result"];
-		if (responseResultNode is not JsonObject responseResultObject)
+		JToken? responseResultNode = responseDataObject["result"];
+		if (responseResultNode is not JObject responseResultObject)
 			{
 			return false;
 			}
 
-		responseData = new JsonObject ();
-		if (responseResultObject["responses"] is JsonArray responses)
+		responseData = new JObject ();
+		if (responseResultObject["responses"] is JArray responses)
 			{
-				foreach (JsonNode? responseNode in responses)
+				foreach (JToken? responseNode in responses)
 					{
-						if (responseNode is not JsonObject methodResponse)
+						if (responseNode is not JObject methodResponse)
 							{
 							continue;
 							}
@@ -177,7 +177,7 @@ public sealed partial class KasaDevice
 			return null;
 			}
 
-		return JsonSerializer.Deserialize<KasaResponseParser.SmartChildDeviceDto> (childInfo.RawJson, JsonSupport.COMPACT_JSON);
+		return JsonConvert.DeserializeObject<KasaResponseParser.SmartChildDeviceDto> (childInfo.RawJson, JsonSupport.COMPACT_JSON);
 		}
 
 	internal IReadOnlyList<string> GetSupportedChildSetupCategories ()
@@ -187,38 +187,38 @@ public sealed partial class KasaDevice
 			return Array.Empty<string> ();
 			}
 
-		JsonObject root = JsonSupport.ParseObject (rawJson);
-		if (root["result"] is not JsonObject resultObject
-			|| resultObject["responses"] is not JsonArray responses)
+		JObject root = JsonSupport.ParseObject (rawJson);
+		if (root["result"] is not JObject resultObject
+			|| resultObject["responses"] is not JArray responses)
 			{
 			return Array.Empty<string> ();
 			}
 
-		foreach (JsonNode? responseNode in responses)
+		foreach (JToken? responseNode in responses)
 			{
-			if (responseNode is not JsonObject responseObject)
+			if (responseNode is not JObject responseObject)
 				{
 				continue;
 				}
 
 			if (!string.Equals (responseObject["method"]?.GetValue<string> (), KasaCommands.SMART_GET_DEVICE_INFO_METHOD, StringComparison.Ordinal)
-				|| responseObject["result"] is not JsonObject deviceInfoObject)
+				|| responseObject["result"] is not JObject deviceInfoObject)
 				{
 				continue;
 				}
 
-			if (deviceInfoObject["device_category_list"] is not JsonArray categoryArray || categoryArray.Count == 0)
+			if (deviceInfoObject["device_category_list"] is not JArray categoryArray || categoryArray.Count == 0)
 				{
 				return Array.Empty<string> ();
 				}
 
 			var results = new List<string> (categoryArray.Count);
-			foreach (JsonNode? categoryNode in categoryArray)
+			foreach (JToken? categoryNode in categoryArray)
 				{
-				if (categoryNode is JsonObject categoryObject
+				if (categoryNode is JObject categoryObject
 					&& !string.IsNullOrWhiteSpace (categoryObject["category"]?.GetValue<string> ()))
 					{
-					results.Add (categoryObject["category"]!.GetValue<string> ());
+					results.Add (categoryObject["category"]!.GetValue<string> ()!);
 					}
 				}
 
@@ -230,9 +230,9 @@ public sealed partial class KasaDevice
 
 	private static ChildSetupScanResult ParseChildSetupScanResult (string responseJson, IReadOnlyList<string> supportedCategories)
 		{
-		JsonObject root = JsonSupport.ParseObject (responseJson);
-		JsonObject resultObject = root["result"] as JsonObject ?? throw new InvalidOperationException ("The hub did not return a smart child setup result payload.");
-		KasaResponseParser.SmartScannedChildDeviceListDto? result = JsonSerializer.Deserialize<KasaResponseParser.SmartScannedChildDeviceListDto> (resultObject.ToJsonString (JsonSupport.COMPACT_JSON), JsonSupport.COMPACT_JSON);
+		JObject root = JsonSupport.ParseObject (responseJson);
+		JObject resultObject = root["result"] as JObject ?? throw new InvalidOperationException ("The hub did not return a smart child setup result payload.");
+		KasaResponseParser.SmartScannedChildDeviceListDto? result = JsonConvert.DeserializeObject<KasaResponseParser.SmartScannedChildDeviceListDto> (resultObject.ToJsonString (JsonSupport.COMPACT_JSON), JsonSupport.COMPACT_JSON);
 
 		if (result?.ChildDeviceList is not List<KasaResponseParser.SmartScannedChildDeviceDto> detected || detected.Count == 0)
 			{
@@ -251,7 +251,7 @@ public sealed partial class KasaDevice
 				detectedDevice.DeviceId!,
 				detectedDevice.DeviceModel,
 				detectedDevice.Category,
-				JsonSerializer.Serialize (detectedDevice, JsonSupport.COMPACT_JSON)));
+				JsonConvert.SerializeObject (detectedDevice, JsonSupport.COMPACT_JSON)));
 			}
 
 		return new ChildSetupScanResult (supportedCategories, devices);

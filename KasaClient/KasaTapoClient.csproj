@@ -10,7 +10,7 @@
 		<TargetFrameworks>net472;net10.0</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<PackageId>KasaTapoClient</PackageId>
-		<Version>1.1.11</Version>
+		<Version>1.2.0</Version>
 		<Authors>Neil Colvin</Authors>
 		<Company>Neil Colvin</Company>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -21,7 +21,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>Fixed a discovery result bug where a device that replied to both the legacy and smart/Tapo discovery broadcasts would only have one of the two results kept; both are now kept, keyed by host and transport kind. Added Discover.DiscoverLegacyAsync/DiscoveryClient.DiscoverLegacyAsync for broadcasting only the legacy (port 9999) discovery request. Fixed LegacyTransport to transparently reconnect and retry once when a reused idle connection was closed by the device, and to reliably drop the connection on a write/read timeout on .NET Framework. Fixed TpapTransport to disable system proxy auto-detection (which could stall the first connect for up to the full startup timeout on embedded Mono/Linux hosts) and raised its per-host connection limit to avoid connection-pool starvation after repeated timeout/abort cycles.</PackageReleaseNotes>
+		<PackageReleaseNotes>Migrated the JSON serialization stack from System.Text.Json to Newtonsoft.Json across the core library, console app, tests, benchmarks, and Crestron driver, improving compatibility on .NET Framework 4.7.2 and embedded Mono/Crestron hosts (avoids extra binding-redirect dependencies and resolves ambiguity with SimplSharpNewtonsoft in the Crestron driver). No public behavior changes; validated with a full solution build and live device integration tests.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>
@@ -68,7 +68,7 @@
 	<ItemGroup>
 		<PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
 		<PackageReference Include="log4net" Version="3.3.1" />
-		<PackageReference Include="System.Text.Json" Version="9.0.0" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -89,6 +89,7 @@
 		</PackageReference>
 		<PackageReference Include="Hafner.Compatibility.MetaPackage" Version="1.9.0" />
 		<PackageReference Include="System.Net.Http" Version="4.3.4" />
+		<PackageReference Include="System.Memory" Version="4.6.3" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
-using System.Text.Json.Nodes;
+using Newtonsoft.Json.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -175,7 +175,7 @@ internal sealed class LegacyTransport : IDisposableDeviceTransport
 			throw new ArgumentException ("At least one command payload is required.", nameof (commandJsonPayloads));
 			}
 
-		var merged = new JsonObject ();
+		var merged = new JObject ();
 		foreach (string payload in commandJsonPayloads)
 			{
 			JsonSupport.MergeObjects (merged, JsonSupport.ParseObject (payload));

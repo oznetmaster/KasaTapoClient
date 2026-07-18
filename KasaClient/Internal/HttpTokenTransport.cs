@@ -11,7 +11,7 @@ using System.Net.Http;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json.Nodes;
+using Newtonsoft.Json.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -59,7 +59,7 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 			}
 
 		await EnsureAuthenticatedAsync (cancellationToken).ConfigureAwait (false);
-		var mergedResponse = new JsonObject ();
+		var mergedResponse = new JObject ();
 		foreach (string payload in commandJsonPayloads)
 			{
 			string responseJson = await SendAuthenticatedAsync (payload, cancellationToken).ConfigureAwait (false);
@@ -126,7 +126,7 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 			requestJson,
 			cancellationToken,
 			AES_HANDSHAKE_CONTENT_LENGTH).ConfigureAwait (false);
-		JsonObject root = JsonSupport.ParseObject (handshakeResponse);
+		JObject root = JsonSupport.ParseObject (handshakeResponse);
 		EnsureSuccess (root, $"Unable to complete handshake for '{_configuration.Host}'");
 		string handshakeKey = root["result"]?["key"]?.GetValue<string?> ()
 			?? throw new InvalidDataException ($"The handshake response for '{_configuration.Host}' did not include a key.");
@@ -157,11 +157,11 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 		_authState = AesAuthState.Established;
 		}
 
-	private async Task<LoginAttemptResult> TryAesLoginAsync (JsonObject loginRequest, CancellationToken cancellationToken)
+	private async Task<LoginAttemptResult> TryAesLoginAsync (JObject loginRequest, CancellationToken cancellationToken)
 		{
 		string requestJson = loginRequest.ToJsonString (JsonSupport.COMPACT_JSON);
 		string responseJson = await SendEncryptedPassthroughAsync (requestJson, cancellationToken).ConfigureAwait (false);
-		JsonObject root = JsonSupport.ParseObject (responseJson);
+		JObject root = JsonSupport.ParseObject (responseJson);
 		return new LoginAttemptResult (ExtractToken (root), GetErrorCode (root), responseJson);
 		}
 
@@ -171,15 +171,15 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 		return await TryAesLoginAsync (CreateAesLoginRequest (defaultCredentials), cancellationToken).ConfigureAwait (false);
 		}
 
-	private JsonObject CreateAesLoginRequest (DeviceCredentials credentials)
+	private JObject CreateAesLoginRequest (DeviceCredentials credentials)
 		{
 		bool loginVersion2 = _connectionParameters?.LoginVersion == 2;
 		(string userName, string password) = HashAesCredentials (credentials, loginVersion2);
 		string passwordFieldName = loginVersion2 ? "password2" : "password";
-		return new JsonObject
+		return new JObject
 			{
 			["method"] = "login_device",
-			["params"] = new JsonObject
+			["params"] = new JObject
 				{
 				["username"] = userName,
 				[passwordFieldName] = password,
@@ -219,22 +219,22 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 
 	private static string CreateHandshakeRequest (string publicKeyPem)
 		{
-		return new JsonObject
+		return new JObject
 			{
 			["method"] = HANDSHAKE_METHOD,
-			["params"] = new JsonObject
+			["params"] = new JObject
 				{
 				["key"] = publicKeyPem,
 				},
 			}.ToJsonString (JsonSupport.COMPACT_JSON);
 		}
 
-	private static JsonObject CreateLoginRequest (DeviceCredentials credentials)
+	private static JObject CreateLoginRequest (DeviceCredentials credentials)
 		{
-		return new JsonObject
+		return new JObject
 			{
 			["method"] = "login",
-			["params"] = new JsonObject
+			["params"] = new JObject
 				{
 				["username"] = credentials.UserName,
 				["password"] = credentials.Password,
@@ -242,12 +242,12 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 			};
 		}
 
-	private static JsonObject CreateLoginDeviceRequest (DeviceCredentials credentials)
+	private static JObject CreateLoginDeviceRequest (DeviceCredentials credentials)
 		{
-		return new JsonObject
+		return new JObject
 			{
 			["method"] = "login_device",
-			["params"] = new JsonObject
+			["params"] = new JObject
 				{
 				["username"] = credentials.UserName,
 				["password"] = credentials.Password,
@@ -256,13 +256,13 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 			};
 		}
 
-	private static JsonObject CreateSecurePassthroughLoginRequest (JsonObject loginDeviceRequest)
+	private static JObject CreateSecurePassthroughLoginRequest (JObject loginDeviceRequest)
 		{
 		string loginRequestJson = loginDeviceRequest.ToJsonString (JsonSupport.COMPACT_JSON);
-		return new JsonObject
+		return new JObject
 			{
 			["method"] = PASSTHROUGH_METHOD,
-			["params"] = new JsonObject
+			["params"] = new JObject
 				{
 				["request"] = loginRequestJson,
 				},
@@ -380,10 +380,10 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 			return commandJson;
 			}
 
-		return new JsonObject
+		return new JObject
 			{
 			["method"] = PASSTHROUGH_METHOD,
-			["params"] = new JsonObject
+			["params"] = new JObject
 				{
 				["request"] = commandJson,
 				},
@@ -397,13 +397,13 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 			return responseJson;
 			}
 
-		JsonObject root = JsonSupport.ParseObject (responseJson);
+		JObject root = JsonSupport.ParseObject (responseJson);
 		if (GetErrorCode (root) != 0)
 			{
 			return responseJson;
 			}
 
-		if (root["result"] is not JsonObject result)
+		if (root["result"] is not JObject result)
 			{
 			return responseJson;
 			}
@@ -412,10 +412,10 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 		return string.IsNullOrWhiteSpace (response) ? responseJson : response ?? responseJson;
 		}
 
-	private static JsonObject ParseLoginResponse (string responseJson)
+	private static JObject ParseLoginResponse (string responseJson)
 		{
-		JsonObject root = JsonSupport.ParseObject (responseJson);
-		if (root["result"] is not JsonObject result)
+		JObject root = JsonSupport.ParseObject (responseJson);
+		if (root["result"] is not JObject result)
 			{
 			return root;
 			}
@@ -429,9 +429,9 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 		return JsonSupport.ParseObject (nestedResponse!);
 		}
 
-	private static string? ExtractToken (JsonObject response)
+	private static string? ExtractToken (JObject response)
 		{
-		if (response["result"] is not JsonObject result)
+		if (response["result"] is not JObject result)
 			{
 			return response["token"]?.GetValue<string?> () ?? response["stok"]?.GetValue<string?> ();
 			}
@@ -444,7 +444,7 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 
 	private static bool RequiresReauthentication (string responseJson)
 		{
-		JsonObject response = JsonSupport.ParseObject (responseJson);
+		JObject response = JsonSupport.ParseObject (responseJson);
 		return GetErrorCode (response) == AUTHENTICATION_ERROR_CODE;
 		}
 
@@ -456,16 +456,16 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 			}
 
 		string encryptedRequest = _aesSession.Encrypt (requestJson);
-		string payload = new JsonObject
+		string payload = new JObject
 			{
 			["method"] = PASSTHROUGH_METHOD,
-			["params"] = new JsonObject
+			["params"] = new JObject
 				{
 				["request"] = encryptedRequest,
 				},
 			}.ToJsonString (JsonSupport.COMPACT_JSON);
 		string responseJson = await PostJsonAsync (ResolveAesRequestUri (), payload, cancellationToken).ConfigureAwait (false);
-		JsonObject root = JsonSupport.ParseObject (responseJson);
+		JObject root = JsonSupport.ParseObject (responseJson);
 		EnsureSuccess (root, $"Error sending secure_passthrough message to '{_configuration.Host}'");
 		string? rawResponse = root["result"]?["response"]?.GetValue<string?> ();
 		if (string.IsNullOrWhiteSpace (rawResponse))
@@ -569,7 +569,7 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 	private static string TrimResponse (string response) => response.Length <= 240 ? response : response.Substring (0, 240) + "...";
 #pragma warning restore CA1845
 
-	private static int GetErrorCode (JsonObject response) =>
+	private static int GetErrorCode (JObject response) =>
 		response["error_code"]?.GetValue<int?> ()
 		?? response["errorCode"]?.GetValue<int?> ()
 		?? 0;
@@ -791,7 +791,7 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 		return combined;
 		}
 
-	private static void EnsureSuccess (JsonObject response, string message)
+	private static void EnsureSuccess (JObject response, string message)
 		{
 		int errorCode = GetErrorCode (response);
 		if (errorCode != 0)

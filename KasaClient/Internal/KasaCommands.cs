@@ -6,7 +6,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Text.Json.Nodes;
+using Newtonsoft.Json.Linq;
 
 namespace KasaTapoClient.Internal;
 
@@ -86,15 +86,15 @@ internal static class KasaCommands
 			}
 
 		int relayState = isOn ? 1 : 0;
-		var command = new JsonObject
+		var command = new JObject
 			{
-			["context"] = new JsonObject
+			["context"] = new JObject
 				{
-				["child_ids"] = new JsonArray (childDeviceId),
+				["child_ids"] = new JArray (childDeviceId),
 				},
-			["system"] = new JsonObject
+			["system"] = new JObject
 				{
-				["set_relay_state"] = new JsonObject
+				["set_relay_state"] = new JObject
 					{
 					["state"] = relayState,
 					},
@@ -150,7 +150,7 @@ internal static class KasaCommands
 				_ => throw new InvalidOperationException ($"Device type '{deviceType}' does not support light-state control."),
 			};
 
-		var lightState = new JsonObject ();
+		var lightState = new JObject ();
 		if (isOn is bool powerState)
 			{
 			lightState["on_off"] = powerState ? 1 : 0;
@@ -192,9 +192,9 @@ internal static class KasaCommands
 			lightState["transition_period"] = transitionMilliseconds ?? 0;
 			}
 
-		var command = new JsonObject
+		var command = new JObject
 			{
-			[service] = new JsonObject
+			[service] = new JObject
 				{
 				[method] = lightState,
 				},
@@ -219,9 +219,9 @@ internal static class KasaCommands
 				_ => throw new InvalidOperationException ($"Device type '{deviceType}' does not support light-effect control."),
 			};
 
-		JsonObject payload = deviceType switch
+		JObject payload = deviceType switch
 			{
-				DeviceType.Bulb => new JsonObject
+				DeviceType.Bulb => new JObject
 					{
 					["enable"] = string.IsNullOrWhiteSpace (effect) ? 0 : 1,
 					["id"] = string.IsNullOrWhiteSpace (effect) ? null : effect,
@@ -230,9 +230,9 @@ internal static class KasaCommands
 				_ => throw new InvalidOperationException ($"Device type '{deviceType}' does not support light-effect control."),
 			};
 
-		var command = new JsonObject
+		var command = new JObject
 			{
-			[service] = new JsonObject
+			[service] = new JObject
 				{
 				[method] = payload,
 				},
@@ -241,14 +241,14 @@ internal static class KasaCommands
 		return command.ToJsonString (JsonSupport.COMPACT_JSON);
 		}
 
-	public static string CreateSmartRequest (string method, JsonObject? parameters = null)
+	public static string CreateSmartRequest (string method, JObject? parameters = null)
 		{
 		if (string.IsNullOrWhiteSpace (method))
 			{
 			throw new ArgumentException ("A smart method name is required.", nameof (method));
 			}
 
-		var request = new JsonObject
+		var request = new JObject
 			{
 			["method"] = method,
 			["request_time_milis"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds (),
@@ -266,7 +266,7 @@ internal static class KasaCommands
 		{
 		return CreateSmartRequest (
 			SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD,
-			new JsonObject
+			new JObject
 				{
 				["enable"] = enabled,
 				});
@@ -276,14 +276,14 @@ internal static class KasaCommands
 		{
 		return CreateSmartRequest (
 			SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD,
-			new JsonObject
+			new JObject
 				{
-				["on_state"] = new JsonObject
+				["on_state"] = new JObject
 					{
 					["enable"] = enabled,
 					["duration"] = onDurationSeconds,
 					},
-				["off_state"] = new JsonObject
+				["off_state"] = new JObject
 					{
 					["enable"] = enabled,
 					["duration"] = offDurationSeconds,
@@ -295,9 +295,9 @@ internal static class KasaCommands
 		{
 		return CreateSmartRequest (
 			SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD,
-			new JsonObject
+			new JObject
 				{
-				["on_state"] = new JsonObject
+				["on_state"] = new JObject
 					{
 					["enable"] = enabled,
 					["duration"] = durationSeconds,
@@ -309,9 +309,9 @@ internal static class KasaCommands
 		{
 		return CreateSmartRequest (
 			SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD,
-			new JsonObject
+			new JObject
 				{
-				["off_state"] = new JsonObject
+				["off_state"] = new JObject
 					{
 					["enable"] = enabled,
 					["duration"] = durationSeconds,
@@ -319,17 +319,17 @@ internal static class KasaCommands
 				});
 		}
 
-	public static string CreateSmartMultipleRequest (IReadOnlyDictionary<string, JsonObject?> requests)
+	public static string CreateSmartMultipleRequest (IReadOnlyDictionary<string, JObject?> requests)
 		{
 		if (requests.Count == 0)
 			{
 			throw new ArgumentException ("At least one smart request is required.", nameof (requests));
 			}
 
-		var requestItems = new JsonArray ();
-		foreach (KeyValuePair<string, JsonObject?> request in requests)
+		var requestItems = new JArray ();
+		foreach (KeyValuePair<string, JObject?> request in requests)
 			{
-			var item = new JsonObject
+			var item = new JObject
 				{
 				["method"] = request.Key,
 				};
@@ -343,13 +343,13 @@ internal static class KasaCommands
 
 		return CreateSmartRequest (
 			"multipleRequest",
-			new JsonObject
+			new JObject
 				{
 				["requests"] = requestItems,
 				});
 		}
 
-	public static string CreateSmartChildRequest (string childDeviceId, string method, JsonObject? parameters = null)
+	public static string CreateSmartChildRequest (string childDeviceId, string method, JObject? parameters = null)
 		{
 		if (string.IsNullOrWhiteSpace (childDeviceId))
 			{
@@ -361,7 +361,7 @@ internal static class KasaCommands
 			throw new ArgumentException ("A smart method name is required.", nameof (method));
 			}
 
-		var requestData = new JsonObject
+		var requestData = new JObject
 			{
 			["method"] = method,
 			};
@@ -372,14 +372,14 @@ internal static class KasaCommands
 
 		return CreateSmartRequest (
 			"control_child",
-			new JsonObject
+			new JObject
 				{
 				["device_id"] = childDeviceId,
 				["requestData"] = requestData,
 				});
 		}
 
-	public static string CreateSmartChildMultipleRequest (string childDeviceId, IReadOnlyDictionary<string, JsonObject?> requests)
+	public static string CreateSmartChildMultipleRequest (string childDeviceId, IReadOnlyDictionary<string, JObject?> requests)
 		{
 		if (string.IsNullOrWhiteSpace (childDeviceId))
 			{
@@ -391,10 +391,10 @@ internal static class KasaCommands
 			throw new ArgumentException ("At least one smart request is required.", nameof (requests));
 			}
 
-		var requestItems = new JsonArray ();
-		foreach (KeyValuePair<string, JsonObject?> request in requests)
+		var requestItems = new JArray ();
+		foreach (KeyValuePair<string, JObject?> request in requests)
 			{
-			var item = new JsonObject
+			var item = new JObject
 				{
 				["method"] = request.Key,
 				};
@@ -409,7 +409,7 @@ internal static class KasaCommands
 		return CreateSmartChildRequest (
 			childDeviceId,
 			"multipleRequest",
-			new JsonObject
+			new JObject
 				{
 				["requests"] = requestItems,
 				});

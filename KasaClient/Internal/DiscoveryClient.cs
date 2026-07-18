@@ -12,7 +12,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json.Nodes;
+using Newtonsoft.Json.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -299,9 +299,9 @@ internal sealed class DiscoveryClient
 					}
 
 				string response = Encoding.UTF8.GetString (packet.Buffer, 16, packet.Buffer.Length - 16);
-				JsonObject root = JsonSupport.ParseObject (response);
-				JsonObject? data = root["result"] as JsonObject
-					?? root["params"] as JsonObject
+				JObject root = JsonSupport.ParseObject (response);
+				JObject? data = root["result"] as JObject
+					?? root["params"] as JObject
 					?? root;
 				if (data is null)
 					{
@@ -405,9 +405,9 @@ internal sealed class DiscoveryClient
 		return DeviceType.Unknown;
 		}
 
-	private static DiscoveryTransportMetadata GetDiscoveryTransportMetadata (JsonObject data, string? model, int responsePort)
+	private static DiscoveryTransportMetadata GetDiscoveryTransportMetadata (JObject data, string? model, int responsePort)
 		{
-		if (data["mgt_encrypt_schm"] is JsonObject encryptionScheme)
+		if (data["mgt_encrypt_schm"] is JObject encryptionScheme)
 			{
 				bool supportsHttps = encryptionScheme["is_support_https"]?.GetValue<bool?> () == true;
 				int? port = encryptionScheme["http_port"]?.GetValue<int?> ();
@@ -431,7 +431,7 @@ internal sealed class DiscoveryClient
 						port));
 			}
 
-		if (data["encrypt_type"] is not null || data["encrypt_info"] is JsonObject)
+		if (data["encrypt_type"] is not null || data["encrypt_info"] is JObject)
 			{
 				bool supportsHttps = data["is_support_https"]?.GetValue<bool?> () == true || responsePort == KLAP_DISCOVERY_PORT;
 				int port = supportsHttps ? 443 : 80;
@@ -456,7 +456,7 @@ internal sealed class DiscoveryClient
 			new DeviceConnectionParameters (DetermineLegacyDeviceFamilyKind (model), DeviceEncryptionKind.Xor, useHttps: false, httpPort: null));
 		}
 
-	private static string? ResolveDiscoveryEncryptType (JsonObject data, JsonObject encryptionScheme)
+	private static string? ResolveDiscoveryEncryptType (JObject data, JObject encryptionScheme)
 		{
 		string? encryptTypeText = encryptionScheme["encrypt_type"]?.GetValue<string?> ();
 		if (!string.IsNullOrWhiteSpace (encryptTypeText))
@@ -464,12 +464,12 @@ internal sealed class DiscoveryClient
 			return encryptTypeText;
 			}
 
-		return data["encrypt_info"] is JsonObject encryptInfo
+		return data["encrypt_info"] is JObject encryptInfo
 			? encryptInfo["sym_schm"]?.GetValue<string?> ()
 			: null;
 		}
 
-	private static int? ResolveDiscoveryLoginVersion (JsonObject data, JsonObject encryptionScheme)
+	private static int? ResolveDiscoveryLoginVersion (JObject data, JObject encryptionScheme)
 		{
 		int? loginVersion = encryptionScheme["lv"]?.GetValue<int?> ();
 		if (loginVersion is not null)
@@ -477,13 +477,13 @@ internal sealed class DiscoveryClient
 			return loginVersion;
 			}
 
-		if (data["encrypt_type"] is not JsonArray encryptTypes)
+		if (data["encrypt_type"] is not JArray encryptTypes)
 			{
 			return null;
 			}
 
 		int? maxLoginVersion = null;
-		foreach (JsonNode? encryptType in encryptTypes)
+		foreach (JToken? encryptType in encryptTypes)
 			{
 			if (encryptType?.GetValue<int?> () is not int candidate)
 				{
@@ -498,18 +498,18 @@ internal sealed class DiscoveryClient
 		return maxLoginVersion;
 		}
 
-	private static TpapDiscoveryMetadata? TryParseTpapDiscoveryMetadata (JsonObject data)
+	private static TpapDiscoveryMetadata? TryParseTpapDiscoveryMetadata (JObject data)
 		{
-		if (data["tpap"] is not JsonObject tpap)
+		if (data["tpap"] is not JObject tpap)
 			{
 			return null;
 			}
 
 		List<int>? pakeModes = null;
-		if (tpap["pake"] is JsonArray pakeArray)
+		if (tpap["pake"] is JArray pakeArray)
 			{
 			pakeModes = [];
-			foreach (JsonNode? item in pakeArray)
+			foreach (JToken? item in pakeArray)
 				{
 				if (item?.GetValue<int?> () is int mode)
 					{
@@ -660,9 +660,9 @@ internal sealed class DiscoveryClient
 			}
 
 		string publicKeyPem = CreateDiscoveryPublicKeyPem ();
-		string payload = new JsonObject
+		string payload = new JObject
 			{
-			["params"] = new JsonObject
+			["params"] = new JObject
 				{
 				["rsa_key"] = publicKeyPem,
 				},

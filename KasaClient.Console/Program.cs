@@ -11,9 +11,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -116,7 +115,7 @@ static byte[] CreateRawSmartDiscoveryQuery ()
 		EncodeRawSequence (EncodeRawObjectIdentifier (new byte[] { 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x01 }), new byte[] { 0x05, 0x00 }),
 		EncodeRawBitString (EncodeRawSequence (EncodeRawInteger (parameters.Modulus!), EncodeRawInteger (parameters.Exponent!))));
 	string pem = "-----BEGIN PUBLIC KEY-----\n" + Convert.ToBase64String (publicKeyInfo, Base64FormattingOptions.InsertLineBreaks) + "\n-----END PUBLIC KEY-----\n";
-	byte[] payload = Encoding.UTF8.GetBytes (new JsonObject { ["params"] = new JsonObject { ["rsa_key"] = pem } }.ToJsonString ());
+	byte[] payload = Encoding.UTF8.GetBytes (new JObject { ["params"] = new JObject { ["rsa_key"] = pem } }.ToString (Formatting.None));
 	var query = new byte[16 + payload.Length];
 	query[0] = 2; query[3] = 1; query[4] = (byte)(payload.Length >> 8); query[5] = (byte)payload.Length; query[6] = 17;
 	Buffer.BlockCopy (secret, 0, query, 8, secret.Length);
@@ -521,11 +520,11 @@ static async Task<int> RunSmartExecuteAsync (string host, bool hostWasExplicit, 
 		}
 
 	string method = arguments[commandIndex + 1];
-	JsonObject? parameters = null;
+	JObject? parameters = null;
 	int optionStartIndex = commandIndex + 2;
 	if (arguments.Count > optionStartIndex && !arguments[optionStartIndex].StartsWith ("--", StringComparison.Ordinal))
 		{
-		parameters = JsonNode.Parse (arguments[optionStartIndex]) as JsonObject
+		parameters = JToken.Parse (arguments[optionStartIndex]) as JObject
 			?? throw new ArgumentException ("The smart command parameters must be a JSON object.");
 		optionStartIndex++;
 		}
@@ -589,8 +588,8 @@ static void PrintJsonOrRaw (string text)
 	{
 	try
 		{
-		using JsonDocument document = JsonDocument.Parse (text);
-		Console.WriteLine (JsonSerializer.Serialize (document.RootElement, new JsonSerializerOptions { WriteIndented = true }));
+		JToken token = JToken.Parse (text);
+		Console.WriteLine (token.ToString (Formatting.Indented));
 		}
 	catch (JsonException)
 		{
@@ -1313,12 +1312,11 @@ static HashSet<string> GetTriggerLogKeys (ChildDevice child) =>
 
 static string? BuildChildWatchSignature (ChildDeviceInfo childInfo)
 	{
-	using JsonDocument document = JsonDocument.Parse (childInfo.RawJson);
-	string triggerLogs = document.RootElement.TryGetProperty ("trigger_logs", out JsonElement triggerLogsElement)
-		&& triggerLogsElement.ValueKind == JsonValueKind.Object
-		? triggerLogsElement.GetRawText ()
+	JToken root = JToken.Parse (childInfo.RawJson);
+	string triggerLogs = root["trigger_logs"] is JObject triggerLogsElement
+		? triggerLogsElement.ToString (Formatting.None)
 		: string.Empty;
-	string triggerTimestamp = document.RootElement.TryGetProperty ("trigger_timestamp", out JsonElement timestampElement)
+	string triggerTimestamp = root["trigger_timestamp"] is JToken timestampElement
 		? timestampElement.ToString ()
 		: string.Empty;
 	return triggerTimestamp + "|" + triggerLogs;
@@ -2702,10 +2700,10 @@ static class ConsoleProfileStore
 		Environment.GetFolderPath (Environment.SpecialFolder.ApplicationData),
 		"KasaClient",
 		"console-profiles.json");
-	private static readonly JsonSerializerOptions SERIALIZER_OPTIONS = new ()
+	private static readonly JsonSerializerSettings SERIALIZER_OPTIONS = new ()
 		{
-		WriteIndented = true,
-		DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+		Formatting = Formatting.Indented,
+		NullValueHandling = NullValueHandling.Ignore,
 		};
 
 	public static void Save (SavedConnectionProfile profile)
@@ -2759,7 +2757,7 @@ static class ConsoleProfileStore
 			}
 
 		string json = File.ReadAllText (path);
-		Dictionary<string, SavedConnectionProfile>? profiles = JsonSerializer.Deserialize<Dictionary<string, SavedConnectionProfile>> (json);
+		Dictionary<string, SavedConnectionProfile>? profiles = JsonConvert.DeserializeObject<Dictionary<string, SavedConnectionProfile>> (json);
 		return profiles is null
 			? new Dictionary<string, SavedConnectionProfile> (StringComparer.OrdinalIgnoreCase)
 			: new Dictionary<string, SavedConnectionProfile> (profiles, StringComparer.OrdinalIgnoreCase);
@@ -2773,7 +2771,7 @@ static class ConsoleProfileStore
 			Directory.CreateDirectory (directory);
 			}
 
-		string json = JsonSerializer.Serialize (profiles, SERIALIZER_OPTIONS);
+		string json = JsonConvert.SerializeObject (profiles, SERIALIZER_OPTIONS);
 		File.WriteAllText (PROFILE_PATH, json);
 		}
 
@@ -2833,10 +2831,10 @@ static class ConsoleImplicitProfileStore
 		Environment.GetFolderPath (Environment.SpecialFolder.ApplicationData),
 		"KasaClient",
 		"console-implicit-profile.json");
-	private static readonly JsonSerializerOptions SERIALIZER_OPTIONS = new ()
+	private static readonly JsonSerializerSettings SERIALIZER_OPTIONS = new ()
 		{
-		WriteIndented = true,
-		DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+		Formatting = Formatting.Indented,
+		NullValueHandling = NullValueHandling.Ignore,
 		};
 
 	public static SavedConnectionProfile? Load (string? preferredHost = null)
@@ -2875,7 +2873,7 @@ static class ConsoleImplicitProfileStore
 			Directory.CreateDirectory (directory);
 			}
 
-		string json = JsonSerializer.Serialize (profile, SERIALIZER_OPTIONS);
+		string json = JsonConvert.SerializeObject (profile, SERIALIZER_OPTIONS);
 		File.WriteAllText (IMPLICIT_PROFILE_PATH, json);
 		}
 
@@ -2887,7 +2885,7 @@ static class ConsoleImplicitProfileStore
 			}
 
 		string json = File.ReadAllText (path);
-		return JsonSerializer.Deserialize<SavedConnectionProfile> (json);
+		return JsonConvert.DeserializeObject<SavedConnectionProfile> (json);
 		}
 	}
 
