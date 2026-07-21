@@ -10,7 +10,7 @@
 		<TargetFrameworks>net472;net10.0</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<PackageId>KasaTapoClient</PackageId>
-		<Version>1.2.3</Version>
+		<Version>1.2.4</Version>
 		<Authors>Neil Colvin</Authors>
 		<Company>Neil Colvin</Company>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -21,7 +21,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>Discover.ConnectAsync no longer caches connected devices across separate calls (reverting the 1.2.2 persistent cache); it always returns an instance exclusively owned by the caller, aside from unchanged in-flight concurrent-connect coalescing. Added Discover.GetOrConnectSharedAsync as an explicit, opt-in API for call sites that are known to target the same device and want to share one connection; it reuses a live shared instance keyed by host/port and transparently reconnects if the shared instance was disposed. No reference counting is used. No breaking API changes.</PackageReleaseNotes>
+		<PackageReleaseNotes>Discover.ConnectAsync's in-flight connect coalescing and GetOrConnectSharedAsync's shared-instance reuse are keyed by host/port only, which could silently join/reuse a connection built from a materially different DeviceConfiguration (different credentials, timeout, or connection options) for the same host/port. Both now perform an internal, field-by-field configuration equivalence check before joining an in-flight connect or reusing a cached shared instance; a mismatch falls through to an independent connect instead of throwing or silently sharing. No public API or equality contract changes.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>

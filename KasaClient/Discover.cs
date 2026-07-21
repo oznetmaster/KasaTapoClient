@@ -21,7 +21,11 @@ public static class Discover
 	// Coordinates concurrent ConnectAsync calls for the same device identity so that only one
 	// physical connection attempt is in flight at a time; concurrent callers await and share the
 	// same resulting KasaDevice instance instead of each opening an independent TCP connection.
-	private static readonly ConcurrentDictionary<string, Task<KasaDevice>> _pendingConnects = new (StringComparer.OrdinalIgnoreCase);
+	// The configuration is retained alongside the task so a concurrent caller with a materially
+	// different configuration for the same host/port can be detected and given its own,
+	// independent connect instead of silently receiving a device built from someone else's
+	// credentials/timeout/transport options.
+	private static readonly ConcurrentDictionary<string, (DeviceConfiguration Configuration, Task<KasaDevice> Connect)> _pendingConnects = new (StringComparer.OrdinalIgnoreCase);
 
 	// Backs GetOrConnectSharedAsync only. This is an explicit, opt-in cache of long-lived shared
 	// KasaDevice instances keyed by device identity (host/port); ConnectAsync never reads from or
@@ -30,6 +34,75 @@ public static class Discover
 
 	private static string CreateConnectKey (DeviceConfiguration configuration) =>
 		$"{configuration.Host}:{configuration.Port}";
+
+	// Compares the fields of a DeviceConfiguration that materially affect the resulting KasaDevice
+	// (credentials, timeout, and connection options), used only to decide whether a would-be
+	// coalescing/sharing candidate is actually equivalent to the caller's own request. This is a
+	// private, internal-use-only comparison - DeviceConfiguration itself intentionally has no
+	// public value-equality contract.
+	private static bool AreConfigurationsEquivalent (DeviceConfiguration first, DeviceConfiguration second)
+		{
+		if (ReferenceEquals (first, second))
+			{
+			return true;
+			}
+
+		if (!string.Equals (first.Host, second.Host, StringComparison.OrdinalIgnoreCase)
+			|| first.Port != second.Port
+			|| first.Timeout != second.Timeout)
+			{
+			return false;
+			}
+
+		if (!AreCredentialsEquivalent (first.Credentials, second.Credentials))
+			{
+			return false;
+			}
+
+		return AreConnectionOptionsEquivalent (first.ConnectionOptions, second.ConnectionOptions);
+		}
+
+	private static bool AreCredentialsEquivalent (DeviceCredentials? first, DeviceCredentials? second)
+		{
+		if (first is null || second is null)
+			{
+			return first is null && second is null;
+			}
+
+		return string.Equals (first.UserName, second.UserName, StringComparison.Ordinal)
+			&& string.Equals (first.Password, second.Password, StringComparison.Ordinal);
+		}
+
+	private static bool AreConnectionOptionsEquivalent (DeviceConnectionOptions first, DeviceConnectionOptions second)
+		{
+		if (ReferenceEquals (first, second))
+			{
+			return true;
+			}
+
+		return first.TransportKind == second.TransportKind
+			&& first.UseSsl == second.UseSsl
+			&& first.UseDefaultCredentials == second.UseDefaultCredentials
+			&& first.DefaultCredentialProfile == second.DefaultCredentialProfile
+			&& string.Equals (first.ApplicationPath, second.ApplicationPath, StringComparison.Ordinal)
+			&& first.UseSecurePassthrough == second.UseSecurePassthrough
+			&& first.TpapKeepAliveInterval == second.TpapKeepAliveInterval
+			&& AreConnectionParametersEquivalent (first.ConnectionParameters, second.ConnectionParameters);
+		}
+
+	private static bool AreConnectionParametersEquivalent (DeviceConnectionParameters? first, DeviceConnectionParameters? second)
+		{
+		if (first is null || second is null)
+			{
+			return first is null && second is null;
+			}
+
+		return first.DeviceFamily == second.DeviceFamily
+			&& first.EncryptionKind == second.EncryptionKind
+			&& first.LoginVersion == second.LoginVersion
+			&& first.UseHttps == second.UseHttps
+			&& first.HttpPort == second.HttpPort;
+		}
 	/// <summary>
 	/// Broadcasts a discovery request and returns all responses collected within the timeout window.
 	/// </summary>
@@ -130,33 +203,50 @@ public static class Discover
 	/// <exception cref="TimeoutException">Thrown when automatic transport resolution cannot obtain a matching discovery result for the configured host.</exception>
 	/// <remarks>
 	/// If a connect for this device identity (host/port) is already in flight from another
-	/// concurrent caller, this call joins that same in-flight attempt and returns its resulting
+	/// concurrent caller — <b>using an equivalent configuration</b> (same credentials, timeout, and
+	/// connection options) — this call joins that same in-flight attempt and returns its resulting
 	/// <see cref="KasaDevice"/> instance instead of opening a second, redundant connection. This
 	/// coalescing only applies while a connect is actively in progress; it does not cache or
 	/// share device instances across separate, non-overlapping calls; "updateState" only
 	/// applies to the caller that actually initiates the underlying connect. Each call that
-	/// does not overlap an in-flight connect for the same identity receives its own new,
-	/// independently owned <see cref="KasaDevice"/> instance, which the caller is responsible
-	/// for disposing when done.
+	/// does not overlap an in-flight connect for the same identity, or that specifies a
+	/// materially different configuration than the in-flight connect for that identity, receives
+	/// its own new, independently owned <see cref="KasaDevice"/> instance, which the caller is
+	/// responsible for disposing when done.
 	/// </remarks>
 	public static Task<KasaDevice> ConnectAsync (DeviceConfiguration configuration, bool updateState, CancellationToken cancellationToken = default)
 		{
 		string key = CreateConnectKey (configuration);
 
 		// Fast path: join an in-flight connect for the same device identity instead of starting
-		// a second, independent one.
-		if (_pendingConnects.TryGetValue (key, out Task<KasaDevice>? existingConnect))
+		// a second, independent one - but only if the caller's configuration actually matches the
+		// one that initiated the in-flight connect. A concurrent caller with a materially different
+		// configuration (different credentials/timeout/connection options) falls through and
+		// starts its own independent connect instead of silently inheriting someone else's.
+		if (_pendingConnects.TryGetValue (key, out (DeviceConfiguration Configuration, Task<KasaDevice> Connect) existingConnect)
+			&& AreConfigurationsEquivalent (configuration, existingConnect.Configuration))
 			{
-			return AwaitSharedConnectAsync (existingConnect, cancellationToken);
+			return AwaitSharedConnectAsync (existingConnect.Connect, cancellationToken);
 			}
 
 		var connectCompletionSource = new TaskCompletionSource<KasaDevice> (TaskCreationOptions.RunContinuationsAsynchronously);
-		Task<KasaDevice> registeredConnect = _pendingConnects.GetOrAdd (key, connectCompletionSource.Task);
+		(DeviceConfiguration Configuration, Task<KasaDevice> Connect) registeredConnect = _pendingConnects.GetOrAdd (key, (configuration, connectCompletionSource.Task));
 
-		if (!ReferenceEquals (registeredConnect, connectCompletionSource.Task))
+		if (!ReferenceEquals (registeredConnect.Connect, connectCompletionSource.Task))
 			{
-			// Another thread registered first between our TryGetValue and GetOrAdd; join theirs.
-			return AwaitSharedConnectAsync (registeredConnect, cancellationToken);
+			if (AreConfigurationsEquivalent (configuration, registeredConnect.Configuration))
+				{
+				// Another thread registered first between our TryGetValue and GetOrAdd, with an
+				// equivalent configuration; join theirs.
+				return AwaitSharedConnectAsync (registeredConnect.Connect, cancellationToken);
+				}
+
+			// Another thread registered first with a materially different configuration for the
+			// same identity; connect independently rather than silently sharing a mismatched
+			// connection. This intentionally does not attempt to also register our own entry -
+			// the dictionary already holds an in-flight connect for this key, and only one
+			// registration per key is tracked at a time.
+			return ConnectCoreAsync (configuration, updateState, cancellationToken);
 			}
 
 		return ConnectAndPublishAsync (configuration, updateState, key, connectCompletionSource, cancellationToken);
@@ -194,8 +284,8 @@ public static class Discover
 			// attempted on the next call after this one completes (success or failure) - the
 			// dictionary exists purely to de-duplicate concurrent in-flight connects, not to
 			// cache devices indefinitely (that remains the caller's own responsibility).
-			((ICollection<KeyValuePair<string, Task<KasaDevice>>>) _pendingConnects).Remove (
-				new KeyValuePair<string, Task<KasaDevice>> (key, connectCompletionSource.Task));
+			((ICollection<KeyValuePair<string, (DeviceConfiguration Configuration, Task<KasaDevice> Connect)>>) _pendingConnects).Remove (
+				new KeyValuePair<string, (DeviceConfiguration Configuration, Task<KasaDevice> Connect)> (key, (configuration, connectCompletionSource.Task)));
 			}
 		}
 
@@ -305,12 +395,21 @@ public static class Discover
 	/// connections. There is no reference counting; callers are responsible for coordinating who, if
 	/// anyone, disposes the shared instance and when.
 	/// </para>
+	/// <para>
+	/// If a live shared instance already exists for this identity but was created from a materially
+	/// different configuration (different credentials, timeout, or connection options) than the one
+	/// passed to this call, the mismatch is treated the same as a disposed instance: a fresh,
+	/// independent connection is created and becomes the new shared instance for this identity,
+	/// rather than silently returning an instance built from a different caller's configuration.
+	/// </para>
 	/// </remarks>
 	public static async Task<KasaDevice> GetOrConnectSharedAsync (DeviceConfiguration configuration, bool updateState = true, CancellationToken cancellationToken = default)
 		{
 		string key = CreateConnectKey (configuration);
 
-		if (_sharedDevices.TryGetValue (key, out KasaDevice? existingDevice) && !existingDevice.IsDisposed)
+		if (_sharedDevices.TryGetValue (key, out KasaDevice? existingDevice)
+			&& !existingDevice.IsDisposed
+			&& AreConfigurationsEquivalent (configuration, existingDevice.Configuration))
 			{
 			return existingDevice;
 			}

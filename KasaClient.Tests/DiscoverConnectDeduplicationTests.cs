@@ -234,6 +234,84 @@ public sealed class DiscoverConnectDeduplicationTests
 			}
 		}
 
+	[TestMethod]
+	public async Task ConnectAsync_ConcurrentCallsWithMismatchedConfigurations_EachOpenOwnConnection ()
+		{
+		var listener = new TcpListener (IPAddress.Loopback, 0);
+		listener.Start ();
+		int port = ((IPEndPoint) listener.LocalEndpoint).Port;
+
+		int acceptedConnectionCount = 0;
+		using var acceptCancellation = new CancellationTokenSource ();
+
+		Task acceptLoop = Task.Run (async () =>
+			{
+			try
+				{
+				while (!acceptCancellation.IsCancellationRequested)
+					{
+					TcpClient client = await listener.AcceptTcpClientAsync ().ConfigureAwait (false);
+					Interlocked.Increment (ref acceptedConnectionCount);
+
+					// Never respond so the transport read eventually times out on its own; just
+					// keep the socket open briefly before dropping it so it does not look like an
+					// immediate reset to the caller.
+					_ = Task.Delay (TimeSpan.FromMilliseconds (200)).ContinueWith (_ => client.Dispose (), TaskScheduler.Default);
+					}
+				}
+			catch (ObjectDisposedException)
+				{
+				}
+			catch (SocketException)
+				{
+				}
+			});
+
+		try
+			{
+			var connectionOptions = new DeviceConnectionOptions (DeviceTransportKind.LegacyXor);
+
+			// Same host/port identity, but materially different configuration (credentials).
+			// These must NOT be coalesced into a single connection attempt even though both
+			// calls are issued concurrently for the same device identity.
+			var firstConfiguration = new DeviceConfiguration (
+				"127.0.0.1",
+				port,
+				credentials: new DeviceCredentials ("user-one", "password-one"),
+				connectionOptions: connectionOptions,
+				timeout: TimeSpan.FromMilliseconds (300));
+			var secondConfiguration = new DeviceConfiguration (
+				"127.0.0.1",
+				port,
+				credentials: new DeviceCredentials ("user-two", "password-two"),
+				connectionOptions: connectionOptions,
+				timeout: TimeSpan.FromMilliseconds (300));
+
+			Task<KasaDevice> firstConnect = Discover.ConnectAsync (firstConfiguration, updateState: true);
+			Task<KasaDevice> secondConnect = Discover.ConnectAsync (secondConfiguration, updateState: true);
+
+			bool firstFailed = await ConnectAndExpectFailureAsync (firstConnect).ConfigureAwait (false);
+			bool secondFailed = await ConnectAndExpectFailureAsync (secondConnect).ConfigureAwait (false);
+
+			Assert.IsTrue (firstFailed, "The first connect was expected to fail against the fake, non-responsive listener.");
+			Assert.IsTrue (secondFailed, "The second connect was expected to fail against the fake, non-responsive listener.");
+			}
+		finally
+			{
+			acceptCancellation.Cancel ();
+			listener.Stop ();
+			try
+				{
+				await acceptLoop.ConfigureAwait (false);
+				}
+			catch
+				{
+				}
+			}
+
+		Assert.AreEqual (2, acceptedConnectionCount, "Concurrent ConnectAsync calls for the same device identity but with mismatched configurations should each open their own connection.");
+		}
+
 	private static async Task ServeLegacyRequestsAsync (TcpClient client, string responseJson, CancellationToken cancellationToken)
 		{
 		using (client)

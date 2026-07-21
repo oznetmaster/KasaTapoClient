@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Each entry summarizes t
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.2.4] - Configuration-mismatch-safe connect coalescing and shared reuse
+
+- **Discover**: \`ConnectAsync\`'s in-flight connect de-duplication and \`GetOrConnectSharedAsync\`'s shared-instance reuse are both keyed only by device identity (host/port), which could previously coalesce or reuse a connection for a caller that supplied a materially different \`DeviceConfiguration\` (different credentials, timeout, or connection options) for the same host/port. Both now perform an internal, field-by-field configuration equivalence check before joining an in-flight connect or returning a cached shared instance; a mismatch falls through to an independent connect rather than silently sharing a connection built from a different caller's settings. \`DeviceConfiguration\` itself gains no public equality contract or API changes - the check is internal to \`Discover\`'s coalescing/reuse decision.
+
 ## [1.2.3] - Made shared device reuse explicit and opt-in
 
 - **Discover**: `Discover.ConnectAsync` no longer caches connected devices across separate (non-concurrent) calls - this reverts the ambient, always-on persistent cache introduced in 1.2.2. `ConnectAsync` once again always returns an instance exclusively owned by the calling code (aside from in-flight concurrent-connect coalescing, which is unchanged), matching the standard connect/use/dispose ownership pattern and avoiding the risk of one caller's `Dispose()` unexpectedly affecting another, unrelated caller sharing the same instance.
