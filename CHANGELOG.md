@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Each entry summarizes t
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.2.3] - Made shared device reuse explicit and opt-in
+
+- **Discover**: `Discover.ConnectAsync` no longer caches connected devices across separate (non-concurrent) calls - this reverts the ambient, always-on persistent cache introduced in 1.2.2. `ConnectAsync` once again always returns an instance exclusively owned by the calling code (aside from in-flight concurrent-connect coalescing, which is unchanged), matching the standard connect/use/dispose ownership pattern and avoiding the risk of one caller's `Dispose()` unexpectedly affecting another, unrelated caller sharing the same instance.
+- Added `Discover.GetOrConnectSharedAsync` as an explicit, opt-in alternative for call sites that are known to target the same device and want to reuse one connection instead of each dialing their own (useful for devices that reject or reset additional concurrent sessions). It returns a long-lived shared instance keyed by device identity (host/port), and transparently reconnects and re-caches if the previous shared instance was disposed. As before, there is no reference counting, so this method should only be used by coordinated call sites that understand the returned instance is shared.
+- **KasaDevice**: `IsDisposed` (added in 1.2.2) is retained and now backs `GetOrConnectSharedAsync`'s disposal detection.
+
 ## [1.2.2] - Persistent shared device cache per host/port
 
 - **Discover**: `Discover.ConnectAsync` now maintains a persistent, shared `KasaDevice` cache keyed by device identity (host/port). Previously, only concurrent in-flight connect calls for the same device were coalesced; the bookkeeping was discarded as soon as each connect completed, so separate (non-concurrent) calls each opened their own connection. Now, once a device has been connected, later `ConnectAsync` calls for that same identity - from any caller or module, at any time - reuse the same live instance instead of dialing a new connection.

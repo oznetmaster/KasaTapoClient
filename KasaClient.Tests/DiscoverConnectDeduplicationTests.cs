@@ -165,7 +165,7 @@ public sealed class DiscoverConnectDeduplicationTests
 		}
 
 	[TestMethod]
-	public async Task ConnectAsync_RepeatedCallsForSameDevice_ReuseSharedInstanceUntilDisposed ()
+	public async Task GetOrConnectSharedAsync_RepeatedCallsForSameDevice_ReuseSharedInstanceUntilDisposed ()
 		{
 		var listener = new TcpListener (IPAddress.Loopback, 0);
 		listener.Start ();
@@ -205,17 +205,17 @@ public sealed class DiscoverConnectDeduplicationTests
 				connectionOptions: connectionOptions,
 				timeout: TimeSpan.FromSeconds (2));
 
-			KasaDevice firstDevice = await Discover.ConnectAsync (configuration, updateState: true).ConfigureAwait (false);
-			KasaDevice secondDevice = await Discover.ConnectAsync (configuration, updateState: true).ConfigureAwait (false);
+			KasaDevice firstDevice = await Discover.GetOrConnectSharedAsync (configuration, updateState: true).ConfigureAwait (false);
+			KasaDevice secondDevice = await Discover.GetOrConnectSharedAsync (configuration, updateState: true).ConfigureAwait (false);
 
-			Assert.AreSame (firstDevice, secondDevice, "Non-overlapping ConnectAsync calls for an already-connected device identity should reuse the same shared instance.");
+			Assert.AreSame (firstDevice, secondDevice, "Non-overlapping GetOrConnectSharedAsync calls for an already-connected device identity should reuse the same shared instance.");
 			Assert.AreEqual (1, acceptedConnectionCount, "Reusing the cached shared device should not open a second connection.");
 
 			firstDevice.Dispose ();
 
-			KasaDevice thirdDevice = await Discover.ConnectAsync (configuration, updateState: true).ConfigureAwait (false);
+			KasaDevice thirdDevice = await Discover.GetOrConnectSharedAsync (configuration, updateState: true).ConfigureAwait (false);
 
-			Assert.AreNotSame (firstDevice, thirdDevice, "Once the shared instance is disposed, the next ConnectAsync call should replace it with a fresh instance.");
+			Assert.AreNotSame (firstDevice, thirdDevice, "Once the shared instance is disposed, the next GetOrConnectSharedAsync call should replace it with a fresh instance.");
 			Assert.AreEqual (2, acceptedConnectionCount, "A fresh connection should be opened once the previously cached shared device was disposed.");
 
 			thirdDevice.Dispose ();
