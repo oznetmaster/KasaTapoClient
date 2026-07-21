@@ -20,6 +20,7 @@ public sealed partial class KasaDevice : IDisposable
 	{
 	private readonly IDeviceTransport _transport;
 	private readonly SemaphoreSlim _operationLock = new (1, 1);
+	private bool _disposed;
 	private IReadOnlyList<DeviceFeature> _features = Array.Empty<DeviceFeature> ();
 	private IReadOnlyDictionary<string, int> _smartComponentVersions = new Dictionary<string, int> (StringComparer.Ordinal);
 	private static readonly JObject SMART_GET_TRIGGER_LOGS_PARAMETERS = new ()
@@ -512,10 +513,27 @@ public sealed partial class KasaDevice : IDisposable
 	public IReadOnlyDictionary<string, int> SmartComponentVersions => _smartComponentVersions;
 
 	/// <summary>
+	/// Gets a value indicating whether <see cref="Dispose"/> has already been called on this instance.
+	/// </summary>
+	/// <remarks>
+	/// This is primarily intended for callers (such as <see cref="Discover"/>'s shared device cache)
+	/// that hold a long-lived reference to a device instance obtained from elsewhere and need to detect
+	/// that it is no longer usable without having to catch <see cref="ObjectDisposedException"/>.
+	/// </remarks>
+	public bool IsDisposed => _disposed;
+
+	/// <summary>
 	/// Releases transport resources owned by the device.
 	/// </summary>
 	public void Dispose ()
 		{
+		if (_disposed)
+			{
+			return;
+			}
+
+		_disposed = true;
+
 		if (_transport is IDisposableDeviceTransport disposableTransport)
 			{
 			disposableTransport.Dispose ();

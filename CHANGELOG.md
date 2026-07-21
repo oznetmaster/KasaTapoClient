@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Each entry summarizes t
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.2.2] - Persistent shared device cache per host/port
+
+- **Discover**: `Discover.ConnectAsync` now maintains a persistent, shared `KasaDevice` cache keyed by device identity (host/port). Previously, only concurrent in-flight connect calls for the same device were coalesced; the bookkeeping was discarded as soon as each connect completed, so separate (non-concurrent) calls each opened their own connection. Now, once a device has been connected, later `ConnectAsync` calls for that same identity - from any caller or module, at any time - reuse the same live instance instead of dialing a new connection.
+- Concurrent connect de-duplication (introduced in 1.2.1) is unchanged and still applies when multiple callers race to connect to the same identity for the first time.
+- **KasaDevice**: Added a public `IsDisposed` property. There is no reference counting on the shared cache entry - any caller may `Dispose()` the shared instance, and the next `ConnectAsync` call for that identity simply detects `IsDisposed` and transparently creates and caches a fresh replacement, mirroring the existing stale/idle-connection recovery model already used by `LegacyTransport`. No breaking API changes.
+
 ## [1.2.1] - Concurrent connect de-duplication
 
 - **Discover**: `Discover.ConnectAsync` now de-duplicates concurrent connect calls for the same device identity (host/port). If a connect is already in flight, other concurrent callers no longer start a second, independent connection; instead they await the in-flight connect and receive the same `KasaDevice` instance once it completes. This prevents opening multiple simultaneous TCP connections to devices that only tolerate one or a small number of concurrent connections when callers race to (re)connect, and avoids silently orphaning/leaking the socket of whichever instance loses the race.

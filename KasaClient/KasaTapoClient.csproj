@@ -10,7 +10,7 @@
 		<TargetFrameworks>net472;net10.0</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<PackageId>KasaTapoClient</PackageId>
-		<Version>1.2.1</Version>
+		<Version>1.2.2</Version>
 		<Authors>Neil Colvin</Authors>
 		<Company>Neil Colvin</Company>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -21,7 +21,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>Discover.ConnectAsync now de-duplicates concurrent connect calls for the same device (host/port): if a connect is already in flight, other callers await and share the resulting KasaDevice instance instead of each opening an independent TCP connection. This prevents multiple simultaneous sockets/handshakes to devices that tolerate only a small number of concurrent connections when callers race to (re)connect. No public API changes.</PackageReleaseNotes>
+		<PackageReleaseNotes>Discover.ConnectAsync now maintains a persistent, shared KasaDevice cache per device identity (host/port): once a device has been connected, later ConnectAsync calls for that same identity - from any caller/module, not just concurrent ones - reuse the same live KasaDevice instance instead of opening a new connection. Concurrent connect attempts are still coordinated as before. KasaDevice gained a public IsDisposed property; if the shared instance is disposed, the next ConnectAsync call for that identity detects this and transparently creates and caches a fresh replacement. No reference counting is used. No breaking API changes.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>

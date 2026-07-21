@@ -18,6 +18,25 @@ namespace KasaTapoClient;
 /// </summary>
 public static class Discover
 	{
+	private sealed class CachedDeviceEntry
+		{
+		public CachedDeviceEntry (KasaDevice device)
+			{
+			Device = device;
+			}
+
+		public KasaDevice Device { get; }
+		}
+
+	// Persistent cache: one live KasaDevice per Host:Port, shared by every caller/module for the
+	// life of that connection. Entries are only replaced (never explicitly removed) once the
+	// cached device is found to be disposed/unusable on a later access - there is no reference
+	// counting and no explicit invalidation API. Any caller may Dispose() the shared instance;
+	// the next caller to ask for that key simply notices IsDisposed and transparently connects
+	// and caches a fresh replacement, mirroring the existing stale/idle-connection recovery model
+	// already used internally by LegacyTransport.
+	private static readonly ConcurrentDictionary<string, CachedDeviceEntry> _connectedDevices = new (StringComparer.OrdinalIgnoreCase);
+
 	// Coordinates concurrent ConnectAsync calls for the same device identity so that only one
 	// physical connection attempt is in flight at a time; concurrent callers await and share the
 	// same resulting KasaDevice instance instead of each opening an independent TCP connection.
@@ -108,6 +127,10 @@ public static class Discover
 	/// <param name="cancellationToken">The cancellation token for the operation.</param>
 	/// <returns>A device instance with current system information loaded.</returns>
 	/// <exception cref="TimeoutException">Thrown when automatic transport resolution cannot obtain a matching discovery result for the configured host.</exception>
+	/// <remarks>
+	/// The returned instance may be shared with other callers for the same host/port; see the
+	/// remarks on <see cref="ConnectAsync(DeviceConfiguration, bool, CancellationToken)"/> for details.
+	/// </remarks>
 	public static async Task<KasaDevice> ConnectAsync (DeviceConfiguration configuration, CancellationToken cancellationToken = default)
 		=> await ConnectAsync (configuration, updateState: true, cancellationToken).ConfigureAwait (false);
 
@@ -119,9 +142,27 @@ public static class Discover
 	/// <param name="cancellationToken">The cancellation token for the operation.</param>
 	/// <returns>A device instance ready for direct commands.</returns>
 	/// <exception cref="TimeoutException">Thrown when automatic transport resolution cannot obtain a matching discovery result for the configured host.</exception>
+	/// <remarks>
+	/// There is only ever one live device instance per host/port at a time: if a device for this
+	/// identity is already connected (or is currently being connected by another concurrent call),
+	/// this returns that same shared <see cref="KasaDevice"/> instance instead of opening a new
+	/// connection. In that case <paramref name="updateState"/> has no effect - the existing
+	/// instance's state is not refreshed as part of this call. Because the instance is shared,
+	/// disposing it affects every other caller holding the same reference; the next call to
+	/// <see cref="ConnectAsync(DeviceConfiguration, bool, CancellationToken)"/> for that identity
+	/// detects the disposed instance and transparently connects and caches a fresh replacement.
+	/// </remarks>
 	public static Task<KasaDevice> ConnectAsync (DeviceConfiguration configuration, bool updateState, CancellationToken cancellationToken = default)
 		{
 		string key = CreateConnectKey (configuration);
+
+		// Fastest path: reuse the existing live shared device for this identity, if one exists and
+		// has not been disposed. This is what makes the cache persistent across non-concurrent
+		// calls, not just calls that happen to race each other.
+		if (_connectedDevices.TryGetValue (key, out CachedDeviceEntry? cachedEntry) && !cachedEntry.Device.IsDisposed)
+			{
+			return Task.FromResult (cachedEntry.Device);
+			}
 
 		// Fast path: join an in-flight connect for the same device identity instead of starting
 		// a second, independent one.
@@ -152,6 +193,11 @@ public static class Discover
 		try
 			{
 			KasaDevice device = await ConnectCoreAsync (configuration, updateState, cancellationToken).ConfigureAwait (false);
+
+			// Populate the persistent cache so future (non-concurrent) callers for this identity
+			// reuse this instance instead of connecting again.
+			_connectedDevices[key] = new CachedDeviceEntry (device);
+
 			connectCompletionSource.TrySetResult (device);
 			return device;
 			}
