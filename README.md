@@ -26,6 +26,7 @@ See [CHANGELOG.md](CHANGELOG.md) for a summary of all release history, or the [G
 - Optional live device tests and Benchmark.NET suites for transport and latency analysis
 - TPAP keepalive support to reduce reconnect penalties after long idle periods
 - Per-device operation serialization so concurrent commands, refreshes, and child operations against one physical endpoint run one-at-a-time
+- Automatic de-duplication of concurrent `Discover.ConnectAsync` calls for the same device, so only one physical connection is ever dialed at a time per host/port
 - Raw and smart-method command execution helpers for diagnostics and advanced integrations
 
 This .NET library was developed with compatibility and behavior reference material from the upstream `python-kasa` project. See [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
@@ -54,6 +55,8 @@ Transport implementations minimize redundant connection setup:
 - `LegacyTransport` (the raw XOR/TCP protocol on port 9999) maintains a persistent socket connection per device instance, reconnecting only when a failure is detected or when the connection has been idle for more than 10 seconds, instead of opening a new TCP connection for every command. The idle timeout protects against the device silently closing the socket on its end after a period of inactivity.
 
 These changes reduce TCP and TLS handshake overhead and OS-level socket churn without changing observed command latency or benchmark throughput.
+
+`Discover.ConnectAsync` also coordinates concurrent connect attempts for the same device identity (host/port): if a connect is already in flight when another call for the same device arrives, the second call awaits the first instead of opening its own independent connection, and both callers receive the same resulting `KasaDevice` instance. This is purely a connect-time optimization - the cache entry exists only while a connect is in flight and is removed as soon as it completes, so it never behaves as a long-lived device registry, and the returned `KasaDevice` is still owned and disposed entirely by the caller.
 
 ## Request Timeouts and Cancellation
 

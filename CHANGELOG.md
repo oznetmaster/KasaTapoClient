@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Each entry summarizes t
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.2.1] - Concurrent connect de-duplication
+
+- **Discover**: `Discover.ConnectAsync` now de-duplicates concurrent connect calls for the same device identity (host/port). If a connect is already in flight, other concurrent callers no longer start a second, independent connection; instead they await the in-flight connect and receive the same `KasaDevice` instance once it completes. This prevents opening multiple simultaneous TCP connections to devices that only tolerate one or a small number of concurrent connections when callers race to (re)connect, and avoids silently orphaning/leaking the socket of whichever instance loses the race.
+- Only the connect itself is de-duplicated; the returned `KasaDevice` is still owned and disposed entirely by the caller, exactly as before. No public API changes.
+
 ## [1.2.0] - Migrated to Newtonsoft.Json
 
 - **JSON stack**: Replaced `System.Text.Json` with `Newtonsoft.Json` (13.0.3) across the core library, `KasaClient.Console`, tests, and benchmarks. This avoids the extra binding-redirect dependencies (`System.Buffers`, `System.Memory`, `System.Runtime.CompilerServices.Unsafe`, `System.Text.Encodings.Web`) that `System.Text.Json` requires on .NET Framework 4.7.2 and improves reliability on embedded Mono hosts.

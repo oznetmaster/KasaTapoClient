@@ -4,6 +4,7 @@
 // for protocol/compatibility reference only; no python-kasa source was copied. See ATTRIBUTIONS.md.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,6 +18,13 @@ namespace KasaTapoClient;
 /// </summary>
 public static class Discover
 	{
+	// Coordinates concurrent ConnectAsync calls for the same device identity so that only one
+	// physical connection attempt is in flight at a time; concurrent callers await and share the
+	// same resulting KasaDevice instance instead of each opening an independent TCP connection.
+	private static readonly ConcurrentDictionary<string, Task<KasaDevice>> _pendingConnects = new (StringComparer.OrdinalIgnoreCase);
+
+	private static string CreateConnectKey (DeviceConfiguration configuration) =>
+		$"{configuration.Host}:{configuration.Port}";
 	/// <summary>
 	/// Broadcasts a discovery request and returns all responses collected within the timeout window.
 	/// </summary>
@@ -111,17 +119,101 @@ public static class Discover
 	/// <param name="cancellationToken">The cancellation token for the operation.</param>
 	/// <returns>A device instance ready for direct commands.</returns>
 	/// <exception cref="TimeoutException">Thrown when automatic transport resolution cannot obtain a matching discovery result for the configured host.</exception>
-	public static async Task<KasaDevice> ConnectAsync (DeviceConfiguration configuration, bool updateState, CancellationToken cancellationToken = default)
+	public static Task<KasaDevice> ConnectAsync (DeviceConfiguration configuration, bool updateState, CancellationToken cancellationToken = default)
+		{
+		string key = CreateConnectKey (configuration);
+
+		// Fast path: join an in-flight connect for the same device identity instead of starting
+		// a second, independent one.
+		if (_pendingConnects.TryGetValue (key, out Task<KasaDevice>? existingConnect))
+			{
+			return AwaitSharedConnectAsync (existingConnect, cancellationToken);
+			}
+
+		var connectCompletionSource = new TaskCompletionSource<KasaDevice> (TaskCreationOptions.RunContinuationsAsynchronously);
+		Task<KasaDevice> registeredConnect = _pendingConnects.GetOrAdd (key, connectCompletionSource.Task);
+
+		if (!ReferenceEquals (registeredConnect, connectCompletionSource.Task))
+			{
+			// Another thread registered first between our TryGetValue and GetOrAdd; join theirs.
+			return AwaitSharedConnectAsync (registeredConnect, cancellationToken);
+			}
+
+		return ConnectAndPublishAsync (configuration, updateState, key, connectCompletionSource, cancellationToken);
+		}
+
+	private static async Task<KasaDevice> ConnectAndPublishAsync (
+		DeviceConfiguration configuration,
+		bool updateState,
+		string key,
+		TaskCompletionSource<KasaDevice> connectCompletionSource,
+		CancellationToken cancellationToken)
+		{
+		try
+			{
+			KasaDevice device = await ConnectCoreAsync (configuration, updateState, cancellationToken).ConfigureAwait (false);
+			connectCompletionSource.TrySetResult (device);
+			return device;
+			}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+			{
+			// A caller-initiated cancellation should not fault the shared task for OTHER
+			// concurrent callers who did not cancel; only propagate to this caller.
+			connectCompletionSource.TrySetCanceled (cancellationToken);
+			throw;
+			}
+		catch (Exception ex)
+			{
+			connectCompletionSource.TrySetException (ex);
+			throw;
+			}
+		finally
+			{
+			// Only the connect's own entry is removed, and only once, so a fresh reconnect is
+			// attempted on the next call after this one completes (success or failure) - the
+			// cache exists purely to de-duplicate concurrent in-flight connects, not to cache
+			// devices indefinitely (that remains the caller's responsibility, as today).
+			((ICollection<KeyValuePair<string, Task<KasaDevice>>>) _pendingConnects).Remove (
+				new KeyValuePair<string, Task<KasaDevice>> (key, connectCompletionSource.Task));
+			}
+		}
+
+	// Awaits a shared in-flight connect while allowing this caller's own cancellationToken to
+	// stop *this* caller's wait without canceling the underlying shared connect (which other,
+	// still-waiting callers may depend on). Implemented manually (rather than via
+	// Task<T>.WaitAsync) since this library targets .NET Framework 4.7.2, where that BCL
+	// extension is unavailable.
+	private static async Task<KasaDevice> AwaitSharedConnectAsync (Task<KasaDevice> sharedConnect, CancellationToken cancellationToken)
+		{
+		if (!cancellationToken.CanBeCanceled)
+			{
+			return await sharedConnect.ConfigureAwait (false);
+			}
+
+		var cancellationCompletionSource = new TaskCompletionSource<bool> (TaskCreationOptions.RunContinuationsAsynchronously);
+		using (cancellationToken.Register (static state => ((TaskCompletionSource<bool>) state!).TrySetResult (true), cancellationCompletionSource))
+			{
+			Task completedTask = await Task.WhenAny (sharedConnect, cancellationCompletionSource.Task).ConfigureAwait (false);
+			if (completedTask == cancellationCompletionSource.Task)
+				{
+				cancellationToken.ThrowIfCancellationRequested ();
+				}
+
+			return await sharedConnect.ConfigureAwait (false);
+			}
+		}
+
+	private static async Task<KasaDevice> ConnectCoreAsync (DeviceConfiguration configuration, bool updateState, CancellationToken cancellationToken)
 		{
 		if (configuration.ConnectionOptions.TransportKind == DeviceTransportKind.Auto)
 			{
-				DeviceConfiguration resolvedConfiguration = await ResolveAutoConfigurationAsync (configuration, cancellationToken).ConfigureAwait (false);
-				var resolvedDevice = new KasaDevice (resolvedConfiguration);
-				if (updateState)
-					{
-					await resolvedDevice.UpdateAsync (cancellationToken).ConfigureAwait (false);
-					}
-				return resolvedDevice;
+			DeviceConfiguration resolvedConfiguration = await ResolveAutoConfigurationAsync (configuration, cancellationToken).ConfigureAwait (false);
+			var resolvedDevice = new KasaDevice (resolvedConfiguration);
+			if (updateState)
+				{
+				await resolvedDevice.UpdateAsync (cancellationToken).ConfigureAwait (false);
+				}
+			return resolvedDevice;
 			}
 
 		var device = new KasaDevice (configuration);

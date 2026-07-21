@@ -10,7 +10,7 @@
 		<TargetFrameworks>net472;net10.0</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<PackageId>KasaTapoClient</PackageId>
-		<Version>1.2.0</Version>
+		<Version>1.2.1</Version>
 		<Authors>Neil Colvin</Authors>
 		<Company>Neil Colvin</Company>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -21,7 +21,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>Migrated the JSON serialization stack from System.Text.Json to Newtonsoft.Json across the core library, console app, tests, and benchmarks, improving compatibility on .NET Framework 4.7.2 and embedded Mono hosts (avoids extra binding-redirect dependencies). No public behavior changes; validated with a full solution build and live device integration tests.</PackageReleaseNotes>
+		<PackageReleaseNotes>Discover.ConnectAsync now de-duplicates concurrent connect calls for the same device (host/port): if a connect is already in flight, other callers await and share the resulting KasaDevice instance instead of each opening an independent TCP connection. This prevents multiple simultaneous sockets/handshakes to devices that tolerate only a small number of concurrent connections when callers race to (re)connect. No public API changes.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>
