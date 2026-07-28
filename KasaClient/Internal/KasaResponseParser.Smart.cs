@@ -365,11 +365,13 @@ internal static partial class KasaResponseParser
 			response.RawJson);
 		}
 
-	private static EnergyUsage? CreateSmartEnergyUsage (SmartParsedResponse response)
+	private static EnergyUsage? CreateSmartEnergyUsage (SmartParsedResponse response) => CreateSmartEnergyUsage (response.ModuleResults);
+
+	private static EnergyUsage? CreateSmartEnergyUsage (IReadOnlyDictionary<string, JObject> moduleResults)
 		{
-		SmartEnergyUsageDto? energyUsage = DeserializeModuleResult<SmartEnergyUsageDto> (response, KasaCommands.SMART_GET_ENERGY_USAGE_METHOD);
-		SmartCurrentPowerDto? currentPower = DeserializeModuleResult<SmartCurrentPowerDto> (response, KasaCommands.SMART_GET_CURRENT_POWER_METHOD);
-		SmartEmeterDataDto? emeterData = DeserializeModuleResult<SmartEmeterDataDto> (response, KasaCommands.SMART_GET_EMETER_DATA_METHOD);
+		SmartEnergyUsageDto? energyUsage = DeserializeModuleResult<SmartEnergyUsageDto> (moduleResults, KasaCommands.SMART_GET_ENERGY_USAGE_METHOD);
+		SmartCurrentPowerDto? currentPower = DeserializeModuleResult<SmartCurrentPowerDto> (moduleResults, KasaCommands.SMART_GET_CURRENT_POWER_METHOD);
+		SmartEmeterDataDto? emeterData = DeserializeModuleResult<SmartEmeterDataDto> (moduleResults, KasaCommands.SMART_GET_EMETER_DATA_METHOD);
 
 		double? currentPowerWatts = ReadScaledDouble (currentPower?.CurrentPowerWatts, emeterData?.PowerMilliwatts, 1000d)
 			?? ReadScaledDouble (null, energyUsage?.CurrentPower, 1000d);
@@ -504,8 +506,12 @@ internal static partial class KasaResponseParser
 
 	private static TDto? DeserializeModuleResult<TDto> (SmartParsedResponse response, string method)
 		where TDto : class
+		=> DeserializeModuleResult<TDto> (response.ModuleResults, method);
+
+	private static TDto? DeserializeModuleResult<TDto> (IReadOnlyDictionary<string, JObject> moduleResults, string method)
+		where TDto : class
 		{
-		if (!response.ModuleResults.TryGetValue (method, out JObject? result))
+		if (!moduleResults.TryGetValue (method, out JObject? result))
 			{
 			return null;
 			}

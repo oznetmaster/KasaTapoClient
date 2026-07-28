@@ -202,6 +202,8 @@ internal static partial class KasaResponseParser
 		return moduleResults;
 		}
 
+	internal static EnergyUsage? ParseSmartEnergyUsage (IReadOnlyDictionary<string, JObject> moduleResults) => CreateSmartEnergyUsage (moduleResults);
+
 	internal static DeviceSystemInfo ParseSystemInfo (ParsedResponse response)
 		{
 		return CreateSystemInfo (response.SystemInfo, response.RawJson);
