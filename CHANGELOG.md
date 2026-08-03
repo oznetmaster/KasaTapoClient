@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Each entry summarizes t
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.2.5] - SMART energy monitoring support
+
+- **KasaDevice**: Fixed `UpdateEnergyUsageAsync` for SMART/KLAP/TPAP devices that expose energy monitoring, such as the KP125M. The method previously always issued legacy `emeter` commands, which SMART devices do not support; it now uses the SMART `energy_monitoring` requests and parses their results through the existing SMART energy parser. The SMART path also negotiates component support when energy usage is requested before an initial `UpdateAsync`. Legacy-device energy monitoring behavior is unchanged.
+
 ## [1.2.4] - Configuration-mismatch-safe connect coalescing and shared reuse
 
 - **Discover**: \`ConnectAsync\`'s in-flight connect de-duplication and \`GetOrConnectSharedAsync\`'s shared-instance reuse are both keyed only by device identity (host/port), which could previously coalesce or reuse a connection for a caller that supplied a materially different \`DeviceConfiguration\` (different credentials, timeout, or connection options) for the same host/port. Both now perform an internal, field-by-field configuration equivalence check before joining an in-flight connect or returning a cached shared instance; a mismatch falls through to an independent connect rather than silently sharing a connection built from a different caller's settings. \`DeviceConfiguration\` itself gains no public equality contract or API changes - the check is internal to \`Discover\`'s coalescing/reuse decision.
