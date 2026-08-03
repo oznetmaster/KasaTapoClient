@@ -42,6 +42,86 @@ public sealed class KasaDeviceTests
 		}
 
 	[TestMethod]
+	public async Task UpdateEnergyUsageAsync_WithSmartDevice_RefreshesViaSmartProtocolNotLegacy ()
+		{
+		// Regression test: UpdateEnergyUsageAsync() used to always send the legacy emeter commands
+		// (SendManyAsync), which SMART/KLAP devices don't understand - this device only ever queues
+		// SendAsync responses, so the test fails with "No queued SendManyAsync response" if the bug
+		// regresses.
+		var transport = new FakeDeviceTransport (
+			sendResponses:
+			[
+				"""
+				{
+				  "result": {
+					 "responses": [
+						{
+						  "method": "get_device_info",
+						  "result": {
+							 "model": "KP125M",
+							 "type": "SMART.KASAPLUG",
+							 "device_id": "kp125m-1",
+							 "nickname": "S1AxMjVN",
+							 "device_on": true,
+							 "fw_ver": "1.2.5",
+							 "hw_ver": "1.0"
+						  }
+						},
+						{
+						  "method": "component_nego",
+						  "result": {
+							 "component_list": [
+								{ "id": "energy_monitoring", "ver_code": 2 }
+							 ]
+						  }
+						}
+					 ]
+				  }
+				}
+				""",
+				"""
+				{
+				  "result": {
+					 "responses": [
+						{ "method": "get_energy_usage", "result": { "current_power": 5000, "today_energy": 120 } },
+						{ "method": "get_current_power", "result": { "current_power": 5.0 } },
+						{ "method": "get_emeter_data", "result": { "voltage_mv": 120000, "current_ma": 42 } }
+					 ]
+				  }
+				}
+				""",
+				"""
+				{
+				  "result": {
+					 "responses": [
+						{ "method": "get_energy_usage", "result": { "current_power": 7500, "today_energy": 130 } },
+						{ "method": "get_current_power", "result": { "current_power": 7.5 } },
+						{ "method": "get_emeter_data", "result": { "voltage_mv": 120500, "current_ma": 62 } }
+					 ]
+				  }
+				}
+				"""
+			]);
+		DeviceConfiguration configuration = new (
+			"127.0.0.1",
+			connectionOptions: new DeviceConnectionOptions (
+				connectionParameters: new DeviceConnectionParameters (DeviceFamilyKind.SmartKasaPlug, DeviceEncryptionKind.Aes)));
+		var device = new KasaDevice (configuration, transport);
+
+		await device.UpdateAsync ().ConfigureAwait (false);
+		Assert.IsNotNull (device.EnergyUsage);
+		Assert.AreEqual (5.0d, device.EnergyUsage.CurrentPowerWatts);
+
+		bool result = await device.UpdateEnergyUsageAsync ().ConfigureAwait (false);
+
+		Assert.IsTrue (result);
+		Assert.IsNotNull (device.EnergyUsage);
+		Assert.AreEqual (7.5d, device.EnergyUsage.CurrentPowerWatts);
+		Assert.AreEqual (3, transport.SentCommands.Count);
+		Assert.AreEqual (0, transport.SentManyCommands.Count);
+		}
+
+	[TestMethod]
 	public async Task UpdateAsync_WithSmartResponse_PopulatesSmartStatesAndRefreshesModules ()
 		{
 		var transport = new FakeDeviceTransport (

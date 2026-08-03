@@ -573,6 +573,11 @@ public sealed partial class KasaDevice : IDisposable
 
 	private async Task<bool> UpdateEnergyUsageCoreAsync (CancellationToken cancellationToken)
 		{
+		if (UsesSmartProtocol ())
+			{
+			return await UpdateEnergyUsageSmartAsync (cancellationToken).ConfigureAwait (false);
+			}
+
 		DateTime now = DateTime.Now;
 		bool isBulb = DeviceType == DeviceType.Bulb || SystemInfo?.Model?.StartsWith ("KL", StringComparison.OrdinalIgnoreCase) == true || SystemInfo?.Model?.StartsWith ("LB", StringComparison.OrdinalIgnoreCase) == true || SystemInfo?.Model?.StartsWith ("KB", StringComparison.OrdinalIgnoreCase) == true;
 		string response = await _transport.SendManyAsync (
@@ -592,6 +597,55 @@ public sealed partial class KasaDevice : IDisposable
 		EnergyUsage = KasaResponseParser.ParseEnergyUsage (parsedResponse);
 		_features = CreateFeatures ();
 		return true;
+		}
+
+	// SMART/KLAP/TPAP devices don't understand the legacy emeter request shape above (they respond
+	// without "system.get_sysinfo", which the legacy parser requires) - the general UpdateAsync() /
+	// UpdateSmartAsync() path already fetches energy_monitoring data correctly via
+	// SMART_PARENT_REFRESH_DEFINITIONS, so this mirrors that instead of the legacy command set.
+	private async Task<bool> UpdateEnergyUsageSmartAsync (CancellationToken cancellationToken)
+		{
+		IReadOnlyDictionary<string, int> componentVersions = _smartComponentVersions;
+		if (componentVersions.Count == 0)
+			{
+			string negoResponse = await _transport.SendAsync (
+				KasaCommands.CreateSmartMultipleRequest (new Dictionary<string, JObject?>
+					{
+					[KasaCommands.SMART_GET_DEVICE_INFO_METHOD] = null,
+					[KasaCommands.SMART_COMPONENT_NEGO_METHOD] = null,
+					}),
+				cancellationToken).ConfigureAwait (false);
+			componentVersions = KasaResponseParser.ParseSmartResponse (negoResponse).ComponentVersions;
+			}
+
+		var energyRequests = new Dictionary<string, JObject?> (StringComparer.Ordinal);
+		foreach (SmartRefreshContribution contribution in SMART_PARENT_REFRESH_DEFINITIONS)
+			{
+			if (!string.Equals (contribution.RequiredComponent, "energy_monitoring", StringComparison.Ordinal))
+				{
+				continue;
+				}
+			if (!TryGetSmartComponentVersion (componentVersions, contribution.RequiredComponent, out int supportedVersion))
+				{
+				continue;
+				}
+			if (contribution.MinimumSupportedVersion is int minimumSupportedVersion && supportedVersion < minimumSupportedVersion)
+				{
+				continue;
+				}
+			energyRequests[contribution.Method] = contribution.CreateParameters ();
+			}
+
+		if (energyRequests.Count == 0)
+			{
+			return false;
+			}
+
+		string response = await _transport.SendAsync (KasaCommands.CreateSmartMultipleRequest (energyRequests), cancellationToken).ConfigureAwait (false);
+		IReadOnlyDictionary<string, JObject> moduleResults = KasaResponseParser.ParseSmartModuleResults (response);
+		EnergyUsage = KasaResponseParser.ParseSmartEnergyUsage (moduleResults);
+		_features = CreateFeatures ();
+		return EnergyUsage is not null;
 		}
 
 	/// <summary>
