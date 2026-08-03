@@ -22,6 +22,7 @@ See [CHANGELOG.md](CHANGELOG.md) for a summary of all release history, or the [G
 - Local discovery and direct connection by host address
 - State refresh and normalized device features
 - Smart and legacy transport handling
+- SMART energy-monitoring compatibility across v1 and v2 devices, including optional-method fallback for partial v2 implementations
 - Host, light, child-device, and effect control where supported
 - Optional live device tests and Benchmark.NET suites for transport and latency analysis
 - TPAP keepalive support to reduce reconnect penalties after long idle periods

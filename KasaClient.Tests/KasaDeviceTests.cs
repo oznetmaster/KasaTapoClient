@@ -94,9 +94,7 @@ public sealed class KasaDeviceTests
 				{
 				  "result": {
 					 "responses": [
-						{ "method": "get_energy_usage", "result": { "current_power": 7500, "today_energy": 130 } },
-						{ "method": "get_current_power", "result": { "current_power": 7.5 } },
-						{ "method": "get_emeter_data", "result": { "voltage_mv": 120500, "current_ma": 62 } }
+						{ "method": "get_emeter_data", "result": { "power_mw": 7500, "voltage_mv": 120500, "current_ma": 62 } }
 					 ]
 				  }
 				}
@@ -119,6 +117,78 @@ public sealed class KasaDeviceTests
 		Assert.AreEqual (7.5d, device.EnergyUsage.CurrentPowerWatts);
 		Assert.AreEqual (3, transport.SentCommands.Count);
 		Assert.AreEqual (0, transport.SentManyCommands.Count);
+		}
+
+	[TestMethod]
+	public async Task UpdateEnergyUsageAsync_WithSmartV2OptionalEmeterError_UsesEnergyUsageFallback ()
+		{
+		var transport = new FakeDeviceTransport (
+			sendResponses:
+			[
+				"""{ "result": { "responses": [{ "method": "get_device_info", "result": { "model": "S515D", "type": "SMART.KASAPLUG", "device_id": "s515d-1" } }, { "method": "component_nego", "result": { "component_list": [{ "id": "energy_monitoring", "ver_code": 2 }] } }] } }""",
+				"""{ "result": { "responses": [{ "method": "get_emeter_data", "error_code": -1002 }] } }""",
+				"""{ "result": { "responses": [{ "method": "get_energy_usage", "result": { "current_power": 7500, "today_energy": 130 } }] } }"""
+			]);
+		DeviceConfiguration configuration = new (
+			"127.0.0.1",
+			connectionOptions: new DeviceConnectionOptions (
+				connectionParameters: new DeviceConnectionParameters (DeviceFamilyKind.SmartKasaPlug, DeviceEncryptionKind.Aes)));
+		var device = new KasaDevice (configuration, transport);
+
+		bool result = await device.UpdateEnergyUsageAsync ().ConfigureAwait (false);
+
+		Assert.IsTrue (result);
+		Assert.IsNotNull (device.EnergyUsage);
+		Assert.AreEqual (7.5d, device.EnergyUsage.CurrentPowerWatts);
+		Assert.AreEqual (3, transport.SentCommands.Count);
+		StringAssert.Contains (transport.SentCommands[1], "\"method\":\"get_emeter_data\"");
+		StringAssert.Contains (transport.SentCommands[2], "\"method\":\"get_energy_usage\"");
+		}
+
+	[TestMethod]
+	public async Task UpdateEnergyUsageAsync_WithSmartV2NonOptionalEmeterError_Throws ()
+		{
+		var transport = new FakeDeviceTransport (
+			sendResponses:
+			[
+				"""{ "result": { "responses": [{ "method": "get_device_info", "result": { "model": "S515D", "type": "SMART.KASAPLUG", "device_id": "s515d-1" } }, { "method": "component_nego", "result": { "component_list": [{ "id": "energy_monitoring", "ver_code": 2 }] } }] } }""",
+				"""{ "result": { "responses": [{ "method": "get_emeter_data", "error_code": -1003 }] } }"""
+			]);
+		DeviceConfiguration configuration = new (
+			"127.0.0.1",
+			connectionOptions: new DeviceConnectionOptions (
+				connectionParameters: new DeviceConnectionParameters (DeviceFamilyKind.SmartKasaPlug, DeviceEncryptionKind.Aes)));
+		var device = new KasaDevice (configuration, transport);
+
+		InvalidOperationException exception = await Assert.ThrowsExactlyAsync<InvalidOperationException> (() => device.UpdateEnergyUsageAsync ()).ConfigureAwait (false);
+
+		StringAssert.Contains (exception.Message, "-1003");
+		}
+
+	[TestMethod]
+	public async Task UpdateEnergyUsageAsync_WithSmartV2OptionalCurrentPowerError_ReturnsUsageWithoutPower ()
+		{
+		var transport = new FakeDeviceTransport (
+			sendResponses:
+			[
+				"""{ "result": { "responses": [{ "method": "get_device_info", "result": { "model": "S515D", "type": "SMART.KASAPLUG", "device_id": "s515d-1" } }, { "method": "component_nego", "result": { "component_list": [{ "id": "energy_monitoring", "ver_code": 2 }] } }] } }""",
+				"""{ "result": { "responses": [{ "method": "get_emeter_data", "error_code": -1008 }] } }""",
+				"""{ "result": { "responses": [{ "method": "get_energy_usage", "result": { "today_energy": 130 } }] } }""",
+				"""{ "result": { "responses": [{ "method": "get_current_power", "error_code": -1002 }] } }"""
+			]);
+		DeviceConfiguration configuration = new (
+			"127.0.0.1",
+			connectionOptions: new DeviceConnectionOptions (
+				connectionParameters: new DeviceConnectionParameters (DeviceFamilyKind.SmartKasaPlug, DeviceEncryptionKind.Aes)));
+		var device = new KasaDevice (configuration, transport);
+
+		bool result = await device.UpdateEnergyUsageAsync ().ConfigureAwait (false);
+
+		Assert.IsTrue (result);
+		Assert.IsNotNull (device.EnergyUsage);
+		Assert.IsNull (device.EnergyUsage.CurrentPowerWatts);
+		Assert.AreEqual (0.13d, device.EnergyUsage.TotalKilowattHours);
+		Assert.AreEqual (4, transport.SentCommands.Count);
 		}
 
 	[TestMethod]
@@ -359,6 +429,45 @@ public sealed class KasaDeviceTests
 		Assert.IsNotNull (device.LightState);
 		Assert.AreEqual (60, device.LightState.Brightness);
 		Assert.AreEqual (true, device.LightState.IsOn);
+		}
+
+	[TestMethod]
+	public async Task UpdateAsync_WithKl400L5_ExposesSupportedColorTemperatureRange ()
+		{
+		var transport = new FakeDeviceTransport (
+			sendResponses:
+			[
+				"""
+				{
+				  "system": {
+					 "get_sysinfo": {
+						"alias": "KL400L5",
+						"model": "KL400L5(US)",
+						"deviceId": "kl400l5-1",
+						"is_dimmable": 1,
+						"is_variable_color_temp": 1,
+						"light_state": { "on_off": 1, "brightness": 70, "color_temp": 3015, "hue": 0, "saturation": 0 }
+					 }
+				  }
+				}
+				"""
+			],
+			sendManyResponses:
+			[
+				"{" +
+				"\"smartlife.iot.common.emeter\":{\"get_realtime\":{\"err_code\":0,\"power_mw\":9600,\"total_wh\":1193}}," +
+				"\"smartlife.iot.common.timesetting\":{\"get_time\":{\"year\":2026,\"month\":8,\"mday\":3,\"hour\":12,\"min\":0,\"sec\":0}}," +
+				"\"smartlife.iot.common.cloud\":{\"get_info\":{}},\"countdown\":{\"get_rules\":{\"rule_list\":[]}}," +
+				"\"smartlife.iot.common.schedule\":{\"get_rules\":{\"rule_list\":[]}},\"smartlife.iot.common.anti_theft\":{\"get_rules\":{\"rule_list\":[]}}}"
+			]);
+		var device = new KasaDevice (new DeviceConfiguration ("127.0.0.1"), transport);
+
+		await device.UpdateAsync ().ConfigureAwait (false);
+
+		DeviceFeature? feature = device.GetFeature ("color_temperature");
+		Assert.IsNotNull (feature);
+		Assert.AreEqual (2500d, feature.MinimumValue);
+		Assert.AreEqual (9000d, feature.MaximumValue);
 		}
 
 	[TestMethod]

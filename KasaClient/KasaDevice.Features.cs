@@ -230,6 +230,7 @@ public sealed partial class KasaDevice
 			|| modelText.StartsWith ("KB130", StringComparison.Ordinal)
 			|| modelText.StartsWith ("KL130", StringComparison.Ordinal)
 			|| modelText.StartsWith ("KL135", StringComparison.Ordinal)
+			|| modelText.StartsWith ("KL400L5", StringComparison.Ordinal)
 			|| modelText.StartsWith ("KL430", StringComparison.Ordinal)
 			|| modelText.StartsWith ("L900", StringComparison.Ordinal))
 			{

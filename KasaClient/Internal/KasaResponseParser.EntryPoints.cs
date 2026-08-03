@@ -202,6 +202,27 @@ internal static partial class KasaResponseParser
 		return moduleResults;
 		}
 
+	internal static JObject? ParseSmartModuleResult (string responseJson, string expectedMethod, out int? errorCode)
+		{
+		JObject root = JsonSupport.ParseObject (responseJson);
+		JArray responses = root["result"]?["responses"] as JArray
+			?? throw new InvalidDataException ("The smart device response did not contain result.responses.");
+
+		foreach (JToken? responseNode in responses)
+			{
+			if (responseNode is not JObject responseObject
+				|| !string.Equals (responseObject["method"]?.GetValue<string> (), expectedMethod, StringComparison.Ordinal))
+				{
+				continue;
+				}
+
+			errorCode = responseObject["error_code"]?.GetValue<int?> ();
+			return responseObject["result"] as JObject;
+			}
+
+		throw new InvalidDataException ($"The smart device response did not contain {expectedMethod} data.");
+		}
+
 	internal static EnergyUsage? ParseSmartEnergyUsage (IReadOnlyDictionary<string, JObject> moduleResults) => CreateSmartEnergyUsage (moduleResults);
 
 	internal static DeviceSystemInfo ParseSystemInfo (ParsedResponse response)

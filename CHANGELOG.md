@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Each entry summarizes t
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.2.6] - SMART energy monitoring v2 compatibility
+
+- **KasaDevice**: Extended `UpdateEnergyUsageAsync` for SMART energy-monitoring v2 devices, including models that implement only a subset of the advertised methods. It now prefers `get_emeter_data`, falls back to `get_energy_usage`, and requests `get_current_power` only when required. Per-method `unknown method` and `invalid parameters` responses are treated as optional-method failures; other device errors continue to surface. This extends the SMART protocol fix released in 1.2.5 while preserving legacy and SMART v1 behavior.
+- **Light features**: Added the reported 2500–9000 K color-temperature range for KL400L5 light strips with newer variable-color-temperature firmware.
+
 ## [1.2.5] - SMART energy monitoring support
 
 - **KasaDevice**: Fixed `UpdateEnergyUsageAsync` for SMART/KLAP/TPAP devices that expose energy monitoring, such as the KP125M. The method previously always issued legacy `emeter` commands, which SMART devices do not support; it now uses the SMART `energy_monitoring` requests and parses their results through the existing SMART energy parser. The SMART path also negotiates component support when energy usage is requested before an initial `UpdateAsync`. Legacy-device energy monitoring behavior is unchanged.

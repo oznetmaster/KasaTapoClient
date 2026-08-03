@@ -5,6 +5,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Newtonsoft.Json.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,6 +21,8 @@ public sealed partial class KasaDevice : IDisposable
 	{
 	private readonly IDeviceTransport _transport;
 	private readonly SemaphoreSlim _operationLock = new (1, 1);
+	private const int SMART_UNKNOWN_METHOD_ERROR = -1002;
+	private const int SMART_PARAMETERS_ERROR = -1008;
 	private bool _disposed;
 	private IReadOnlyList<DeviceFeature> _features = Array.Empty<DeviceFeature> ();
 	private IReadOnlyDictionary<string, int> _smartComponentVersions = new Dictionary<string, int> (StringComparer.Ordinal);
@@ -618,34 +621,65 @@ public sealed partial class KasaDevice : IDisposable
 			componentVersions = KasaResponseParser.ParseSmartResponse (negoResponse).ComponentVersions;
 			}
 
-		var energyRequests = new Dictionary<string, JObject?> (StringComparer.Ordinal);
-		foreach (SmartRefreshContribution contribution in SMART_PARENT_REFRESH_DEFINITIONS)
-			{
-			if (!string.Equals (contribution.RequiredComponent, "energy_monitoring", StringComparison.Ordinal))
-				{
-				continue;
-				}
-			if (!TryGetSmartComponentVersion (componentVersions, contribution.RequiredComponent, out int supportedVersion))
-				{
-				continue;
-				}
-			if (contribution.MinimumSupportedVersion is int minimumSupportedVersion && supportedVersion < minimumSupportedVersion)
-				{
-				continue;
-				}
-			energyRequests[contribution.Method] = contribution.CreateParameters ();
-			}
-
-		if (energyRequests.Count == 0)
+		if (!TryGetSmartComponentVersion (componentVersions, "energy_monitoring", out int supportedVersion))
 			{
 			return false;
 			}
 
-		string response = await _transport.SendAsync (KasaCommands.CreateSmartMultipleRequest (energyRequests), cancellationToken).ConfigureAwait (false);
-		IReadOnlyDictionary<string, JObject> moduleResults = KasaResponseParser.ParseSmartModuleResults (response);
+		var moduleResults = new Dictionary<string, JObject> (StringComparer.Ordinal);
+		if (supportedVersion > 1)
+			{
+			JObject? emeterData = await GetSmartEnergyModuleResultAsync (KasaCommands.SMART_GET_EMETER_DATA_METHOD, optional: true, cancellationToken).ConfigureAwait (false);
+			if (emeterData is not null)
+				{
+				moduleResults[KasaCommands.SMART_GET_EMETER_DATA_METHOD] = emeterData;
+				EnergyUsage = KasaResponseParser.ParseSmartEnergyUsage (moduleResults);
+				_features = CreateFeatures ();
+				return EnergyUsage is not null;
+				}
+			}
+
+		JObject? energyUsage = await GetSmartEnergyModuleResultAsync (KasaCommands.SMART_GET_ENERGY_USAGE_METHOD, optional: supportedVersion > 1, cancellationToken).ConfigureAwait (false);
+		if (energyUsage is not null)
+			{
+			moduleResults[KasaCommands.SMART_GET_ENERGY_USAGE_METHOD] = energyUsage;
+			if (energyUsage["current_power"] is not null)
+				{
+				EnergyUsage = KasaResponseParser.ParseSmartEnergyUsage (moduleResults);
+				_features = CreateFeatures ();
+				return EnergyUsage is not null;
+				}
+			}
+
+		if (supportedVersion > 1)
+			{
+			JObject? currentPower = await GetSmartEnergyModuleResultAsync (KasaCommands.SMART_GET_CURRENT_POWER_METHOD, optional: true, cancellationToken).ConfigureAwait (false);
+			if (currentPower is not null)
+				{
+				moduleResults[KasaCommands.SMART_GET_CURRENT_POWER_METHOD] = currentPower;
+				}
+			}
+
 		EnergyUsage = KasaResponseParser.ParseSmartEnergyUsage (moduleResults);
 		_features = CreateFeatures ();
 		return EnergyUsage is not null;
+		}
+
+	private async Task<JObject?> GetSmartEnergyModuleResultAsync (string method, bool optional, CancellationToken cancellationToken)
+		{
+		string response = await _transport.SendAsync (KasaCommands.CreateSmartRequest (method), cancellationToken).ConfigureAwait (false);
+		JObject? result = KasaResponseParser.ParseSmartModuleResult (response, method, out int? errorCode);
+		if (result is not null)
+			{
+			return result;
+			}
+
+		if (optional && errorCode is SMART_UNKNOWN_METHOD_ERROR or SMART_PARAMETERS_ERROR)
+			{
+			return null;
+			}
+
+		throw new InvalidOperationException ($"The smart device returned error code {errorCode?.ToString (CultureInfo.InvariantCulture) ?? "unknown"} for {method}.");
 		}
 
 	/// <summary>
