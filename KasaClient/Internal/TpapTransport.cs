@@ -1558,7 +1558,11 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 		var output = new byte[hex.Length / 2];
 		for (int index = 0; index < output.Length; index++)
 			{
+			#if NET10_0_OR_GREATER
+			output[index] = byte.Parse (hex.AsSpan (index * 2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+			#else
 			output[index] = byte.Parse (hex.Substring (index * 2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+			#endif
 			}
 
 		#pragma warning restore CA1846
