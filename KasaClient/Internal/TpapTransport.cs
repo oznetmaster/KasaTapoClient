@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -1582,25 +1583,12 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 
 	private static byte[] GetBigEndian (int value)
 		{
-		byte[] bytes = BitConverter.GetBytes (value);
-		if (BitConverter.IsLittleEndian)
-			{
-			Array.Reverse (bytes);
-			}
-
+		byte[] bytes = new byte[4];
+		BinaryPrimitives.WriteInt32BigEndian (bytes, value);
 		return bytes;
 		}
 
-	private static int ReadBigEndian (byte[] bytes, int offset)
-		{
-		byte[] buffer = bytes.AsSpan (offset, 4).ToArray ();
-		if (BitConverter.IsLittleEndian)
-			{
-			Array.Reverse (buffer);
-			}
-
-		return BitConverter.ToInt32 (buffer, 0);
-		}
+	private static int ReadBigEndian (byte[] bytes, int offset) => BinaryPrimitives.ReadInt32BigEndian (bytes.AsSpan (offset, 4));
 
 	private static byte[] Combine (params byte[][] arrays)
 		{
