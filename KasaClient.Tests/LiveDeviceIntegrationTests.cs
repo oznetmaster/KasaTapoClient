@@ -16,7 +16,7 @@ namespace KasaClient.Tests;
 public sealed class LiveDeviceIntegrationTests
 	{
 	[TestMethod]
-	[DynamicData (nameof (LiveTestSupport.PlugDevices), typeof (LiveTestSupport), DynamicDataSourceType.Property)]
+	[DynamicData (nameof (LiveTestSupport.PlugDevices), typeof (LiveTestSupport))]
 	public async Task Plug_TurnOffAndTurnOn_RefreshesObservedState (string host)
 		{
 		using KasaDevice device = await LiveTestSupport.ConnectAsync ("plug", host).ConfigureAwait (false);
@@ -36,7 +36,7 @@ public sealed class LiveDeviceIntegrationTests
 		}
 
 	[TestMethod]
-	[DynamicData (nameof (LiveTestSupport.LightDevices), typeof (LiveTestSupport), DynamicDataSourceType.Property)]
+	[DynamicData (nameof (LiveTestSupport.LightDevices), typeof (LiveTestSupport))]
 	public async Task Light_TurnOnAndTurnOff_RefreshesObservedLightState (string host)
 		{
 		using KasaDevice device = await LiveTestSupport.ConnectAsync ("light", host).ConfigureAwait (false);
@@ -57,7 +57,7 @@ public sealed class LiveDeviceIntegrationTests
 		}
 
 	[TestMethod]
-	[DynamicData (nameof (LiveTestSupport.LightDevices), typeof (LiveTestSupport), DynamicDataSourceType.Property)]
+	[DynamicData (nameof (LiveTestSupport.LightDevices), typeof (LiveTestSupport))]
 	public async Task Light_SetBrightness_RefreshesObservedLightState (string host)
 		{
 		using KasaDevice device = await LiveTestSupport.ConnectAsync ("light", host).ConfigureAwait (false);
@@ -89,7 +89,7 @@ public sealed class LiveDeviceIntegrationTests
 		}
 
 	[TestMethod]
-	[DynamicData (nameof (LiveTestSupport.StripDevices), typeof (LiveTestSupport), DynamicDataSourceType.Property)]
+	[DynamicData (nameof (LiveTestSupport.StripDevices), typeof (LiveTestSupport))]
 	public async Task StripChild_InitiallyOff_TurnsOnThenOff_RefreshesObservedState (string host)
 		{
 		using KasaDevice device = await LiveTestSupport.ConnectAsync ("strip", host).ConfigureAwait (false);

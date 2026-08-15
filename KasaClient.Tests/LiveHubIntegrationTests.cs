@@ -15,7 +15,7 @@ namespace KasaClient.Tests;
 public sealed class LiveHubIntegrationTests
 	{
 	[TestMethod]
-	[DynamicData (nameof (LiveTestSupport.HubDevices), typeof (LiveTestSupport), DynamicDataSourceType.Property)]
+	[DynamicData (nameof (LiveTestSupport.HubDevices), typeof (LiveTestSupport))]
 	public async Task Hub_GetScannedChildDevices_ReturnsResultWithoutMutatingState (string host)
 		{
 		using KasaDevice device = await LiveTestSupport.ConnectAsync ("hub", host).ConfigureAwait (false);
@@ -29,7 +29,7 @@ public sealed class LiveHubIntegrationTests
 		}
 
 	[TestMethod]
-	[DynamicData (nameof (LiveTestSupport.HubDevices), typeof (LiveTestSupport), DynamicDataSourceType.Property)]
+	[DynamicData (nameof (LiveTestSupport.HubDevices), typeof (LiveTestSupport))]
 	public async Task Hub_ConfiguredChild_IsPresentAndExposesReportedMetadata (string host)
 		{
 		using KasaDevice device = await LiveTestSupport.ConnectAsync ("hub", host).ConfigureAwait (false);
