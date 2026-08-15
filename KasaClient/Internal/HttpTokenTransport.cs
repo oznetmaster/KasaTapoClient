@@ -628,8 +628,9 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 
 			byte[] key = new byte[16];
 			byte[] iv = new byte[16];
-			Buffer.BlockCopy (keyAndIv, 0, key, 0, 16);
-			Buffer.BlockCopy (keyAndIv, 16, iv, 0, 16);
+			ReadOnlySpan<byte> keyAndIvSpan = keyAndIv;
+			keyAndIvSpan.Slice (0, 16).CopyTo (key);
+			keyAndIvSpan.Slice (16, 16).CopyTo (iv);
 			return new AesEncryptionSession (key, iv);
 			}
 
@@ -722,12 +723,14 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 		int length = value.Length - start;
 		bool prependZero = (value[start] & 0x80) != 0;
 		var normalized = new byte[length + (prependZero ? 1 : 0)];
+		Span<byte> normalizedSpan = normalized;
 		if (prependZero)
 			{
-			normalized[0] = 0;
+			normalizedSpan[0] = 0;
+			normalizedSpan = normalizedSpan[1..];
 			}
 
-		Buffer.BlockCopy (value, start, normalized, prependZero ? 1 : 0, length);
+		value.AsSpan (start, length).CopyTo (normalizedSpan);
 		return EncodeAsn1 (0x02, normalized);
 		}
 
@@ -735,7 +738,7 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 		{
 		var content = new byte[value.Length + 1];
 		content[0] = 0;
-		Buffer.BlockCopy (value, 0, content, 1, value.Length);
+		value.AsSpan ().CopyTo (content.AsSpan (1));
 		return EncodeAsn1 (0x03, content);
 		}
 
@@ -748,8 +751,9 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 		byte[] length = EncodeLength (value.Length);
 		var encoded = new byte[1 + length.Length + value.Length];
 		encoded[0] = tag;
-		Buffer.BlockCopy (length, 0, encoded, 1, length.Length);
-		Buffer.BlockCopy (value, 0, encoded, 1 + length.Length, value.Length);
+		Span<byte> encodedSpan = encoded.AsSpan (1);
+		length.AsSpan ().CopyTo (encodedSpan);
+		value.AsSpan ().CopyTo (encodedSpan[length.Length..]);
 		return encoded;
 		}
 
@@ -781,11 +785,11 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 			}
 
 		var combined = new byte[length];
-		int offset = 0;
+		Span<byte> destination = combined;
 		for (int i = 0; i < values.Length; i++)
 			{
-			Buffer.BlockCopy (values[i], 0, combined, offset, values[i].Length);
-			offset += values[i].Length;
+			values[i].AsSpan ().CopyTo (destination);
+			destination = destination[values[i].Length..];
 			}
 
 		return combined;

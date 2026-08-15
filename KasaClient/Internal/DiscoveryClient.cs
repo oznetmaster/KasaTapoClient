@@ -675,9 +675,9 @@ internal sealed class DiscoveryClient
 		WriteUInt16BigEndian (query, 4, checked((ushort)payloadBytes.Length));
 		query[6] = 17;
 		query[7] = 0;
-		Buffer.BlockCopy (secret, 0, query, 8, secret.Length);
+		secret.AsSpan ().CopyTo (query.AsSpan (8));
 		WriteUInt32BigEndian (query, 12, 0x5A6B7C8D);
-		Buffer.BlockCopy (payloadBytes, 0, query, 16, payloadBytes.Length);
+		payloadBytes.AsSpan ().CopyTo (query.AsSpan (16));
 		WriteUInt32BigEndian (query, 12, ComputeCrc32 (query));
 		return query;
 		}
@@ -721,12 +721,14 @@ internal sealed class DiscoveryClient
 		int length = value.Length - start;
 		bool prependZero = (value[start] & 0x80) != 0;
 		var normalized = new byte[length + (prependZero ? 1 : 0)];
+		Span<byte> normalizedSpan = normalized;
 		if (prependZero)
 			{
-			normalized[0] = 0;
+			normalizedSpan[0] = 0;
+			normalizedSpan = normalizedSpan[1..];
 			}
 
-		Buffer.BlockCopy (value, start, normalized, prependZero ? 1 : 0, length);
+		value.AsSpan (start, length).CopyTo (normalizedSpan);
 		return EncodeAsn1 (0x02, normalized);
 		}
 
@@ -734,7 +736,7 @@ internal sealed class DiscoveryClient
 		{
 		var content = new byte[value.Length + 1];
 		content[0] = 0;
-		Buffer.BlockCopy (value, 0, content, 1, value.Length);
+		value.AsSpan ().CopyTo (content.AsSpan (1));
 		return EncodeAsn1 (0x03, content);
 		}
 
@@ -747,8 +749,9 @@ internal sealed class DiscoveryClient
 		byte[] length = EncodeLength (value.Length);
 		var encoded = new byte[1 + length.Length + value.Length];
 		encoded[0] = tag;
-		Buffer.BlockCopy (length, 0, encoded, 1, length.Length);
-		Buffer.BlockCopy (value, 0, encoded, 1 + length.Length, value.Length);
+		Span<byte> encodedSpan = encoded.AsSpan (1);
+		length.AsSpan ().CopyTo (encodedSpan);
+		value.AsSpan ().CopyTo (encodedSpan[length.Length..]);
 		return encoded;
 		}
 
@@ -780,11 +783,11 @@ internal sealed class DiscoveryClient
 			}
 
 		var combined = new byte[totalLength];
-		int offset = 0;
+		Span<byte> destination = combined;
 		foreach (byte[] value in values)
 			{
-			Buffer.BlockCopy (value, 0, combined, offset, value.Length);
-			offset += value.Length;
+			value.AsSpan ().CopyTo (destination);
+			destination = destination[value.Length..];
 			}
 
 		return combined;

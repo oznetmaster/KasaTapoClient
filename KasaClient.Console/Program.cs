@@ -118,9 +118,9 @@ static byte[] CreateRawSmartDiscoveryQuery ()
 	byte[] payload = Encoding.UTF8.GetBytes (new JObject { ["params"] = new JObject { ["rsa_key"] = pem } }.ToString (Formatting.None));
 	var query = new byte[16 + payload.Length];
 	query[0] = 2; query[3] = 1; query[4] = (byte)(payload.Length >> 8); query[5] = (byte)payload.Length; query[6] = 17;
-	Buffer.BlockCopy (secret, 0, query, 8, secret.Length);
+	secret.AsSpan ().CopyTo (query.AsSpan (8));
 	query[12] = 0x5A; query[13] = 0x6B; query[14] = 0x7C; query[15] = 0x8D;
-	Buffer.BlockCopy (payload, 0, query, 16, payload.Length);
+	payload.AsSpan ().CopyTo (query.AsSpan (16));
 	uint crc = ComputeRawCrc32 (query);
 	query[12] = (byte)(crc >> 24); query[13] = (byte)(crc >> 16); query[14] = (byte)(crc >> 8); query[15] = (byte)crc;
 	return query;
@@ -133,7 +133,7 @@ static byte[] EncodeRawInteger (byte[] value)
 	{
 	int start = 0;
 	while (start < value.Length - 1 && value[start] == 0) start++;
-	byte[] normalized = value.Skip (start).ToArray ();
+	byte[] normalized = value.AsSpan (start).ToArray ();
 	return EncodeRawAsn1 (0x02, (normalized[0] & 0x80) == 0 ? normalized : CombineRaw (new byte[] { 0 }, normalized));
 	}
 static byte[] EncodeRawAsn1 (byte tag, byte[] value)
@@ -144,8 +144,12 @@ static byte[] EncodeRawAsn1 (byte tag, byte[] value)
 static byte[] CombineRaw (params byte[][] values)
 	{
 	byte[] result = new byte[values.Sum (value => value.Length)];
-	int offset = 0;
-	foreach (byte[] value in values) { Buffer.BlockCopy (value, 0, result, offset, value.Length); offset += value.Length; }
+	Span<byte> destination = result;
+	foreach (byte[] value in values)
+		{
+		value.AsSpan ().CopyTo (destination);
+		destination = destination[value.Length..];
+		}
 	return result;
 	}
 static uint ComputeRawCrc32 (byte[] data)

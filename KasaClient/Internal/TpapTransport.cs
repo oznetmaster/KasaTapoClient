@@ -1383,7 +1383,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 		var output = new byte[cipher.GetOutputSize (plaintext.Length)];
 		int written = cipher.ProcessBytes (plaintext, 0, plaintext.Length, output, 0);
 		written += cipher.DoFinal (output, written);
-		return written == output.Length ? output : output.Take (written).ToArray ();
+		return written == output.Length ? output : output.AsSpan (0, written).ToArray ();
 		}
 
 	private static byte[] DecryptPayloadEnvelope (string cipherId, byte[] key, byte[] baseNonce, byte[] payload, int requestSequence)
@@ -1394,7 +1394,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			}
 
 		int responseSequence = ReadBigEndian (payload, 0);
-		byte[] encrypted = payload.Skip (4).ToArray ();
+		byte[] encrypted = payload.AsSpan (4).ToArray ();
 		string normalized = NormalizeCipherId (cipherId);
 		if (normalized != "aes_128_ccm" && normalized != "aes_256_ccm")
 			{
@@ -1407,7 +1407,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 		var output = new byte[cipher.GetOutputSize (encrypted.Length)];
 		int written = cipher.ProcessBytes (encrypted, 0, encrypted.Length, output, 0);
 		written += cipher.DoFinal (output, written);
-		return written == output.Length ? output : output.Take (written).ToArray ();
+		return written == output.Length ? output : output.AsSpan (0, written).ToArray ();
 		}
 
 	private static byte[] NonceFromBase (byte[] baseNonce, int sequence)
@@ -1418,8 +1418,9 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			}
 
 		byte[] nonce = new byte[baseNonce.Length];
-		Buffer.BlockCopy (baseNonce, 0, nonce, 0, baseNonce.Length - 4);
-		Buffer.BlockCopy (GetBigEndian (sequence), 0, nonce, baseNonce.Length - 4, 4);
+		Span<byte> nonceSpan = nonce;
+		baseNonce.AsSpan (0, baseNonce.Length - 4).CopyTo (nonceSpan);
+		GetBigEndian (sequence).AsSpan ().CopyTo (nonceSpan[(baseNonce.Length - 4)..]);
 		return nonce;
 		}
 
@@ -1484,7 +1485,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			{
 			block = ComputeHmac (algorithm, pseudoRandomKey, Combine (block, info, new byte[] { counter }));
 			int toCopy = Math.Min (block.Length, length - offset);
-			Buffer.BlockCopy (block, 0, output, offset, toCopy);
+			block.AsSpan (0, toCopy).CopyTo (output.AsSpan (offset));
 			offset += toCopy;
 			counter++;
 			}
@@ -1519,7 +1520,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 				}
 
 			int toCopy = Math.Min (t.Length, length - destinationOffset);
-			Buffer.BlockCopy (t, 0, output, destinationOffset, toCopy);
+			t.AsSpan (0, toCopy).CopyTo (output.AsSpan (destinationOffset));
 			destinationOffset += toCopy;
 			}
 
@@ -1588,8 +1589,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 
 	private static int ReadBigEndian (byte[] bytes, int offset)
 		{
-		var buffer = new byte[4];
-		Buffer.BlockCopy (bytes, offset, buffer, 0, 4);
+		byte[] buffer = bytes.AsSpan (offset, 4).ToArray ();
 		if (BitConverter.IsLittleEndian)
 			{
 			Array.Reverse (buffer);
@@ -1602,11 +1602,11 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 		{
 		int totalLength = arrays.Sum (array => array.Length);
 		var output = new byte[totalLength];
-		int offset = 0;
+		Span<byte> destination = output;
 		foreach (byte[] array in arrays)
 			{
-			Buffer.BlockCopy (array, 0, output, offset, array.Length);
-			offset += array.Length;
+			array.AsSpan ().CopyTo (destination);
+			destination = destination[array.Length..];
 			}
 
 		return output;

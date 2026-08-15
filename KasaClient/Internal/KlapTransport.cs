@@ -138,10 +138,9 @@ internal sealed class KlapTransport : IDisposableDeviceTransport
 			}
 
 		CaptureCookies (handshakeUri, response);
-		byte[] remoteSeed = new byte[16];
-		byte[] serverHash = new byte[32];
-		Buffer.BlockCopy (payload, 0, remoteSeed, 0, remoteSeed.Length);
-		Buffer.BlockCopy (payload, 16, serverHash, 0, serverHash.Length);
+		ReadOnlySpan<byte> payloadSpan = payload;
+		byte[] remoteSeed = payloadSpan.Slice (0, 16).ToArray ();
+		byte[] serverHash = payloadSpan.Slice (16, 32).ToArray ();
 		int timeoutSeconds = ReadTimeoutSeconds (response);
 		return (remoteSeed, serverHash, timeoutSeconds);
 		}
@@ -621,11 +620,11 @@ internal static class KlapAuthHash
 			}
 
 		var combined = new byte[totalLength];
-		int offset = 0;
+		Span<byte> destination = combined;
 		foreach (byte[] array in arrays)
 			{
-			Buffer.BlockCopy (array, 0, combined, offset, array.Length);
-			offset += array.Length;
+			array.AsSpan ().CopyTo (destination);
+			destination = destination[array.Length..];
 			}
 
 		return combined;
@@ -656,12 +655,10 @@ internal sealed class KlapEncryptionSession
 		{
 		_key = Slice16 (KlapAuthHash.ComputeSha256 (KlapAuthHash.Combine (Encoding.ASCII.GetBytes ("lsk"), localSeed, remoteSeed, userHash)));
 		byte[] fullIv = KlapAuthHash.ComputeSha256 (KlapAuthHash.Combine (Encoding.ASCII.GetBytes ("iv"), localSeed, remoteSeed, userHash));
-		_ivPrefix = new byte[12];
-		Buffer.BlockCopy (fullIv, 0, _ivPrefix, 0, _ivPrefix.Length);
+		_ivPrefix = fullIv.AsSpan (0, 12).ToArray ();
 		_sequence = ReadInt32BigEndian (fullIv, fullIv.Length - 4);
 		byte[] sig = KlapAuthHash.ComputeSha256 (KlapAuthHash.Combine (Encoding.ASCII.GetBytes ("ldk"), localSeed, remoteSeed, userHash));
-		_signaturePrefix = new byte[28];
-		Buffer.BlockCopy (sig, 0, _signaturePrefix, 0, _signaturePrefix.Length);
+		_signaturePrefix = sig.AsSpan (0, 28).ToArray ();
 		}
 
 	public KlapEncryptedRequest Encrypt (string payload)
@@ -692,8 +689,7 @@ internal sealed class KlapEncryptionSession
 			throw new InvalidDataException ("The KLAP response payload was too short to contain a signature.");
 			}
 
-		byte[] cipherBytes = new byte[payload.Length - 32];
-		Buffer.BlockCopy (payload, 32, cipherBytes, 0, cipherBytes.Length);
+		byte[] cipherBytes = payload.AsSpan (32).ToArray ();
 		byte[] iv = KlapAuthHash.Combine (_ivPrefix, WriteInt32BigEndian (_sequence));
 		byte[] plainBytes;
 		using (Aes aes = Aes.Create ())
@@ -709,12 +705,7 @@ internal sealed class KlapEncryptionSession
 		return Encoding.UTF8.GetString (plainBytes);
 		}
 
-	private static byte[] Slice16 (byte[] value)
-		{
-		var result = new byte[16];
-		Buffer.BlockCopy (value, 0, result, 0, result.Length);
-		return result;
-		}
+	private static byte[] Slice16 (byte[] value) => value.AsSpan (0, 16).ToArray ();
 
 	private static int ReadInt32BigEndian (byte[] buffer, int offset) =>
 		(buffer[offset] << 24)

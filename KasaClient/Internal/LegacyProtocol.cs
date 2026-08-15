@@ -1747,7 +1747,7 @@ internal static class KasaCipher
 		framedPayload[1] = (byte)((payload.Length >> 16) & 0xFF);
 		framedPayload[2] = (byte)((payload.Length >> 8) & 0xFF);
 		framedPayload[3] = (byte)(payload.Length & 0xFF);
-		Buffer.BlockCopy (payload, 0, framedPayload, 4, payload.Length);
+		payload.AsSpan ().CopyTo (framedPayload.AsSpan (4));
 		return framedPayload;
 		}
 
