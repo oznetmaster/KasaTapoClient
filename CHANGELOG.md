@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Each entry summarizes t
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.2.8] - KLAP/TPAP transport micro-optimizations
+
+- **Internal**: `TpapTransport` now uses `BinaryPrimitives.WriteInt32BigEndian`/`ReadInt32BigEndian` instead of `BitConverter` combined with `Array.Reverse`, and uses span-based hex parsing in `HexToBytes` on net10.0 (with the `Substring`-based implementation retained for the net472 fallback).
+- **Internal**: `KlapTransport`'s session-cookie header parsing (`CaptureSessionCookieFromHeader`) now compares cookie names as spans before allocating a string, only calling `Substring` once a matching cookie (`TP_SESSIONID`/`SESSIONID`) is found, avoiding a discarded string allocation per non-matching cookie in the header. The `"SESSIONID"` literal was also promoted to a `SESSIONID_COOKIE_NAME` constant. No public API or behavior changes.
+
 ## [1.2.7] - Span-based buffer handling in transport/crypto layer
 
 - **Internal**: The KLAP, TPAP, HTTP AES, discovery, and legacy protocol transports now compose and slice byte buffers using `Span<byte>`/`ReadOnlySpan<byte>` instead of `Buffer.BlockCopy` and intermediate array allocations, reducing allocations on the request/response hot path. `Microsoft.Bcl.Memory` (already referenced) provides the required span APIs on net472. No public API or behavior changes.

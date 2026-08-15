@@ -22,6 +22,7 @@ internal sealed class KlapTransport : IDisposableDeviceTransport
 	private const int DEFAULT_HTTPS_PORT = 4433;
 	private const int SESSION_EXPIRE_BUFFER_SECONDS = 20 * 60;
 	private const string SESSION_COOKIE_NAME = "TP_SESSIONID";
+	private const string SESSIONID_COOKIE_NAME = "SESSIONID";
 	private const string TIMEOUT_COOKIE_NAME = "TIMEOUT";
 	private readonly DeviceConfiguration _configuration;
 	private readonly Uri _appUri;
@@ -420,7 +421,7 @@ internal sealed class KlapTransport : IDisposableDeviceTransport
 			}
 
 		CookieCollection cookies = _cookies.GetCookies (_appUri);
-		Cookie? sessionCookie = cookies[SESSION_COOKIE_NAME] ?? cookies["SESSIONID"];
+		Cookie? sessionCookie = cookies[SESSION_COOKIE_NAME] ?? cookies[SESSIONID_COOKIE_NAME];
 		if (sessionCookie is not null && !string.IsNullOrWhiteSpace (sessionCookie.Value))
 			{
 			_sessionCookieValue = sessionCookie.Value;
@@ -455,15 +456,16 @@ internal sealed class KlapTransport : IDisposableDeviceTransport
 		string[] segments = cookieHeader.Split (';');
 		foreach (string segment in segments)
 			{
-				int separatorIndex = segment.IndexOf ('=');
+				ReadOnlySpan<char> segmentSpan = segment.AsSpan ();
+				int separatorIndex = segmentSpan.IndexOf ('=');
 				if (separatorIndex <= 0)
 					{
 					continue;
 					}
 
-				string name = segment.Substring (0, separatorIndex).Trim ();
-				if (!string.Equals (name, SESSION_COOKIE_NAME, StringComparison.OrdinalIgnoreCase)
-					&& !string.Equals (name, "SESSIONID", StringComparison.OrdinalIgnoreCase))
+				ReadOnlySpan<char> name = segmentSpan[..separatorIndex].Trim ();
+				if (!MemoryExtensions.Equals (name, SESSION_COOKIE_NAME.AsSpan (), StringComparison.OrdinalIgnoreCase)
+					&& !MemoryExtensions.Equals (name, SESSIONID_COOKIE_NAME.AsSpan (), StringComparison.OrdinalIgnoreCase))
 					{
 					continue;
 					}
