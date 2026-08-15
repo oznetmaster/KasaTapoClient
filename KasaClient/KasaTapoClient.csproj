@@ -10,7 +10,7 @@
 		<TargetFrameworks>net472;net10.0</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<PackageId>KasaTapoClient</PackageId>
-		<Version>1.2.6</Version>
+		<Version>1.2.7</Version>
 		<Authors>Neil Colvin</Authors>
 		<Company>Neil Colvin</Company>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -21,7 +21,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>Extended UpdateEnergyUsageAsync for SMART energy-monitoring v2 devices that implement only a subset of the advertised methods. It now prefers get_emeter_data, falls back to get_energy_usage, and requests get_current_power only when needed; unknown-method and invalid-parameters responses are handled as optional-method failures while genuine device errors still surface. Added the 2500-9000 K color-temperature feature range for newer-firmware KL400L5 light strips. Legacy and SMART v1 behavior is unchanged. No breaking API changes.</PackageReleaseNotes>
+		<PackageReleaseNotes>Internal performance improvement: the transport/crypto layer (KLAP, TPAP, HTTP AES, discovery, legacy protocol framing) now composes and slices byte buffers using Span&lt;byte&gt;/ReadOnlySpan&lt;byte&gt; instead of Buffer.BlockCopy and intermediate array allocations, reducing allocations on the hot request/response path. No public API or behavior changes.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>
