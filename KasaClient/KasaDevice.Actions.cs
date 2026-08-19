@@ -11,7 +11,7 @@ namespace KasaTapoClient;
 
 public sealed partial class KasaDevice
 	{
-	private bool SupportsLightControl () => DeviceType is DeviceType.Bulb or DeviceType.LightStrip;
+	private bool SupportsLightControl () => DeviceType is DeviceType.Bulb or DeviceType.LightStrip or DeviceType.Dimmer;
 
 	private async Task SetRelayStateAsync (bool isOn, CancellationToken cancellationToken)
 		{
