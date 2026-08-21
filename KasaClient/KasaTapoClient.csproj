@@ -21,7 +21,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>Internal performance improvement: the transport/crypto layer (KLAP, TPAP, HTTP AES, discovery, legacy protocol framing) now composes and slices byte buffers using Span&lt;byte&gt;/ReadOnlySpan&lt;byte&gt; instead of Buffer.BlockCopy and intermediate array allocations, reducing allocations on the hot request/response path. No public API or behavior changes.</PackageReleaseNotes>
+		<PackageReleaseNotes>Brightness control is now keyed on the capability a device actually advertises rather than on DeviceType. SetBrightnessAsync now works on SMART dimmers and dimmable switches previously refused (including KS225, KS240, P135, S500D, S505D, S515D, and HS220 hw rev 3.26). Color temperature and HSV remain restricted to bulbs and light strips. Unsupported light-state requests now report the specific missing capability instead of a generic message. See CHANGELOG.md for full details. Contributed by @xeys in #3.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>
