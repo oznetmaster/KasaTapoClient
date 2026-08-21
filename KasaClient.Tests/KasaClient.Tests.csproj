@@ -9,6 +9,7 @@
 	 <Nullable>enable</Nullable>
 	 <IsPackable>false</IsPackable>
 	 <IsTestProject>true</IsTestProject>
+	 <RunSettingsFilePath>$(MSBuildThisFileDirectory)../.runsettings</RunSettingsFilePath>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">

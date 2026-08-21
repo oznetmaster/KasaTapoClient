@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+	<RunConfiguration>
+		<!-- Excludes live-device integration tests, which are opt-in via LiveTestSettings.json. -->
+		<TestCaseFilter>TestCategory!=Live</TestCaseFilter>
+	</RunConfiguration>
+</RunSettings>
