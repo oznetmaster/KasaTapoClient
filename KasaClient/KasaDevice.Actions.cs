@@ -150,6 +150,11 @@ public sealed partial class KasaDevice
 		{
 		bool isColorUpdate = hue is int || saturation is int;
 
+		if (isOn is null && brightness is null && colorTemperature is null && !isColorUpdate)
+			{
+			throw new ArgumentException ("At least one light-state parameter must be specified.");
+			}
+
 		if (isOn is bool && brightness is null && colorTemperature is null && !isColorUpdate && !SupportsLightControl ())
 			{
 			throw new InvalidOperationException ($"The device '{Host}' does not support light-state control.");
