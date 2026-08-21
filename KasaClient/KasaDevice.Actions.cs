@@ -13,6 +13,14 @@ public sealed partial class KasaDevice
 	{
 	private bool SupportsLightControl () => DeviceType is DeviceType.Bulb or DeviceType.LightStrip;
 
+	private bool SupportsColorControl () => SupportsLightControl ();
+
+	private bool SupportsColorTemperatureControl () => SupportsLightControl ();
+
+	private bool SupportsBrightnessControl () =>
+		SupportsLightControl ()
+		|| (UsesSmartProtocol () && GetSmartComponentVersion ("brightness") is not null);
+
 	private async Task SetRelayStateAsync (bool isOn, CancellationToken cancellationToken)
 		{
 		await RunDeviceOperationAsync (ct => SetRelayStateCoreAsync (isOn, ct), cancellationToken).ConfigureAwait (false);
@@ -74,10 +82,7 @@ public sealed partial class KasaDevice
 		int? transitionMilliseconds = null,
 		CancellationToken cancellationToken = default)
 		{
-		if (!SupportsLightControl ())
-			{
-			throw new InvalidOperationException ($"The device '{Host}' does not support light-state control.");
-			}
+		EnsureLightStateParametersSupported (isOn, brightness, colorTemperature, hue, saturation);
 
 		if (UsesSmartProtocol ())
 			{
@@ -139,6 +144,36 @@ public sealed partial class KasaDevice
 
 		await ExecuteCommandCoreAsync (KasaTapoClient.Internal.KasaCommands.CreateSetLightStateCommand (DeviceType, isOn, brightness, colorTemperature, hue, saturation, transitionMilliseconds), cancellationToken).ConfigureAwait (false);
 		await UpdateCoreAsync (cancellationToken).ConfigureAwait (false);
+		}
+
+	private void EnsureLightStateParametersSupported (bool? isOn, int? brightness, int? colorTemperature, int? hue, int? saturation)
+		{
+		bool isColorUpdate = hue is int || saturation is int;
+
+		if (isOn is null && brightness is null && colorTemperature is null && !isColorUpdate)
+			{
+			throw new ArgumentException ("At least one light-state parameter must be specified.");
+			}
+
+		if (isOn is bool && brightness is null && colorTemperature is null && !isColorUpdate && !SupportsLightControl ())
+			{
+			throw new InvalidOperationException ($"The device '{Host}' does not support light-state control.");
+			}
+
+		if (brightness is int && !SupportsBrightnessControl ())
+			{
+			throw new InvalidOperationException ($"The device '{Host}' does not support brightness control.");
+			}
+
+		if (colorTemperature is int && !SupportsColorTemperatureControl ())
+			{
+			throw new InvalidOperationException ($"The device '{Host}' does not support color-temperature control.");
+			}
+
+		if (isColorUpdate && !SupportsColorControl ())
+			{
+			throw new InvalidOperationException ($"The device '{Host}' does not support color control.");
+			}
 		}
 
 	private async Task SetLightEffectInternalAsync (string? effect, CancellationToken cancellationToken)
