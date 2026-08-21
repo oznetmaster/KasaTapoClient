@@ -4,6 +4,17 @@ All notable changes to this project are documented here. Each entry summarizes t
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] - Brightness control keyed to advertised device capability
+
+- **KasaDevice**: Brightness control is now gated on the capability a device actually advertises rather than on `DeviceType`. `SupportsLightControl` has been split into `SupportsBrightnessControl`, `SupportsColorControl`, and `SupportsColorTemperatureControl`; brightness is permitted whenever the device is a bulb or light strip, or when a SMART-protocol device negotiates the `brightness` component. `SetBrightnessAsync` consequently works on SMART dimmers and dimmable switches that were previously refused, including KS225, KS240, P135, S500D, S505D, S515D, and HS220 hardware revision 3.26. Color temperature and HSV remain restricted to bulbs and light strips, and legacy (IOT) dimmer on/off continues to use `system.set_relay_state` rather than the smartbulb lighting service.
+- **KasaDevice**: Keying on the negotiated component rather than the device type also covers devices that dim but are never classified as `DeviceType.Dimmer`. KS240 reports `SMART.KASASWITCH` with a `child_device` component and classifies as `WallSwitch`; P135 reports `SMART.TAPOPLUG` and classifies as `Plug`. Both advertise `brightness` and both are now controllable. This classification behavior is unchanged and matches the reference implementation.
+- **KasaDevice**: Light-state parameters are now validated individually, so an unsupported request reports the specific capability that is missing - `does not support brightness control`, `does not support color-temperature control`, or `does not support color control` - instead of the single `does not support light-state control` message used previously. The exception type is unchanged (`InvalidOperationException`); only the message text is more specific. A light-state call specifying no parameters at all now throws `ArgumentException` rather than composing an empty request.
+- **Tests**: Added dimmer coverage in `DimmerRegressionTests` and `DimmerSupportTests`, covering the SMART brightness path, color-temperature and HSV refusal on dimmers, the KS240 and P135 classification cases, and the legacy dimmer on/off guard. Behavior was additionally validated against KS225 hardware (brightness accepted) and KS205 hardware (brightness refused locally, with no request sent, as it advertises no `brightness` component).
+
+Legacy IOT dimmer brightness (the `smartlife.iot.dimmer` command surface and `dev_name`-based dimmer detection) remains unimplemented and is tracked in [#4](https://github.com/oznetmaster/KasaTapoClient/issues/4). The semantics of `SetBrightnessAsync (0)` are unchanged in this release and are under discussion in [#5](https://github.com/oznetmaster/KasaTapoClient/issues/5).
+
+Contributed by [@xeys](https://github.com/xeys) in [#3](https://github.com/oznetmaster/KasaTapoClient/pull/3).
+
 ## [1.2.8] - KLAP/TPAP transport micro-optimizations
 
 - **Internal**: `TpapTransport` now uses `BinaryPrimitives.WriteInt32BigEndian`/`ReadInt32BigEndian` instead of `BitConverter` combined with `Array.Reverse`, and uses span-based hex parsing in `HexToBytes` on net10.0 (with the `Substring`-based implementation retained for the net472 fallback).
