@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Each entry summarizes t
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.3.1] - Correct NuGet release notes
+
+- **Packaging**: The `PackageReleaseNotes` shipped with the 1.3.0 NuGet package was stale (it described the 1.2.8 span-buffer work instead of 1.3.0's brightness-control changes). This release corrects `PackageReleaseNotes` to describe the 1.3.0 brightness-control changes; there are no code, behavior, or API changes beyond the 1.3.0 release.
+
 ## [1.3.0] - Brightness control keyed to advertised device capability
 
 - **KasaDevice**: Brightness control is now gated on the capability a device actually advertises rather than on `DeviceType`. `SupportsLightControl` has been split into `SupportsBrightnessControl`, `SupportsColorControl`, and `SupportsColorTemperatureControl`; brightness is permitted whenever the device is a bulb or light strip, or when a SMART-protocol device negotiates the `brightness` component. `SetBrightnessAsync` consequently works on SMART dimmers and dimmable switches that were previously refused, including KS225, KS240, P135, S500D, S505D, S515D, and HS220 hardware revision 3.26. Color temperature and HSV remain restricted to bulbs and light strips, and legacy (IOT) dimmer on/off continues to use `system.set_relay_state` rather than the smartbulb lighting service.
