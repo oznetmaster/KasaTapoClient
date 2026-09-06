@@ -235,6 +235,79 @@ public sealed class DiscoverConnectDeduplicationTests
 		}
 
 	[TestMethod]
+	public async Task GetOrConnectSharedAsync_CacheHitWithUpdateStateTrue_RefreshesSharedInstanceState ()
+		{
+		var listener = new TcpListener (IPAddress.Loopback, 0);
+		listener.Start ();
+		int port = ((IPEndPoint) listener.LocalEndpoint).Port;
+
+		int acceptedConnectionCount = 0;
+		using var acceptCancellation = new CancellationTokenSource ();
+
+		// Simulates a hub/strip (e.g. KP303) whose child list is empty at first connect but
+		// populated by the time a later, shared-cache-hit caller asks for a state refresh.
+		string[] sysInfoResponses =
+			[
+			"{\"system\":{\"get_sysinfo\":{\"alias\":\"Strip\",\"model\":\"HS300\",\"deviceId\":\"parent-1\",\"children\":[]}}}",
+			"{\"system\":{\"get_sysinfo\":{\"alias\":\"Strip\",\"model\":\"HS300\",\"deviceId\":\"parent-1\",\"children\":[{\"id\":\"child-1\",\"alias\":\"Outlet 1\",\"state\":1}]}}}",
+			];
+
+		Task acceptLoop = Task.Run (async () =>
+			{
+			try
+				{
+				while (!acceptCancellation.IsCancellationRequested)
+					{
+					TcpClient client = await listener.AcceptTcpClientAsync ().ConfigureAwait (false);
+					Interlocked.Increment (ref acceptedConnectionCount);
+					_ = ServeSequencedLegacyRequestsAsync (client, sysInfoResponses, acceptCancellation.Token);
+					}
+				}
+			catch (ObjectDisposedException)
+				{
+				}
+			catch (SocketException)
+				{
+				}
+			});
+
+		try
+			{
+			var connectionOptions = new DeviceConnectionOptions (DeviceTransportKind.LegacyXor);
+			var configuration = new DeviceConfiguration (
+				"127.0.0.1",
+				port,
+				credentials: null,
+				connectionOptions: connectionOptions,
+				timeout: TimeSpan.FromSeconds (2));
+
+			KasaDevice firstDevice = await Discover.GetOrConnectSharedAsync (configuration, updateState: true).ConfigureAwait (false);
+
+			Assert.AreEqual (0, firstDevice.Children.Count, "The first connect should observe the initial, empty child list.");
+
+			KasaDevice secondDevice = await Discover.GetOrConnectSharedAsync (configuration, updateState: true).ConfigureAwait (false);
+
+			Assert.AreSame (firstDevice, secondDevice, "Non-overlapping GetOrConnectSharedAsync calls for an already-connected device identity should reuse the same shared instance.");
+			Assert.AreEqual (1, acceptedConnectionCount, "Reusing the cached shared device should not open a second connection.");
+			Assert.AreEqual (1, secondDevice.Children.Count, "A cache-hit call with updateState: true must refresh the shared instance's state, not return the stale state captured at first connect.");
+
+			secondDevice.Dispose ();
+			}
+		finally
+			{
+			acceptCancellation.Cancel ();
+			listener.Stop ();
+			try
+				{
+				await acceptLoop.ConfigureAwait (false);
+				}
+			catch
+				{
+				}
+			}
+		}
+
+	[TestMethod]
 	public async Task ConnectAsync_ConcurrentCallsWithMismatchedConfigurations_EachOpenOwnConnection ()
 		{
 		var listener = new TcpListener (IPAddress.Loopback, 0);
@@ -336,6 +409,47 @@ public sealed class DiscoverConnectDeduplicationTests
 						return;
 						}
 
+					await stream.WriteAsync (responseBytes, 0, responseBytes.Length, cancellationToken).ConfigureAwait (false);
+					}
+				}
+			catch
+				{
+				}
+			}
+		}
+
+	// Serves each request in sequence with the next entry from responseJsons (the last entry is
+	// reused for any additional requests beyond the list length), allowing a fake device's
+	// reported state to change between successive get_sysinfo calls, e.g. to simulate a hub whose
+	// child list is empty on first connect but populated by the time a later, shared-cache-hit
+	// caller requests a state refresh.
+	private static async Task ServeSequencedLegacyRequestsAsync (TcpClient client, string[] responseJsons, CancellationToken cancellationToken)
+		{
+		using (client)
+			{
+			try
+				{
+				NetworkStream stream = client.GetStream ();
+				int responseIndex = 0;
+
+				while (!cancellationToken.IsCancellationRequested)
+					{
+					byte[]? header = await ReadExactAsync (stream, 4, cancellationToken).ConfigureAwait (false);
+					if (header is null)
+						{
+						return;
+						}
+
+					int requestLength = (header[0] << 24) | (header[1] << 16) | (header[2] << 8) | header[3];
+					byte[]? requestBody = await ReadExactAsync (stream, requestLength, cancellationToken).ConfigureAwait (false);
+					if (requestBody is null)
+						{
+						return;
+						}
+
+					string responseJson = responseJsons[Math.Min (responseIndex, responseJsons.Length - 1)];
+					responseIndex++;
+					byte[] responseBytes = KasaCipher.EncryptWithHeader (responseJson);
 					await stream.WriteAsync (responseBytes, 0, responseBytes.Length, cancellationToken).ConfigureAwait (false);
 					}
 				}

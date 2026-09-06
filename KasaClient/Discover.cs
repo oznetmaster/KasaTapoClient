@@ -369,7 +369,7 @@ public static class Discover
 	/// exists for that identity.
 	/// </summary>
 	/// <param name="configuration">The device configuration.</param>
-	/// <param name="updateState"><see langword="true"/> to load device state when a new connection is created; otherwise, <see langword="false"/>.</param>
+	/// <param name="updateState"><see langword="true"/> to refresh device state before returning; otherwise, <see langword="false"/>. This applies both when a new connection is created and when an existing shared instance is being reused - see the remarks below.</param>
 	/// <param name="cancellationToken">The cancellation token for the operation.</param>
 	/// <returns>A shared device instance.</returns>
 	/// <remarks>
@@ -402,6 +402,19 @@ public static class Discover
 	/// independent connection is created and becomes the new shared instance for this identity,
 	/// rather than silently returning an instance built from a different caller's configuration.
 	/// </para>
+	/// <para>
+	/// When an existing, live shared instance for this identity is returned instead of a new
+	/// connection being created, <paramref name="updateState"/> still applies: if
+	/// <see langword="true"/>, this method calls <see cref="KasaDevice.UpdateAsync"/> on the shared
+	/// instance before returning it, refreshing state such as <see cref="KasaDevice.LightState"/>,
+	/// <see cref="KasaDevice.IsOn"/>, and <see cref="KasaDevice.Children"/> to their current
+	/// values. Previously this refresh only happened for the caller that created the very first
+	/// connection for a given identity; every later caller silently received whatever state was
+	/// captured at that first connect, regardless of its own <paramref name="updateState"/> value -
+	/// most visibly, <see cref="KasaDevice.Children"/> on a hub/strip that had none at first connect
+	/// would remain permanently empty for later callers. Every caller sharing an instance observes
+	/// the effect of this refresh, since there is only ever one shared instance per identity.
+	/// </para>
 	/// </remarks>
 	public static async Task<KasaDevice> GetOrConnectSharedAsync (DeviceConfiguration configuration, bool updateState = true, CancellationToken cancellationToken = default)
 		{
@@ -411,6 +424,11 @@ public static class Discover
 			&& !existingDevice.IsDisposed
 			&& AreConfigurationsEquivalent (configuration, existingDevice.Configuration))
 			{
+			if (updateState)
+				{
+				await existingDevice.UpdateAsync (cancellationToken).ConfigureAwait (false);
+				}
+
 			return existingDevice;
 			}
 

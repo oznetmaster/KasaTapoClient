@@ -10,7 +10,7 @@
 		<TargetFrameworks>net472;net10.0</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<PackageId>KasaTapoClient</PackageId>
-		<Version>1.3.1</Version>
+		<Version>1.4.0</Version>
 		<Authors>Neil Colvin</Authors>
 		<Company>Neil Colvin</Company>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -21,7 +21,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>Brightness control is now gated on the capability a device actually advertises rather than on DeviceType. SupportsLightControl has been split into SupportsBrightnessControl, SupportsColorControl, and SupportsColorTemperatureControl; brightness is permitted whenever the device is a bulb or light strip, or when a SMART-protocol device negotiates the brightness component. SetBrightnessAsync consequently works on SMART dimmers and dimmable switches that were previously refused, including KS225, KS240, P135, S500D, S505D, S515D, and HS220 hardware revision 3.26. Color temperature and HSV remain restricted to bulbs and light strips, and legacy (IOT) dimmer on/off continues to use system.set_relay_state rather than the smartbulb lighting service. Keying on the negotiated component rather than the device type also covers devices that dim but are never classified as DeviceType.Dimmer. KS240 reports SMART.KASASWITCH with a child_device component and classifies as WallSwitch; P135 reports SMART.TAPOPLUG and classifies as Plug. Both advertise brightness and both are now controllable. This classification behavior is unchanged and matches the reference implementation. Light-state parameters are now validated individually, so an unsupported request reports the specific capability that is missing - does not support brightness control, does not support color-temperature control, or does not support color control - instead of the single does not support light-state control message used previously. The exception type is unchanged (InvalidOperationException); only the message text is more specific. A light-state call specifying no parameters at all now throws ArgumentException rather than composing an empty request. Added dimmer coverage in DimmerRegressionTests and DimmerSupportTests, covering the SMART brightness path, color-temperature and HSV refusal on dimmers, the KS240 and P135 classification cases, and the legacy dimmer on/off guard. Behavior was additionally validated against KS225 hardware (brightness accepted) and KS205 hardware (brightness refused locally, with no request sent, as it advertises no brightness component).</PackageReleaseNotes>
+		<PackageReleaseNotes>Discover.GetOrConnectSharedAsync (updateState: true) previously only loaded device state the first time a shared instance was created for a given device identity (host/port); every later cache hit silently returned that same instance with whatever state it captured at first connect, regardless of the caller's own updateState value. This was most visible on hubs/strips (e.g. KP303) whose Children list was empty at first connect and then stayed permanently empty for every later caller, even after child devices were paired. GetOrConnectSharedAsync now calls KasaDevice.UpdateAsync on a cache-hit shared instance before returning it when updateState: true is requested, so LightState, IsOn, Children, and other state are refreshed for every caller that asks for it, not just the first. Callers that pass updateState: false are unaffected and continue to receive the cached instance without an extra refresh.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>
@@ -67,7 +67,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="BouncyCastle.Cryptography" Version="2.7.0" />
-		<PackageReference Include="log4net" Version="3.3.2" />
+		<PackageReference Include="log4net" Version="3.4.0" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
 	</ItemGroup>
 

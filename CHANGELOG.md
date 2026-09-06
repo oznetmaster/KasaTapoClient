@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Each entry summarizes t
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.4.0] - Shared-device cache now honors updateState on cache hits
+
+- **Discover**: `GetOrConnectSharedAsync (..., updateState: true)` previously only loaded device state the very first time a shared instance was created for a given device identity (host/port); every subsequent cache hit silently returned that same instance with whatever state it captured at first connect, regardless of the caller's own `updateState` value. This was most visible on hubs/strips (e.g. KP303) whose `Children` list was empty at first connect and then stayed permanently empty for every later caller, even after child devices were paired. `GetOrConnectSharedAsync` now calls `KasaDevice.UpdateAsync` on a cache-hit shared instance before returning it when `updateState: true` is requested, so `LightState`, `IsOn`, `Children`, and other state are refreshed for every caller that asks for it, not just the first. Callers that pass `updateState: false` are unaffected and continue to receive the cached instance without an extra refresh.
+- **Tests**: Added `GetOrConnectSharedAsync_CacheHitWithUpdateStateTrue_RefreshesSharedInstanceState`, which simulates a device whose reported `Children` list changes between the first and second `get_sysinfo` response, and verifies a `updateState: true` cache hit observes the refreshed data while still reusing the single underlying connection.
+
 ## [1.3.1] - Correct NuGet release notes
 
 - **Packaging**: The `PackageReleaseNotes` shipped with the 1.3.0 NuGet package was stale (it described the 1.2.8 span-buffer work instead of 1.3.0's brightness-control changes). This release corrects `PackageReleaseNotes` to describe the 1.3.0 brightness-control changes; there are no code, behavior, or API changes beyond the 1.3.0 release.
