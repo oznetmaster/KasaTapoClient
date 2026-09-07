@@ -10,7 +10,7 @@
 		<TargetFrameworks>net472;net10.0</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<PackageId>KasaTapoClient</PackageId>
-		<Version>1.4.0</Version>
+		<Version>1.5.0</Version>
 		<Authors>Neil Colvin</Authors>
 		<Company>Neil Colvin</Company>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -21,7 +21,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>Discover.GetOrConnectSharedAsync (updateState: true) previously only loaded device state the first time a shared instance was created for a given device identity (host/port); every later cache hit silently returned that same instance with whatever state it captured at first connect, regardless of the caller's own updateState value. This was most visible on hubs/strips (e.g. KP303) whose Children list was empty at first connect and then stayed permanently empty for every later caller, even after child devices were paired. GetOrConnectSharedAsync now calls KasaDevice.UpdateAsync on a cache-hit shared instance before returning it when updateState: true is requested, so LightState, IsOn, Children, and other state are refreshed for every caller that asks for it, not just the first. Callers that pass updateState: false are unaffected and continue to receive the cached instance without an extra refresh.</PackageReleaseNotes>
+		<PackageReleaseNotes>get_child_device_list responses from hubs/strips with more children than fit in a single page previously only returned the first page's children; the sum/start_index pagination fields the device reports were parsed but never acted on. KasaDevice.UpdateAsync now detects when sum exceeds the number of children already received and issues additional get_child_device_list requests with increasing start_index until every child has been retrieved (stopping early if a page comes back empty), merging all pages into a single, complete child list before child-state enrichment runs. Devices with child lists that fit in one page are unaffected.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>

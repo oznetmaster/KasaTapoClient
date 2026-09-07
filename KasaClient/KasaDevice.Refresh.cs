@@ -89,10 +89,56 @@ public sealed partial class KasaDevice
 
 		string response = await _transport.SendAsync (KasaCommands.CreateSmartMultipleRequest (coreRequests), cancellationToken).ConfigureAwait (false);
 		KasaResponseParser.SmartParsedResponse parsedResponse = KasaResponseParser.ParseSmartResponse (response);
+		if (shouldRequestChildDeviceList)
+			{
+			parsedResponse = await EnsureFullChildDeviceListAsync (parsedResponse, cancellationToken).ConfigureAwait (false);
+			}
 		parsedResponse = await EnrichSmartModuleResultsAsync (parsedResponse, cancellationToken).ConfigureAwait (false);
 		parsedResponse = await EnrichSmartChildResponseAsync (parsedResponse, cancellationToken).ConfigureAwait (false);
 		_smartComponentVersions = parsedResponse.ComponentVersions;
 		ApplyParsedState (KasaResponseParser.ParseSmartDeviceState (parsedResponse));
+		}
+
+	private async Task<KasaResponseParser.SmartParsedResponse> EnsureFullChildDeviceListAsync (
+		KasaResponseParser.SmartParsedResponse parsedResponse,
+		CancellationToken cancellationToken)
+		{
+		KasaResponseParser.SmartChildDeviceListDto? childDeviceList = parsedResponse.ChildDeviceList;
+		if (childDeviceList is null
+			|| childDeviceList.Sum is not int sum
+			|| sum <= childDeviceList.ChildDevices.Count)
+			{
+			return parsedResponse;
+			}
+
+		var mergedChildren = new List<KasaResponseParser.SmartChildDeviceDto> (childDeviceList.ChildDevices);
+		while (mergedChildren.Count < sum)
+			{
+			int startIndex = mergedChildren.Count;
+			string pageResponseJson = await _transport.SendAsync (
+				KasaCommands.CreateSmartRequest (
+					KasaCommands.SMART_GET_CHILD_DEVICE_LIST_METHOD,
+					new JObject { ["start_index"] = startIndex }),
+				cancellationToken).ConfigureAwait (false);
+			KasaResponseParser.SmartChildDeviceListDto? page = KasaResponseParser.ParseSmartChildDeviceListPage (pageResponseJson);
+			if (page is null || page.ChildDevices.Count == 0)
+				{
+				break;
+				}
+
+			mergedChildren.AddRange (page.ChildDevices);
+			}
+
+		var mergedChildDeviceList = new KasaResponseParser.SmartChildDeviceListDto (mergedChildren, sum, 0);
+		return new KasaResponseParser.SmartParsedResponse (
+			parsedResponse.RawJson,
+			parsedResponse.DeviceInfo,
+			parsedResponse.ComponentIds,
+			parsedResponse.ComponentVersions,
+			mergedChildDeviceList,
+			parsedResponse.ChildComponentIds,
+			parsedResponse.ChildOverrides,
+			parsedResponse.ModuleResults);
 		}
 
 	private void ApplyParsedState (KasaResponseParser.ParsedDeviceState parsed)

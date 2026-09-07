@@ -402,6 +402,12 @@ internal static partial class KasaResponseParser
 		[JsonProperty ("child_component_list")]
 		public List<SmartChildComponentDto>? ChildComponentList { get; set; }
 
+		[JsonProperty ("sum")]
+		public int? Sum { get; set; }
+
+		[JsonProperty ("start_index")]
+		public int? StartIndex { get; set; }
+
 		[JsonProperty ("model")]
 		public string? Model { get; set; }
 
@@ -563,8 +569,16 @@ internal static partial class KasaResponseParser
 
 	internal sealed class SmartChildDeviceListDto
 		{
-		internal SmartChildDeviceListDto (IReadOnlyList<SmartChildDeviceDto> childDevices) => ChildDevices = childDevices;
+		internal SmartChildDeviceListDto (IReadOnlyList<SmartChildDeviceDto> childDevices, int? sum = null, int? startIndex = null)
+			{
+			ChildDevices = childDevices;
+			Sum = sum;
+			StartIndex = startIndex;
+			}
+
 		internal IReadOnlyList<SmartChildDeviceDto> ChildDevices { get; }
+		internal int? Sum { get; }
+		internal int? StartIndex { get; }
 		}
 
 	internal sealed class SmartChildDeviceDto

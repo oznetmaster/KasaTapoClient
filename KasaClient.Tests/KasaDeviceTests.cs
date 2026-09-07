@@ -274,6 +274,93 @@ public sealed class KasaDeviceTests
 		}
 
 	[TestMethod]
+	public async Task UpdateAsync_WithPaginatedChildDeviceList_FetchesRemainingPagesAndMergesFullList ()
+		{
+		var transport = new FakeDeviceTransport (
+			sendResponses:
+			[
+				"""
+				{
+				  "result": {
+					 "responses": [
+						{
+						  "method": "get_device_info",
+						  "result": {
+							 "model": "H100",
+							 "type": "SMART.TAPOHUB",
+							 "device_id": "hub-paginated",
+							 "nickname": "UGFnaW5hdGVkIEh1Yg=="
+						  }
+						},
+						{
+						  "method": "component_nego",
+						  "result": {
+							 "component_list": [
+								{ "id": "child_device", "ver_code": 1 }
+							 ]
+						  }
+						},
+						{
+						  "method": "get_child_device_list",
+						  "result": {
+							 "sum": 3,
+							 "start_index": 0,
+							 "child_device_list": [
+								{ "device_id": "child-1", "nickname": "Q2hpbGQgMQ==", "model": "S200B", "category": "subg.trigger.button", "device_on": true }
+							 ]
+						  }
+						},
+						{
+						  "method": "get_child_device_component_list",
+						  "result": {
+							 "child_component_list": []
+						  }
+						}
+					 ]
+				  }
+				}
+				""",
+				"""
+				{
+				  "result": {
+					 "sum": 3,
+					 "start_index": 1,
+					 "child_device_list": [
+						{ "device_id": "child-2", "nickname": "Q2hpbGQgMg==", "model": "S200B", "category": "subg.trigger.button", "device_on": true }
+					 ]
+				  }
+				}
+				""",
+				"""
+				{
+				  "result": {
+					 "sum": 3,
+					 "start_index": 2,
+					 "child_device_list": [
+						{ "device_id": "child-3", "nickname": "Q2hpbGQgMw==", "model": "S200B", "category": "subg.trigger.button", "device_on": true }
+					 ]
+				  }
+				}
+				""",
+			]);
+		DeviceConfiguration configuration = new (
+			"127.0.0.1",
+			connectionOptions: new DeviceConnectionOptions (
+				connectionParameters: new DeviceConnectionParameters (DeviceFamilyKind.SmartTapoHub, DeviceEncryptionKind.Aes)));
+		var device = new KasaDevice (configuration, transport);
+
+		await device.UpdateAsync ().ConfigureAwait (false);
+
+		Assert.AreEqual (3, device.Children.Count, "The full, paginated child device list should be merged rather than only the first page.");
+		Assert.IsNotNull (device.GetChild ("child-1"));
+		Assert.IsNotNull (device.GetChild ("child-2"));
+		Assert.IsNotNull (device.GetChild ("child-3"));
+		Assert.AreEqual (3, transport.SentCommands.Count, "One initial multi-request plus two follow-up get_child_device_list page requests should be sent.");
+		StringAssert.Contains (transport.SentCommands[1], "\"start_index\":1");
+		StringAssert.Contains (transport.SentCommands[2], "\"start_index\":2");
+		}
+
+	[TestMethod]
 	public async Task UpdateAsync_WithSmartHubChildResponse_MergesChildRefreshData ()
 		{
 		var transport = new FakeDeviceTransport (

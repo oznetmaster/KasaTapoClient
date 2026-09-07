@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace KasaTapoClient.Internal;
@@ -112,7 +113,7 @@ internal static partial class KasaResponseParser
 		SmartChildDeviceListDto? childDeviceList = null;
 		if (childDeviceListResult?.ChildDeviceList is List<SmartChildDeviceDto> children)
 			{
-			childDeviceList = new SmartChildDeviceListDto (children);
+			childDeviceList = new SmartChildDeviceListDto (children, childDeviceListResult.Sum, childDeviceListResult.StartIndex);
 			}
 
 		Dictionary<string, IReadOnlyList<string>> childComponentIds = new (StringComparer.OrdinalIgnoreCase);
@@ -175,6 +176,23 @@ internal static partial class KasaResponseParser
 			childComponentIds,
 			new Dictionary<string, SmartChildDeviceDto> (StringComparer.OrdinalIgnoreCase),
 			moduleResults);
+		}
+
+	internal static SmartChildDeviceListDto? ParseSmartChildDeviceListPage (string responseJson)
+		{
+		JObject root = JsonSupport.ParseObject (responseJson);
+		if (root["result"] is not JObject resultObject)
+			{
+			return null;
+			}
+
+		SmartEnvelopeResultDto? pageResult = JsonConvert.DeserializeObject<SmartEnvelopeResultDto> (resultObject.ToJsonString (JsonSupport.COMPACT_JSON), JsonSupport.COMPACT_JSON);
+		if (pageResult?.ChildDeviceList is not List<SmartChildDeviceDto> children)
+			{
+			return null;
+			}
+
+		return new SmartChildDeviceListDto (children, pageResult.Sum, pageResult.StartIndex);
 		}
 
 	internal static IReadOnlyDictionary<string, JObject> ParseSmartModuleResults (string responseJson)

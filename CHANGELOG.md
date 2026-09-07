@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Each entry summarizes t
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.5.0] - Full child device list retrieval for paginated hubs/strips
+
+- **KasaDevice**: `get_child_device_list` responses from hubs/strips with more children than fit in a single page previously only returned the first page's children; the `sum`/`start_index` pagination fields the device reports were parsed but never acted on. `UpdateAsync` now detects when `sum` exceeds the number of children already received and issues additional `get_child_device_list` requests with increasing `start_index` until every child has been retrieved (stopping early if a page comes back empty), merging all pages into a single, complete child list before child-state enrichment runs. Devices with child lists that fit in one page are unaffected.
+- **Tests**: Added `UpdateAsync_WithPaginatedChildDeviceList_FetchesRemainingPagesAndMergesFullList`, which simulates a hub reporting `sum: 3` with only one child in the initial response and verifies the remaining two pages are fetched and merged into `Children`.
+
 ## [1.4.0] - Shared-device cache now honors updateState on cache hits
 
 - **Discover**: `GetOrConnectSharedAsync (..., updateState: true)` previously only loaded device state the very first time a shared instance was created for a given device identity (host/port); every subsequent cache hit silently returned that same instance with whatever state it captured at first connect, regardless of the caller's own `updateState` value. This was most visible on hubs/strips (e.g. KP303) whose `Children` list was empty at first connect and then stayed permanently empty for every later caller, even after child devices were paired. `GetOrConnectSharedAsync` now calls `KasaDevice.UpdateAsync` on a cache-hit shared instance before returning it when `updateState: true` is requested, so `LightState`, `IsOn`, `Children`, and other state are refreshed for every caller that asks for it, not just the first. Callers that pass `updateState: false` are unaffected and continue to receive the cached instance without an extra refresh.
