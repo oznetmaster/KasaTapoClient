@@ -1122,7 +1122,7 @@ public sealed class ChildDeviceInfo
 /// <summary>
 /// Represents trigger log state reported by an event-driven child device.
 /// </summary>
-public sealed class ChildTriggerLogState
+public sealed record ChildTriggerLogState
 	{
 	internal ChildTriggerLogState (IReadOnlyList<ChildTriggerLogEntry> logs) => Logs = logs;
 
@@ -1138,7 +1138,7 @@ public sealed class ChildTriggerLogState
 /// <summary>
 /// Represents a single trigger log entry reported by a child device.
 /// </summary>
-public sealed class ChildTriggerLogEntry
+public sealed record ChildTriggerLogEntry
 	{
 	internal ChildTriggerLogEntry (int? id, string? eventId, long? timestamp, string? eventName)
 		{
@@ -1184,7 +1184,7 @@ public sealed class ChildTriggerLogEntry
 /// <summary>
 /// Represents battery-related child sensor state.
 /// </summary>
-public sealed class ChildBatterySensorState
+public sealed record ChildBatterySensorState
 	{
 	internal ChildBatterySensorState (int? batteryLevel, bool? batteryLow)
 		{
@@ -1212,7 +1212,7 @@ public sealed class ChildBatterySensorState
 /// <summary>
 /// Represents contact sensor state for a child device.
 /// </summary>
-public sealed class ChildContactSensorState
+public sealed record ChildContactSensorState
 	{
 	internal ChildContactSensorState (bool? isOpen) => IsOpen = isOpen;
 
@@ -1228,7 +1228,7 @@ public sealed class ChildContactSensorState
 /// <summary>
 /// Represents motion sensor state for a child device.
 /// </summary>
-public sealed class ChildMotionSensorState
+public sealed record ChildMotionSensorState
 	{
 	internal ChildMotionSensorState (bool? motionDetected) => MotionDetected = motionDetected;
 
@@ -1244,7 +1244,7 @@ public sealed class ChildMotionSensorState
 /// <summary>
 /// Represents water leak sensor state for a child device.
 /// </summary>
-public sealed class ChildWaterLeakSensorState
+public sealed record ChildWaterLeakSensorState
 	{
 	internal ChildWaterLeakSensorState (string? status, bool? alert, long? alertTimestamp)
 		{
@@ -1281,7 +1281,7 @@ public sealed class ChildWaterLeakSensorState
 /// <summary>
 /// Represents temperature sensor state for a child device.
 /// </summary>
-public sealed class ChildTemperatureSensorState
+public sealed record ChildTemperatureSensorState
 	{
 	internal ChildTemperatureSensorState (double? temperature, bool? warning, string? unit, double? minimumComfortTemperature, double? maximumComfortTemperature)
 		{
@@ -1336,7 +1336,7 @@ public sealed class ChildTemperatureSensorState
 /// <summary>
 /// Represents humidity sensor state for a child device.
 /// </summary>
-public sealed class ChildHumiditySensorState
+public sealed record ChildHumiditySensorState
 	{
 	internal ChildHumiditySensorState (int? humidity, bool? warning, double? minimumComfortHumidity, double? maximumComfortHumidity)
 		{
@@ -1382,7 +1382,7 @@ public sealed class ChildHumiditySensorState
 /// <summary>
 /// Represents report-mode state for a child sensor device.
 /// </summary>
-public sealed class ChildReportModeState
+public sealed record ChildReportModeState
 	{
 	internal ChildReportModeState (int? reportInterval) => ReportInterval = reportInterval;
 
@@ -1398,7 +1398,7 @@ public sealed class ChildReportModeState
 /// <summary>
 /// Represents double-click state for a child button device.
 /// </summary>
-public sealed class ChildDoubleClickState
+public sealed record ChildDoubleClickState
 	{
 	internal ChildDoubleClickState (bool? enabled) => Enabled = enabled;
 
@@ -1488,7 +1488,7 @@ public sealed class ChildSetupScanResult
 /// <summary>
 /// Represents frost-protection state for a child thermostat device.
 /// </summary>
-public sealed class ChildFrostProtectionState
+public sealed record ChildFrostProtectionState
 	{
 	internal ChildFrostProtectionState (bool? enabled, int? minimumTemperature, string? unit)
 		{
@@ -1525,7 +1525,7 @@ public sealed class ChildFrostProtectionState
 /// <summary>
 /// Represents child-protection state for a child thermostat device.
 /// </summary>
-public sealed class ChildProtectionState
+public sealed record ChildProtectionState
 	{
 	internal ChildProtectionState (bool? enabled) => Enabled = enabled;
 
@@ -1541,7 +1541,7 @@ public sealed class ChildProtectionState
 /// <summary>
 /// Represents temperature-control state for a child thermostat device.
 /// </summary>
-public sealed class ChildTemperatureControlState
+public sealed record ChildTemperatureControlState
 	{
 	internal ChildTemperatureControlState (
 		bool? enabled,
@@ -1611,7 +1611,7 @@ public sealed class ChildTemperatureControlState
 /// <summary>
 /// Represents aggregated thermostat state for a child thermostat device.
 /// </summary>
-public sealed class ChildThermostatState
+public sealed record ChildThermostatState
 	{
 	internal ChildThermostatState (
 		bool? enabled,
@@ -1671,7 +1671,7 @@ public sealed class ChildThermostatState
 /// <summary>
 /// Represents normalized rule-related state for Kasa local devices.
 /// </summary>
-public sealed class RuleModuleState
+public sealed record RuleModuleState
 	{
 	internal RuleModuleState (
 		CountdownRuleState? countdown,
@@ -1721,7 +1721,7 @@ public sealed class RuleModuleState
 /// <summary>
 /// Represents a normalized countdown timer state.
 /// </summary>
-public sealed class CountdownRuleState
+public sealed record CountdownRuleState
 	{
 	internal CountdownRuleState (bool? isEnabled, bool? isActive, int? delaySeconds, bool? actionTurnsOn, string rawJson)
 		{
@@ -1849,7 +1849,7 @@ public sealed class ScheduledRule
 /// <summary>
 /// Represents normalized firmware-related device state.
 /// </summary>
-public sealed class FirmwareState
+public sealed record FirmwareState
 	{
 	internal FirmwareState (
 		string? currentFirmwareVersion,
@@ -1919,7 +1919,7 @@ public sealed class FirmwareState
 /// <summary>
 /// Represents normalized cloud-connectivity information.
 /// </summary>
-public sealed class CloudConnectionState
+public sealed record CloudConnectionState
 	{
 	internal CloudConnectionState (bool? isConnected, bool? isProvisioned, string? server, string? userName, string rawJson)
 		{
@@ -1974,7 +1974,7 @@ public sealed class CloudConnectionState
 /// <summary>
 /// Represents normalized device-local time information.
 /// </summary>
-public sealed class DeviceTimeState
+public sealed record DeviceTimeState
 	{
 	internal DeviceTimeState (DateTime? localTime, string? region, int? timeDifferenceMinutes, string rawJson)
 		{
@@ -2094,7 +2094,7 @@ public sealed class HomeKitSetupInfo
 /// <summary>
 /// Represents normalized auto-off configuration and timer state.
 /// </summary>
-public sealed class AutoOffState
+public sealed record AutoOffState
 	{
 	internal AutoOffState (bool? enabled, int? delayMinutes, bool? timerActive, DateTime? autoOffAt, string rawJson)
 		{
@@ -2204,7 +2204,7 @@ public sealed class LedNightModeSettings
 /// <summary>
 /// Represents normalized LED status and mode information.
 /// </summary>
-public sealed class LedState
+public sealed record LedState
 	{
 	internal LedState (bool? enabled, string? mode, LedNightModeSettings? nightModeSettings, string rawJson)
 		{
@@ -2250,7 +2250,7 @@ public sealed class LedState
 /// <summary>
 /// Represents normalized child-lock state for a device.
 /// </summary>
-public sealed class ChildLockState
+public sealed record ChildLockState
 	{
 	internal ChildLockState (bool? enabled, string rawJson)
 		{
@@ -2278,7 +2278,7 @@ public sealed class ChildLockState
 /// <summary>
 /// Represents normalized alarm state for devices such as hubs and chimes.
 /// </summary>
-public sealed class AlarmState
+public sealed record AlarmState
 	{
 	internal AlarmState (bool? isActive, string? source, string? sound, string? volume, int? volumeLevel, int? durationSeconds, string rawJson)
 		{
@@ -2351,7 +2351,7 @@ public sealed class AlarmState
 /// <summary>
 /// Represents normalized overheat protection state.
 /// </summary>
-public sealed class OverheatProtectionState
+public sealed record OverheatProtectionState
 	{
 	internal OverheatProtectionState (bool? overheated, string rawJson)
 		{
@@ -2379,7 +2379,7 @@ public sealed class OverheatProtectionState
 /// <summary>
 /// Represents normalized power protection state.
 /// </summary>
-public sealed class PowerProtectionState
+public sealed record PowerProtectionState
 	{
 	internal PowerProtectionState (bool? protectionActive, string rawJson)
 		{
@@ -2407,7 +2407,7 @@ public sealed class PowerProtectionState
 /// <summary>
 /// Represents normalized fan state.
 /// </summary>
-public sealed class FanState
+public sealed record FanState
 	{
 	internal FanState (bool? isOn, string rawJson)
 		{
@@ -2435,7 +2435,7 @@ public sealed class FanState
 /// <summary>
 /// Represents normalized speaker state.
 /// </summary>
-public sealed class SpeakerState
+public sealed record SpeakerState
 	{
 	internal SpeakerState (bool? isAvailable, string rawJson)
 		{
@@ -2463,7 +2463,7 @@ public sealed class SpeakerState
 /// <summary>
 /// Represents normalized light state for bulbs and light strips.
 /// </summary>
-public sealed class LightState
+public sealed record LightState
 	{
 	internal LightState (
 		bool? isOn,
@@ -2620,7 +2620,7 @@ public sealed class HsvColor
 /// <summary>
 /// Represents a normalized lighting effect state.
 /// </summary>
-public sealed class LightEffectState
+public sealed record LightEffectState
 	{
 	internal LightEffectState (string? identifier, string? name, bool? isEnabled, int? brightness, IReadOnlyList<LightEffectDefinition> availableEffects, string rawJson)
 		{
@@ -2776,7 +2776,7 @@ public sealed class LightPresetDefinition
 /// <summary>
 /// Represents normalized light preset module state.
 /// </summary>
-public sealed class LightPresetState
+public sealed record LightPresetState
 	{
 	internal LightPresetState (IReadOnlyList<LightPresetDefinition> presets, string? activePreset)
 		{
@@ -2804,7 +2804,7 @@ public sealed class LightPresetState
 /// <summary>
 /// Represents normalized light transition module state.
 /// </summary>
-public sealed class LightTransitionState
+public sealed record LightTransitionState
 	{
 	internal LightTransitionState (
 		bool? isEnabled,
@@ -2904,7 +2904,7 @@ public sealed class LightTransitionState
 /// <summary>
 /// Represents normalized light strip effect module state.
 /// </summary>
-public sealed class LightStripEffectState
+public sealed record LightStripEffectState
 	{
 	internal LightStripEffectState (LightEffectState? effect, IReadOnlyList<LightEffectDefinition> availableEffects)
 		{

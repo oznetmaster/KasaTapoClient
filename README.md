@@ -28,6 +28,7 @@ See [CHANGELOG.md](CHANGELOG.md) for a summary of all release history, or the [G
 - TPAP keepalive support to reduce reconnect penalties after long idle periods
 - Per-device operation serialization so concurrent commands, refreshes, and child operations against one physical endpoint run one-at-a-time
 - Automatic de-duplication of concurrent `Discover.ConnectAsync` calls for the same device, so only one physical connection is ever dialed at a time per host/port
+- Value-equality device and child state models (e.g. `LightState`, `FanState`, sensor/button states), so consumers can compare state snapshots directly to detect changes
 - Optional, explicit shared-connection reuse via `Discover.GetOrConnectSharedAsync` for call sites that are known to target the same device and want to avoid each opening an independent connection
 - Raw and smart-method command execution helpers for diagnostics and advanced integrations
 
