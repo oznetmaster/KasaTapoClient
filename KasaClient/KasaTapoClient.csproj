@@ -10,7 +10,7 @@
 		<TargetFrameworks>net472;net10.0</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<PackageId>KasaTapoClient</PackageId>
-		<Version>1.6.0</Version>
+		<Version>1.6.1</Version>
 		<Authors>Neil Colvin</Authors>
 		<Company>Neil Colvin</Company>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -21,7 +21,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>All public device/child state model types (e.g. LightState, FanState, ChildBatterySensorState, ChildContactSensorState, ChildLockState, and similar snapshot types in Models.cs) are now declared as sealed records instead of sealed classes, giving them value-based Equals/GetHashCode/==/!= and a descriptive ToString() instead of default reference identity. This is useful because most of these state snapshots are recomputed on every property access rather than cached, so consumers comparing two reads for changes previously always saw them as unequal even when nothing changed. No properties, constructors, or public API signatures changed; this is a source- and binary-compatible change for all reasonable existing usage.</PackageReleaseNotes>
+		<PackageReleaseNotes>Fixes TPAP connection failures on Tapo hubs (H100 and similar). TpapTransport previously classified SmartTapoHub as a camera-authentication family, so hubs blanked the username and hashed the credential as a local device passcode instead of authenticating with the TP-Link account credentials used by plugs and bulbs. Hub authentication failed during the PAKE exchange (error -2203) even with correct credentials. Hubs now use the standard account credential path. Discovery additionally honors a device's advertised TPAP preference: when a device reports tpap_preferred or exposes TPAP metadata, a stale non-TPAP encryption kind is no longer used to drive the connection, which previously caused handshakes against endpoints the device does not serve. Camera, doorbell, and robot vacuum families are deliberately excluded from this promotion because they are pinned to a required encryption kind. TPAP error reporting now classifies -2202, -2203, and -2101 as authentication failures rather than generic protocol errors, and surfaces the device-reported lockout budget (failed attempts, remaining attempts before lockout, and active lockout duration) so repeated failures are actionable before a device locks out.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>

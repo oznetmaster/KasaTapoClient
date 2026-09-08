@@ -32,6 +32,17 @@ public static class Discover
 	// writes to it. See the remarks on GetOrConnectSharedAsync for the ownership/disposal contract.
 	private static readonly ConcurrentDictionary<string, KasaDevice> _sharedDevices = new (StringComparer.OrdinalIgnoreCase);
 
+	// Families that DeviceTransportFactory.ValidateSupportedConnectionParameters pins to a specific
+	// encryption kind. Discovery-driven TPAP promotion must skip these to avoid converting a
+	// working connection into a NotSupportedException.
+	private static readonly HashSet<DeviceFamilyKind> STRICT_ENCRYPTION_DEVICE_FAMILIES = new ()
+		{
+		DeviceFamilyKind.IotIpCamera,
+		DeviceFamilyKind.SmartIpCamera,
+		DeviceFamilyKind.SmartTapoDoorbell,
+		DeviceFamilyKind.SmartTapoRobovac,
+		};
+
 	private static string CreateConnectKey (DeviceConfiguration configuration) =>
 		$"{configuration.Host}:{configuration.Port}";
 
@@ -477,7 +488,7 @@ public static class Discover
 
 	private static DeviceConfiguration CreateConfigurationFromDiscoveryResult (DiscoveryResult discoveryResult, DeviceCredentials? credentials, TimeSpan? timeout)
 		{
-		DeviceConnectionParameters? connectionParameters = discoveryResult.ConnectionParameters;
+		DeviceConnectionParameters? connectionParameters = PreferTpapConnectionParameters (discoveryResult);
 		DeviceTransportKind transportKind = connectionParameters?.TransportKind ?? discoveryResult.TransportKind;
 		bool isTpap = connectionParameters?.EncryptionKind == DeviceEncryptionKind.Tpap;
 		bool useSsl = isTpap
@@ -498,5 +509,41 @@ public static class Discover
 			applicationPath: isTpap ? "/" : "/app",
 			useSecurePassthrough: transportKind == DeviceTransportKind.HttpToken);
 		return new DeviceConfiguration (discoveryResult.Host, port, credentials, connectionOptions, timeout);
+		}
+
+	/// <summary>
+	/// Returns connection parameters that honor a device's advertised TPAP preference.
+	/// Devices that report <c>tpap_preferred</c> (or expose TPAP metadata) must not be driven with a
+	/// non-TPAP encryption kind, otherwise handshakes are attempted against endpoints the device
+	/// does not serve.
+	/// </summary>
+	internal static DeviceConnectionParameters? PreferTpapConnectionParameters (DiscoveryResult discoveryResult)
+		{
+		DeviceConnectionParameters? connectionParameters = discoveryResult.ConnectionParameters;
+		if (connectionParameters is null || connectionParameters.EncryptionKind == DeviceEncryptionKind.Tpap)
+			{
+			return connectionParameters;
+			}
+
+		if (discoveryResult.TpapPreferred != true && discoveryResult.TpapMetadata is null)
+			{
+			return connectionParameters;
+			}
+
+		// Camera, doorbell, and robot vacuum families are validated against a required encryption
+		// kind in DeviceTransportFactory. Promoting them to TPAP here would trade a working
+		// connection for a NotSupportedException, so leave those families untouched.
+		if (STRICT_ENCRYPTION_DEVICE_FAMILIES.Contains (connectionParameters.DeviceFamily))
+			{
+			return connectionParameters;
+			}
+
+		bool useHttps = discoveryResult.TpapMetadata?.Tls is int tlsMode && tlsMode > 0;
+		return new DeviceConnectionParameters (
+			connectionParameters.DeviceFamily,
+			DeviceEncryptionKind.Tpap,
+			connectionParameters.LoginVersion,
+			useHttps,
+			discoveryResult.TpapMetadata?.Port ?? (useHttps ? 443 : 80));
 		}
 	}

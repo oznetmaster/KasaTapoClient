@@ -2128,7 +2128,9 @@ static DeviceConfiguration CreateHostConfiguration (string host, bool hostWasExp
 				password,
 				defaultCredentialProfile,
 				applicationPath,
-				useSecurePassthrough));
+				useSecurePassthrough,
+				connectionParameters: null,
+				schemaVersion: SavedConnectionProfile.CURRENT_SCHEMA_VERSION));
 		ConsoleRecentHostStore.Save (hostToUse);
 		}
 
@@ -2262,7 +2264,8 @@ static SavedConnectionProfile CreateImplicitProfile (KasaDevice device)
 		defaultCredentialProfile,
 		connectionOptions.ApplicationPath,
 		connectionOptions.UseSecurePassthrough,
-		connectionOptions.ConnectionParameters);
+		connectionOptions.ConnectionParameters,
+		SavedConnectionProfile.CURRENT_SCHEMA_VERSION);
 	}
 
 static SavedConnectionProfile CreateImplicitProfileFromSavedProfile (SavedConnectionProfile profile) =>
@@ -2277,7 +2280,8 @@ static SavedConnectionProfile CreateImplicitProfileFromSavedProfile (SavedConnec
 		profile.DefaultCredentialProfile,
 		profile.ApplicationPath,
 		profile.UseSecurePassthrough,
-		profile.ConnectionParameters);
+		profile.ConnectionParameters,
+		SavedConnectionProfile.CURRENT_SCHEMA_VERSION);
 
 static string? GetOptionalNamedValue (IReadOnlyList<string> arguments, ref int index, string option)
 	{
@@ -2762,9 +2766,16 @@ static class ConsoleProfileStore
 
 		string json = File.ReadAllText (path);
 		Dictionary<string, SavedConnectionProfile>? profiles = JsonConvert.DeserializeObject<Dictionary<string, SavedConnectionProfile>> (json);
-		return profiles is null
-			? new Dictionary<string, SavedConnectionProfile> (StringComparer.OrdinalIgnoreCase)
-			: new Dictionary<string, SavedConnectionProfile> (profiles, StringComparer.OrdinalIgnoreCase);
+		var migrated = new Dictionary<string, SavedConnectionProfile> (StringComparer.OrdinalIgnoreCase);
+		if (profiles is not null)
+			{
+			foreach (KeyValuePair<string, SavedConnectionProfile> entry in profiles)
+				{
+				migrated[entry.Key] = entry.Value.Migrate ();
+				}
+			}
+
+		return migrated;
 		}
 
 	private static void Persist (Dictionary<string, SavedConnectionProfile> profiles)
@@ -2889,7 +2900,7 @@ static class ConsoleImplicitProfileStore
 			}
 
 		string json = File.ReadAllText (path);
-		return JsonConvert.DeserializeObject<SavedConnectionProfile> (json);
+		return JsonConvert.DeserializeObject<SavedConnectionProfile> (json)?.Migrate ();
 		}
 	}
 
@@ -2907,6 +2918,14 @@ static class ConsoleCommandLexicon
 
 sealed class SavedConnectionProfile
 	{
+	/// <summary>
+	/// Identifies the layout/semantics of persisted profiles. Increment this whenever protocol
+	/// detection changes in a way that can invalidate previously cached <see cref="ConnectionParameters" />.
+	/// Version 1 introduced TPAP detection; profiles written before then could mis-classify TPAP
+	/// devices (notably hubs) as KLAP and would otherwise replay that stale choice forever.
+	/// </summary>
+	public const int CURRENT_SCHEMA_VERSION = 1;
+
 	[JsonConstructor]
 	public SavedConnectionProfile (
 		string name,
@@ -2919,7 +2938,8 @@ sealed class SavedConnectionProfile
 		DefaultCredentialProfile defaultCredentialProfile,
 		string applicationPath,
 		bool useSecurePassthrough,
-		DeviceConnectionParameters? connectionParameters = null)
+		DeviceConnectionParameters? connectionParameters = null,
+		int schemaVersion = 0)
 		{
 		Name = name;
 		Host = host;
@@ -2932,6 +2952,33 @@ sealed class SavedConnectionProfile
 		ApplicationPath = applicationPath;
 		UseSecurePassthrough = useSecurePassthrough;
 		ConnectionParameters = connectionParameters;
+		SchemaVersion = schemaVersion;
+		}
+
+	/// <summary>
+	/// Discards cached transport selections written by older builds so that improved protocol
+	/// detection is not permanently shadowed by a stale profile. Credentials are preserved.
+	/// </summary>
+	public SavedConnectionProfile Migrate ()
+		{
+		if (SchemaVersion >= CURRENT_SCHEMA_VERSION)
+			{
+			return this;
+			}
+
+		return new SavedConnectionProfile (
+			Name,
+			Host,
+			DeviceTransportKind.Auto,
+			Port,
+			UseSsl,
+			UserName,
+			Password,
+			DefaultCredentialProfile,
+			ApplicationPath,
+			UseSecurePassthrough,
+			connectionParameters: null,
+			schemaVersion: CURRENT_SCHEMA_VERSION);
 		}
 
 	public string Name
@@ -2985,6 +3032,11 @@ sealed class SavedConnectionProfile
 		}
 
 	public DeviceConnectionParameters? ConnectionParameters
+		{
+		get;
+		}
+
+	public int SchemaVersion
 		{
 		get;
 		}

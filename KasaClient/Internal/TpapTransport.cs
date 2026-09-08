@@ -41,14 +41,19 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 	private const int ERROR_CODE_LOGIN = -1501;
 	private const int ERROR_CODE_SESSION_EXPIRED = -40401;
 	private const int ERROR_CODE_INVALID_NONCE = -40413;
+	private const int ERROR_CODE_PAKE_CREDENTIALS = -2202;
+	private const int ERROR_CODE_PAKE_CONFIRM = -2203;
+	private const int ERROR_CODE_PAKE_REGISTER_REJECTED = -2101;
 	private const int ERROR_CODE_UNKNOWN = -100000;
 	private static readonly TimeSpan DEFAULT_KEEPALIVE_INTERVAL = TimeSpan.FromSeconds (45);
 	private static readonly byte[] PAKE_CONTEXT_TAG = Encoding.ASCII.GetBytes ("PAKE V1");
+	// Cameras and doorbells authenticate with a local device passcode: the username is blanked and
+	// the passcode is hashed. Hubs (H100 and similar) instead authenticate with the TP-Link account
+	// credentials exactly like plugs and bulbs, so they must not take the camera path.
 	private static readonly HashSet<DeviceFamilyKind> CAMERA_AUTH_DEVICE_FAMILIES = new ()
 		{
 		DeviceFamilyKind.SmartIpCamera,
 		DeviceFamilyKind.SmartTapoDoorbell,
-		DeviceFamilyKind.SmartTapoHub,
 		};
 	private static readonly Dictionary<string, CipherParameters> CIPHER_PARAMETERS = new (StringComparer.OrdinalIgnoreCase)
 		{
@@ -1090,9 +1095,43 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			or ERROR_CODE_TRANSPORT_NOT_AVAILABLE
 			or ERROR_CODE_SESSION_EXPIRED
 			or ERROR_CODE_INVALID_NONCE;
-		bool authentication = errorCode == ERROR_CODE_LOGIN;
+		bool authentication = errorCode is ERROR_CODE_LOGIN
+			or ERROR_CODE_PAKE_CREDENTIALS
+			or ERROR_CODE_PAKE_CONFIRM
+			or ERROR_CODE_PAKE_REGISTER_REJECTED;
+
+		// Devices report a lockout budget alongside failed PAKE attempts. Surfacing it turns an
+		// opaque numeric failure into an actionable message and warns before the device locks out.
+		if (response["error_info"] is JObject errorInfo)
+			{
+			int? failedAttempts = GetOptionalInt (errorInfo["failedAttempts"]);
+			int? remainAttempts = GetOptionalInt (errorInfo["remainAttempts"]);
+			int? lockedMinute = GetOptionalInt (errorInfo["lockedMinute"]);
+			var details = new List<string> ();
+			if (failedAttempts is int failed)
+				{
+				details.Add ($"failed attempts: {failed}");
+				}
+
+			if (remainAttempts is int remaining)
+				{
+				details.Add ($"remaining attempts before lockout: {remaining}");
+				}
+
+			if (lockedMinute is int locked && locked > 0)
+				{
+				details.Add ($"currently locked for {locked} minute(s)");
+				}
+
+			if (details.Count > 0)
+				{
+				message += $" ({string.Join ("; ", details)})";
+				}
+			}
+
 		if (authentication)
 			{
+			message += " The device rejected the supplied credentials.";
 			InvalidateSession ();
 			}
 

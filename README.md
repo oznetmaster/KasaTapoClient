@@ -42,6 +42,8 @@ This repository currently contains the only known working implementation in this
 
 In practical use, this means local TPAP communication can work without enabling the Tapo third-party compatibility option on the device. The current implementation and validation work were performed with that option left disabled.
 
+TPAP hubs (H100 and similar) authenticate with the same TP-Link account credentials used by plugs, bulbs, and light strips. Only cameras and doorbells use the local device-passcode authentication path. Devices that advertise a TPAP preference during discovery are connected over TPAP even when an older cached profile recorded a different transport; camera, doorbell, and robot vacuum families are excluded from that behavior because they are pinned to a specific encryption kind.
+
 ## TPAP Keepalive and Idle Reconnect Behavior
 
 Long-lived TPAP sessions are sensitive to idle time. Without keepalive traffic, the device-side session can age out and the next command may incur a noticeable reconnect penalty.
