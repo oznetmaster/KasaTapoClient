@@ -61,6 +61,27 @@ public sealed partial class KasaDevice
 		await UpdateCoreAsync (cancellationToken).ConfigureAwait (false);
 		}
 
+	private async Task SetChildDoubleClickEnabledCoreAsync (string childDeviceId, bool enabled, CancellationToken cancellationToken)
+		{
+		if (GetChild (childDeviceId) is null)
+			{
+			throw new InvalidOperationException ($"The child device '{childDeviceId}' was not found on '{Host}'.");
+			}
+
+		if (GetChildRawState (childDeviceId)?.DoubleClickInfo?.Enable is null)
+			{
+			throw new NotSupportedException ($"The child device '{childDeviceId}' on '{Host}' does not report double-click support.");
+			}
+
+		await ExecuteCommandCoreAsync (
+			KasaTapoClient.Internal.KasaCommands.CreateSmartChildRequest (
+				childDeviceId,
+				KasaTapoClient.Internal.KasaCommands.SMART_SET_DOUBLE_CLICK_INFO_METHOD,
+				new Newtonsoft.Json.Linq.JObject { ["enable"] = enabled }),
+			cancellationToken).ConfigureAwait (false);
+		await UpdateCoreAsync (cancellationToken).ConfigureAwait (false);
+		}
+
 	private async Task SetLightStateAsync (
 		bool? isOn = null,
 		int? brightness = null,

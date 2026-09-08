@@ -10,7 +10,7 @@
 		<TargetFrameworks>net472;net10.0</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<PackageId>KasaTapoClient</PackageId>
-		<Version>1.6.1</Version>
+		<Version>1.7.0</Version>
 		<Authors>Neil Colvin</Authors>
 		<Company>Neil Colvin</Company>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -21,7 +21,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>Fixes TPAP connection failures on Tapo hubs (H100 and similar). TpapTransport previously classified SmartTapoHub as a camera-authentication family, so hubs blanked the username and hashed the credential as a local device passcode instead of authenticating with the TP-Link account credentials used by plugs and bulbs. Hub authentication failed during the PAKE exchange (error -2203) even with correct credentials. Hubs now use the standard account credential path. Discovery additionally honors a device's advertised TPAP preference: when a device reports tpap_preferred or exposes TPAP metadata, a stale non-TPAP encryption kind is no longer used to drive the connection, which previously caused handshakes against endpoints the device does not serve. Camera, doorbell, and robot vacuum families are deliberately excluded from this promotion because they are pinned to a required encryption kind. TPAP error reporting now classifies -2202, -2203, and -2101 as authentication failures rather than generic protocol errors, and surfaces the device-reported lockout budget (failed attempts, remaining attempts before lockout, and active lockout duration) so repeated failures are actionable before a device locks out.</PackageReleaseNotes>
+		<PackageReleaseNotes>Adds the ability to enable or disable double-click reporting on Tapo button child devices (S200B and similar). Double-click state was previously read-only: the library surfaced ChildDoubleClickModule.Enabled and a double_click_enabled feature, but exposed no way to change it. KasaDevice.SetChildDoubleClickEnabledAsync (childDeviceId, enabled) and ChildDoubleClickModule.SetEnabledAsync (enabled) now issue the set_double_click_info method over the existing control_child envelope, then refresh parent state so the module reflects the new value. Calling the setter on a child that does not report double-click support throws NotSupportedException before any request is sent; an unknown child identifier continues to throw InvalidOperationException. The console gains a 'child &lt;id|index&gt; doubleclick on|off' action for setting and resetting the option. This release is additive: no existing public API signatures changed.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>

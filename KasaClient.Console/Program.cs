@@ -849,7 +849,26 @@ static async Task<int> RunChildAsync (string host, IReadOnlyList<string> argumen
 		{
 		return await RunChildWatchAsync (host, childSelector, arguments, hasExplicitAction ? commandIndex + 3 : commandIndex + 2).ConfigureAwait (false);
 		}
-	DeviceConfiguration configuration = CreateHostConfiguration (host, true, action, arguments, hasExplicitAction ? commandIndex + 3 : commandIndex + 2);
+	int childOptionsIndex = hasExplicitAction ? commandIndex + 3 : commandIndex + 2;
+	bool? doubleClickEnabled = null;
+	if (action == "doubleclick")
+		{
+		if (arguments.Count <= childOptionsIndex || arguments[childOptionsIndex].StartsWith ("--", StringComparison.Ordinal))
+			{
+			return Fail ("The 'doubleclick' child action requires 'on' or 'off'.");
+			}
+
+		string toggle = ResolveKeyword (arguments[childOptionsIndex], ConsoleCommandLexicon.ToggleValues);
+		if (toggle != "on" && toggle != "off")
+			{
+			return Fail ($"Unknown double-click value '{arguments[childOptionsIndex]}'. Use 'on' or 'off'.");
+			}
+
+		doubleClickEnabled = toggle == "on";
+		childOptionsIndex++;
+		}
+
+	DeviceConfiguration configuration = CreateHostConfiguration (host, true, action, arguments, childOptionsIndex);
 	KasaDevice device = await Discover.ConnectAsync (configuration).ConfigureAwait (false);
 	ConsoleRecentHostStore.Save (device.Host);
 	ConsoleImplicitProfileStore.Save (CreateImplicitProfile (device));
@@ -865,8 +884,18 @@ static async Task<int> RunChildAsync (string host, IReadOnlyList<string> argumen
 			break;
 		case "state":
 			break;
+		case "doubleclick":
+			try
+				{
+				await device.SetChildDoubleClickEnabledAsync (childDeviceId, doubleClickEnabled!.Value).ConfigureAwait (false);
+				}
+			catch (NotSupportedException exception)
+				{
+				return Fail (exception.Message);
+				}
+			break;
 		default:
-			return Fail ($"Unknown child action '{action}'. Use 'state', 'on', 'off', 'logs', or 'watch'.");
+			return Fail ($"Unknown child action '{action}'. Use 'state', 'on', 'off', 'doubleclick', 'logs', or 'watch'.");
 		}
 
 	ChildDevice? child = device.GetChildDevice (childDeviceId);
@@ -2584,7 +2613,8 @@ static void PrintHostUsage ()
 
 static void PrintChildUsage ()
 	{
-	Console.WriteLine ("ho[st] <address> c[hild] <childId|index> [s[tate]|on|of[f]|l[ogs]|w[atch]] [options]");
+	Console.WriteLine ("ho[st] <address> c[hild] <childId|index> [s[tate]|on|of[f]|d[oubleclick] on|off|l[ogs]|w[atch]] [options]");
+	Console.WriteLine ("  doubleclick  Enable or disable double-click reporting on a button child device.");
 	Console.WriteLine ("  logs   Show recent trigger events reported by event-driven children.");
 	Console.WriteLine ("  watch  Poll for trigger/event changes until Esc is pressed.");
 	PrintCommonOptions ();
@@ -2910,7 +2940,8 @@ static class ConsoleCommandLexicon
 	public static readonly string[] RawDiscoveryProtocols = ["legacy", "smart"];
 	public static readonly string[] HostCommands = ["child", "light", "setup", "profiles", "state", "on", "off", "raw", "smart", "serialize"];
 	public static readonly string[] HostActions = ["state", "on", "off", "scan", "detected", "pair", "unpair", "raw", "smart", "serialize"];
-	public static readonly string[] ChildActions = ["state", "on", "off", "logs", "watch"];
+	public static readonly string[] ChildActions = ["state", "on", "off", "logs", "watch", "doubleclick"];
+	public static readonly string[] ToggleValues = ["on", "off"];
 	public static readonly string[] SetupActions = ["scan", "detected", "pair", "unpair"];
 	public static readonly string[] LightActions = ["state", "on", "off", "brightness", "transition", "transitionon", "transitionoff", "temp", "hsv", "color", "effect"];
 	public static readonly string[] ProfileActions = ["list", "remove"];

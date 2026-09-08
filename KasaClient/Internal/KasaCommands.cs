@@ -42,6 +42,7 @@ internal static class KasaCommands
 	public const string SMART_ADD_CHILD_DEVICE_LIST_METHOD = "add_child_device_list";
 	public const string SMART_REMOVE_CHILD_DEVICE_LIST_METHOD = "remove_child_device_list";
 	public const string SMART_GET_DOUBLE_CLICK_INFO_METHOD = "get_double_click_info";
+	public const string SMART_SET_DOUBLE_CLICK_INFO_METHOD = "set_double_click_info";
 	public const string SMART_GET_TRIGGER_LOGS_METHOD = "get_trigger_logs";
 	public const string SMART_GET_FROST_PROTECTION_METHOD = "get_frost_protection";
 	public const string SMART_GET_BATTERY_DETECT_INFO_METHOD = "get_battery_detect_info";

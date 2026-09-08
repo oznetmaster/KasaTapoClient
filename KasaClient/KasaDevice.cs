@@ -775,6 +775,18 @@ public sealed partial class KasaDevice : IDisposable
 		SetChildRelayStateAsync (childDeviceId, false, cancellationToken);
 
 	/// <summary>
+	/// Enables or disables double-click reporting on a child button device and refreshes the parent device state.
+	/// </summary>
+	/// <param name="childDeviceId">The child device identifier.</param>
+	/// <param name="enabled">Whether double-click reporting should be enabled.</param>
+	/// <param name="cancellationToken">The cancellation token for the operation.</param>
+	/// <returns>A task that completes when the child device and parent state have been refreshed.</returns>
+	/// <exception cref="InvalidOperationException">Thrown when the child device was not found.</exception>
+	/// <exception cref="NotSupportedException">Thrown when the child device does not report double-click support.</exception>
+	public Task SetChildDoubleClickEnabledAsync (string childDeviceId, bool enabled, CancellationToken cancellationToken = default) =>
+		RunDeviceOperationAsync (ct => SetChildDoubleClickEnabledCoreAsync (childDeviceId, enabled, ct), cancellationToken);
+
+	/// <summary>
 	/// Starts a smart hub child-device scan, waits for the requested interval, and returns the detected devices.
 	/// </summary>
 	/// <param name="timeoutSeconds">The number of seconds to wait after beginning the scan before reading detected devices.</param>

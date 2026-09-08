@@ -1484,6 +1484,15 @@ public sealed class ChildDevice
 	/// <param name="cancellationToken">The cancellation token for the operation.</param>
 	/// <returns>A task that completes when the child device and parent state have been refreshed.</returns>
 	public Task TurnOffAsync (CancellationToken cancellationToken = default) => _parent.TurnChildOffAsync (Id, cancellationToken);
+
+	/// <summary>
+	/// Enables or disables double-click reporting on the child device.
+	/// </summary>
+	/// <param name="enabled">Whether double-click reporting should be enabled.</param>
+	/// <param name="cancellationToken">The cancellation token for the operation.</param>
+	/// <returns>A task that completes when the child device and parent state have been refreshed.</returns>
+	public Task SetDoubleClickEnabledAsync (bool enabled, CancellationToken cancellationToken = default) =>
+		_parent.SetChildDoubleClickEnabledAsync (Id, enabled, cancellationToken);
 	}
 
 /// <summary>
@@ -1542,6 +1551,16 @@ public sealed class ChildDoubleClickModule
 	/// Gets whether double-click is enabled.
 	/// </summary>
 	public bool? Enabled => StateOrNull is ChildDoubleClickState state ? state.Enabled : null;
+
+	/// <summary>
+	/// Enables or disables double-click reporting on the child device.
+	/// </summary>
+	/// <param name="enabled">Whether double-click reporting should be enabled.</param>
+	/// <param name="cancellationToken">The cancellation token for the operation.</param>
+	/// <returns>A task that completes when the child device and parent state have been refreshed.</returns>
+	/// <exception cref="NotSupportedException">Thrown when the child device does not report double-click support.</exception>
+	public Task SetEnabledAsync (bool enabled, CancellationToken cancellationToken = default) =>
+		_child.SetDoubleClickEnabledAsync (enabled, cancellationToken);
 
 	/// <summary>
 	/// Refreshes the parent device state and child module data.
