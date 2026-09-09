@@ -25,6 +25,7 @@ See [CHANGELOG.md](CHANGELOG.md) for a summary of all release history, or the [G
 - SMART energy-monitoring compatibility across v1 and v2 devices, including optional-method fallback for partial v2 implementations
 - Host, light, child-device, and effect control where supported
 - Double-click enable/disable on Tapo button child devices (S200B and similar) via `SetChildDoubleClickEnabledAsync`
+- Sensor reporting-interval configuration on Tapo hub child sensors via `SetChildReportIntervalAsync`
 - Optional live device tests and Benchmark.NET suites for transport and latency analysis
 - TPAP keepalive support to reduce reconnect penalties after long idle periods
 - Per-device operation serialization so concurrent commands, refreshes, and child operations against one physical endpoint run one-at-a-time

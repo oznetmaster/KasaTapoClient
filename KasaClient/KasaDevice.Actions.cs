@@ -82,6 +82,32 @@ public sealed partial class KasaDevice
 		await UpdateCoreAsync (cancellationToken).ConfigureAwait (false);
 		}
 
+	private async Task SetChildReportIntervalCoreAsync (string childDeviceId, int reportIntervalSeconds, CancellationToken cancellationToken)
+		{
+		if (reportIntervalSeconds <= 0)
+			{
+			throw new ArgumentOutOfRangeException (nameof (reportIntervalSeconds), reportIntervalSeconds, "The report interval must be a positive number of seconds.");
+			}
+
+		if (GetChild (childDeviceId) is null)
+			{
+			throw new InvalidOperationException ($"The child device '{childDeviceId}' was not found on '{Host}'.");
+			}
+
+		if (GetChildRawState (childDeviceId)?.ReportInterval is null)
+			{
+			throw new NotSupportedException ($"The child device '{childDeviceId}' on '{Host}' does not report a configurable report interval.");
+			}
+
+		await ExecuteCommandCoreAsync (
+			KasaTapoClient.Internal.KasaCommands.CreateSmartChildRequest (
+				childDeviceId,
+				"set_device_info",
+				new Newtonsoft.Json.Linq.JObject { ["report_interval"] = reportIntervalSeconds }),
+			cancellationToken).ConfigureAwait (false);
+		await UpdateCoreAsync (cancellationToken).ConfigureAwait (false);
+		}
+
 	private async Task SetLightStateAsync (
 		bool? isOn = null,
 		int? brightness = null,

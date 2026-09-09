@@ -868,6 +868,23 @@ static async Task<int> RunChildAsync (string host, IReadOnlyList<string> argumen
 		childOptionsIndex++;
 		}
 
+	int? reportIntervalSeconds = null;
+	if (action == "interval")
+		{
+		if (arguments.Count <= childOptionsIndex || arguments[childOptionsIndex].StartsWith ("--", StringComparison.Ordinal))
+			{
+			return Fail ("The 'interval' child action requires a number of seconds.");
+			}
+
+		if (!int.TryParse (arguments[childOptionsIndex], out int seconds) || seconds <= 0)
+			{
+			return Fail ($"Invalid report interval '{arguments[childOptionsIndex]}'. Use a positive number of seconds.");
+			}
+
+		reportIntervalSeconds = seconds;
+		childOptionsIndex++;
+		}
+
 	DeviceConfiguration configuration = CreateHostConfiguration (host, true, action, arguments, childOptionsIndex);
 	KasaDevice device = await Discover.ConnectAsync (configuration).ConfigureAwait (false);
 	ConsoleRecentHostStore.Save (device.Host);
@@ -894,8 +911,18 @@ static async Task<int> RunChildAsync (string host, IReadOnlyList<string> argumen
 				return Fail (exception.Message);
 				}
 			break;
+		case "interval":
+			try
+				{
+				await device.SetChildReportIntervalAsync (childDeviceId, reportIntervalSeconds!.Value).ConfigureAwait (false);
+				}
+			catch (NotSupportedException exception)
+				{
+				return Fail (exception.Message);
+				}
+			break;
 		default:
-			return Fail ($"Unknown child action '{action}'. Use 'state', 'on', 'off', 'doubleclick', 'logs', or 'watch'.");
+			return Fail ($"Unknown child action '{action}'. Use 'state', 'on', 'off', 'doubleclick', 'interval', 'logs', or 'watch'.");
 		}
 
 	ChildDevice? child = device.GetChildDevice (childDeviceId);
@@ -2613,8 +2640,9 @@ static void PrintHostUsage ()
 
 static void PrintChildUsage ()
 	{
-	Console.WriteLine ("ho[st] <address> c[hild] <childId|index> [s[tate]|on|of[f]|d[oubleclick] on|off|l[ogs]|w[atch]] [options]");
+	Console.WriteLine ("ho[st] <address> c[hild] <childId|index> [s[tate]|on|of[f]|d[oubleclick] on|off|interval <seconds>|l[ogs]|w[atch]] [options]");
 	Console.WriteLine ("  doubleclick  Enable or disable double-click reporting on a button child device.");
+	Console.WriteLine ("  interval     Set the sensor reporting interval, in seconds, on a sensor child device.");
 	Console.WriteLine ("  logs   Show recent trigger events reported by event-driven children.");
 	Console.WriteLine ("  watch  Poll for trigger/event changes until Esc is pressed.");
 	PrintCommonOptions ();
@@ -2940,7 +2968,7 @@ static class ConsoleCommandLexicon
 	public static readonly string[] RawDiscoveryProtocols = ["legacy", "smart"];
 	public static readonly string[] HostCommands = ["child", "light", "setup", "profiles", "state", "on", "off", "raw", "smart", "serialize"];
 	public static readonly string[] HostActions = ["state", "on", "off", "scan", "detected", "pair", "unpair", "raw", "smart", "serialize"];
-	public static readonly string[] ChildActions = ["state", "on", "off", "logs", "watch", "doubleclick"];
+	public static readonly string[] ChildActions = ["state", "on", "off", "logs", "watch", "doubleclick", "interval"];
 	public static readonly string[] ToggleValues = ["on", "off"];
 	public static readonly string[] SetupActions = ["scan", "detected", "pair", "unpair"];
 	public static readonly string[] LightActions = ["state", "on", "off", "brightness", "transition", "transitionon", "transitionoff", "temp", "hsv", "color", "effect"];

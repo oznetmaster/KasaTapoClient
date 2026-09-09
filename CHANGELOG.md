@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Each entry summarizes t
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.8.0] - Report-interval enablement for hub child sensors
+
+- **KasaDevice**: Added `SetChildReportIntervalAsync (childDeviceId, reportIntervalSeconds)` for Tapo hub child sensors (T100, T110, T310, T315, S200B, and similar). `ChildReportModeModule.ReportInterval` was previously read-only. The setter issues `set_device_info` with a `report_interval` parameter through the existing `control_child` envelope - the same generic method already used for `device_on` - and then refreshes parent state so the module and feature reflect the new value.
+- **Modules**: Added `ChildReportModeModule.SetIntervalAsync (reportIntervalSeconds)` and `ChildDevice.SetReportIntervalAsync (reportIntervalSeconds)`, which delegate to the parent device action, mirroring the double-click module's read/write pattern from 1.7.0.
+- **Validation**: A non-positive `reportIntervalSeconds` throws `ArgumentOutOfRangeException` before any request is sent. Calling the setter on a child that does not report an interval throws `NotSupportedException`. An unknown child identifier continues to throw `InvalidOperationException`.
+- **Console**: Added a `ho[st] <address> c[hild] <childId|index> interval <seconds>` action. An invalid or missing seconds value is rejected with usage guidance before a connection is made.
+- **Protocol note**: `report_interval` is a field on `get_child_device_list`, not on `get_report_mode` (which returns an unrelated `report_mode` string, e.g. `high_sensitivity`, and has no setter upstream or in this library). The `set_device_info` method and its `{ "report_interval": int }` payload were confirmed against a live T100 and S200B on the same hub by writing a new interval and reading it back, then restoring the original value.
+- **Tests**: Added `ReportIntervalCommandTests` (2 tests) pinning the `control_child` envelope shape for the interval setter and verifying the report-mode read method omits `params`. Full suite passes on both `net472` and `net10.0` (83 tests each).
+- **Compatibility**: Additive only. No existing public API signatures changed.
+
 ## [1.7.0] - Double-click enablement for button child devices
 
 - **KasaDevice**: Added `SetChildDoubleClickEnabledAsync (childDeviceId, enabled)` for Tapo button child devices (S200B and similar). Double-click was previously read-only - `ChildDoubleClickModule.Enabled` and the `double_click_enabled` feature reported the current value, and `get_double_click_info` was already issued during child refresh, but the library exposed no way to change it. The setter issues `set_double_click_info` through the existing `control_child` envelope and then refreshes parent state, so the module and feature reflect the new value immediately after the call returns.

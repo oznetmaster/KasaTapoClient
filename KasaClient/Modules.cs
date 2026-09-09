@@ -1493,6 +1493,15 @@ public sealed class ChildDevice
 	/// <returns>A task that completes when the child device and parent state have been refreshed.</returns>
 	public Task SetDoubleClickEnabledAsync (bool enabled, CancellationToken cancellationToken = default) =>
 		_parent.SetChildDoubleClickEnabledAsync (Id, enabled, cancellationToken);
+
+	/// <summary>
+	/// Sets the sensor reporting interval on the child device.
+	/// </summary>
+	/// <param name="reportIntervalSeconds">The reporting interval in seconds. Must be positive.</param>
+	/// <param name="cancellationToken">The cancellation token for the operation.</param>
+	/// <returns>A task that completes when the child device and parent state have been refreshed.</returns>
+	public Task SetReportIntervalAsync (int reportIntervalSeconds, CancellationToken cancellationToken = default) =>
+		_parent.SetChildReportIntervalAsync (Id, reportIntervalSeconds, cancellationToken);
 	}
 
 /// <summary>
@@ -1999,6 +2008,16 @@ public sealed class ChildReportModeModule
 	/// Gets the latest reported sensor report interval in seconds.
 	/// </summary>
 	public int? ReportInterval => StateOrNull is ChildReportModeState state ? state.ReportInterval : null;
+
+	/// <summary>
+	/// Sets the sensor reporting interval on the child device.
+	/// </summary>
+	/// <param name="reportIntervalSeconds">The reporting interval in seconds. Must be positive.</param>
+	/// <param name="cancellationToken">The cancellation token for the operation.</param>
+	/// <returns>A task that completes when the child device and parent state have been refreshed.</returns>
+	/// <exception cref="NotSupportedException">Thrown when the child device does not report a configurable report interval.</exception>
+	public Task SetIntervalAsync (int reportIntervalSeconds, CancellationToken cancellationToken = default) =>
+		_child.SetReportIntervalAsync (reportIntervalSeconds, cancellationToken);
 
 	/// <summary>
 	/// Refreshes the parent device state and child module data.

@@ -787,6 +787,19 @@ public sealed partial class KasaDevice : IDisposable
 		RunDeviceOperationAsync (ct => SetChildDoubleClickEnabledCoreAsync (childDeviceId, enabled, ct), cancellationToken);
 
 	/// <summary>
+	/// Sets the sensor reporting interval on a child sensor device and refreshes the parent device state.
+	/// </summary>
+	/// <param name="childDeviceId">The child device identifier.</param>
+	/// <param name="reportIntervalSeconds">The reporting interval in seconds. Must be positive.</param>
+	/// <param name="cancellationToken">The cancellation token for the operation.</param>
+	/// <returns>A task that completes when the child device and parent state have been refreshed.</returns>
+	/// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="reportIntervalSeconds"/> is not positive.</exception>
+	/// <exception cref="InvalidOperationException">Thrown when the child device was not found.</exception>
+	/// <exception cref="NotSupportedException">Thrown when the child device does not report a configurable report interval.</exception>
+	public Task SetChildReportIntervalAsync (string childDeviceId, int reportIntervalSeconds, CancellationToken cancellationToken = default) =>
+		RunDeviceOperationAsync (ct => SetChildReportIntervalCoreAsync (childDeviceId, reportIntervalSeconds, ct), cancellationToken);
+
+	/// <summary>
 	/// Starts a smart hub child-device scan, waits for the requested interval, and returns the detected devices.
 	/// </summary>
 	/// <param name="timeoutSeconds">The number of seconds to wait after beginning the scan before reading detected devices.</param>
