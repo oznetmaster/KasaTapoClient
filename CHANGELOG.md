@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Each entry summarizes t
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.8.1] - Dependency version alignment
+
+- **Build**: Fixed a NuGet restore failure (NU1605: package downgrade) caused by Microsoft.Bcl.Memory being pinned to 10.0.12 in KasaTapoClient.csproj while KasaClient.Console, KasaClient.Tests, and the BenchmarkSuite* projects pinned 10.0.11. All projects now reference Microsoft.Bcl.Memory 10.0.12.
+- **Compatibility**: No public API or behavior changes.
+
 ## [1.8.0] - Report-interval enablement for hub child sensors
 
 - **KasaDevice**: Added `SetChildReportIntervalAsync (childDeviceId, reportIntervalSeconds)` for Tapo hub child sensors (T100, T110, T310, T315, S200B, and similar). `ChildReportModeModule.ReportInterval` was previously read-only. The setter issues `set_device_info` with a `report_interval` parameter through the existing `control_child` envelope - the same generic method already used for `device_on` - and then refreshes parent state so the module and feature reflect the new value.

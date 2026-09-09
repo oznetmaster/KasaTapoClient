@@ -10,7 +10,7 @@
 		<TargetFrameworks>net472;net10.0</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<PackageId>KasaTapoClient</PackageId>
-		<Version>1.8.0</Version>
+		<Version>1.8.1</Version>
 		<Authors>Neil Colvin</Authors>
 		<Company>Neil Colvin</Company>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -21,7 +21,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>Adds the ability to set the sensor reporting interval on Tapo hub child sensors (T100, T110, T310, T315, S200B, and similar). ChildReportModeModule.ReportInterval was previously read-only. KasaDevice.SetChildReportIntervalAsync (childDeviceId, seconds) and ChildReportModeModule.SetIntervalAsync (seconds) now issue set_device_info with a report_interval parameter over the existing control_child envelope, then refresh parent state. The value and its persistence were confirmed against a live T100 and S200B by writing a new interval and reading it back. Calling the setter on a child that does not report an interval throws NotSupportedException; a non-positive value throws ArgumentOutOfRangeException before any request is sent. The console gains a 'child &lt;id|index&gt; interval &lt;seconds&gt;' action. This release is additive: no existing public API signatures changed.</PackageReleaseNotes>
+		<PackageReleaseNotes>Patch release: aligns the Microsoft.Bcl.Memory package reference to 10.0.12 across all projects to resolve a NuGet package-downgrade restore error (NU1605) affecting consumers with net10.0 dependency chains. No public API or behavior changes.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>
@@ -90,7 +90,7 @@
 		<PackageReference Include="Hafner.Compatibility.MetaPackage" Version="1.9.0" />
 		<PackageReference Include="System.Net.Http" Version="4.3.4" />
 		<PackageReference Include="System.Memory" Version="4.6.3" />
-		<PackageReference Include="Microsoft.Bcl.Memory" Version="10.0.11" />
+		<PackageReference Include="Microsoft.Bcl.Memory" Version="10.0.12" />
 	</ItemGroup>
 
 	<ItemGroup>
