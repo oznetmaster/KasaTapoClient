@@ -28,7 +28,7 @@ dotnet build KasaClient.slnx --configuration Release
 
 - `KasaClient` - reusable client library
 - `KasaClient.Console` - console app for discovery and command execution
-- `KasaClient.Tests` - MSTest coverage including optional live tests
+- `KasaClient.Tests` - NUnit coverage including optional live tests
 - `BenchmarkSuite1`, `BenchmarkSuite2`, `BenchmarkSuite3` - Benchmark.NET measurement artifacts used during transport and latency investigation
 
 ## Basic console usage

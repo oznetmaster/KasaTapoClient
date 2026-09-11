@@ -3,18 +3,18 @@
 
 using KasaTapoClient.Internal;
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NUnit.Framework;
 
 using Newtonsoft.Json.Linq;
 
 namespace KasaClient.Tests;
 
-[TestClass]
+[TestFixture]
 public sealed class ReportIntervalCommandTests
 	{
 	private const string CHILD_DEVICE_ID = "802E8EB23E40CFD539830AD2F094E7E125094204";
 
-	[TestMethod]
+	[Test]
 	public void CreateSmartChildRequest_ForSetReportInterval_ProducesControlChildEnvelope ()
 		{
 		string request = KasaCommands.CreateSmartChildRequest (
@@ -24,13 +24,13 @@ public sealed class ReportIntervalCommandTests
 
 		var parsed = JObject.Parse (request);
 
-		Assert.AreEqual ("control_child", (string?) parsed["method"]);
-		Assert.AreEqual (CHILD_DEVICE_ID, (string?) parsed["params"]?["device_id"]);
-		Assert.AreEqual ("set_device_info", (string?) parsed["params"]?["requestData"]?["method"]);
-		Assert.AreEqual (45, (int?) parsed["params"]?["requestData"]?["params"]?["report_interval"]);
+		Assert.That ((string?)parsed["method"], Is.EqualTo ("control_child"));
+		Assert.That ((string?)parsed["params"]?["device_id"], Is.EqualTo (CHILD_DEVICE_ID));
+		Assert.That ((string?)parsed["params"]?["requestData"]?["method"], Is.EqualTo ("set_device_info"));
+		Assert.That ((int?)parsed["params"]?["requestData"]?["params"]?["report_interval"], Is.EqualTo (45));
 		}
 
-	[TestMethod]
+	[Test]
 	public void CreateSmartChildRequest_ForGetReportMode_OmitsParams ()
 		{
 		string request = KasaCommands.CreateSmartChildRequest (
@@ -39,7 +39,7 @@ public sealed class ReportIntervalCommandTests
 
 		var parsed = JObject.Parse (request);
 
-		Assert.AreEqual ("get_report_mode", (string?) parsed["params"]?["requestData"]?["method"]);
-		Assert.IsNull (parsed["params"]?["requestData"]?["params"]);
+		Assert.That ((string?)parsed["params"]?["requestData"]?["method"], Is.EqualTo ("get_report_mode"));
+		Assert.That (parsed["params"]?["requestData"]?["params"], Is.Null);
 		}
 	}

@@ -3,11 +3,11 @@
 
 using KasaTapoClient;
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NUnit.Framework;
 
 namespace KasaClient.Tests;
 
-[TestClass]
+[TestFixture]
 public sealed class DiscoverTpapPreferenceTests
 	{
 	private static DiscoveryResult CreateDiscoveryResult (
@@ -29,17 +29,17 @@ public sealed class DiscoverTpapPreferenceTests
 			protocolVersion: 2,
 			tpapPreferred: tpapPreferred);
 
-	[TestMethod]
+	[Test]
 	public void PreferTpap_ReturnsNull_WhenNoConnectionParameters ()
 		{
 		var discoveryResult = CreateDiscoveryResult (connectionParameters: null, tpapPreferred: true);
 
 		var result = Discover.PreferTpapConnectionParameters (discoveryResult);
 
-		Assert.IsNull (result);
+		Assert.That (result, Is.Null);
 		}
 
-	[TestMethod]
+	[Test]
 	public void PreferTpap_LeavesParametersUnchanged_WhenDeviceDoesNotAdvertiseTpap ()
 		{
 		// A stale KLAP profile on a device with no TPAP signal must not be rewritten.
@@ -48,10 +48,10 @@ public sealed class DiscoverTpapPreferenceTests
 
 		var result = Discover.PreferTpapConnectionParameters (discoveryResult);
 
-		Assert.AreSame (connectionParameters, result);
+		Assert.That (result, Is.SameAs (connectionParameters));
 		}
 
-	[TestMethod]
+	[Test]
 	public void PreferTpap_PromotesHub_WhenTpapPreferredIsAdvertised ()
 		{
 		// Regression guard for the H100: discovery advertises tpap_preferred, but a cached profile
@@ -61,12 +61,12 @@ public sealed class DiscoverTpapPreferenceTests
 
 		var result = Discover.PreferTpapConnectionParameters (discoveryResult);
 
-		Assert.IsNotNull (result);
-		Assert.AreEqual (DeviceEncryptionKind.Tpap, result!.EncryptionKind);
-		Assert.AreEqual (DeviceFamilyKind.SmartTapoHub, result.DeviceFamily);
+		Assert.That (result, Is.Not.Null);
+		Assert.That (result!.EncryptionKind, Is.EqualTo (DeviceEncryptionKind.Tpap));
+		Assert.That (result.DeviceFamily, Is.EqualTo (DeviceFamilyKind.SmartTapoHub));
 		}
 
-	[TestMethod]
+	[Test]
 	public void PreferTpap_PromotesDevice_WhenOnlyTpapMetadataIsPresent ()
 		{
 		var connectionParameters = new DeviceConnectionParameters (DeviceFamilyKind.SmartTapoPlug, DeviceEncryptionKind.Klap);
@@ -75,11 +75,11 @@ public sealed class DiscoverTpapPreferenceTests
 
 		var result = Discover.PreferTpapConnectionParameters (discoveryResult);
 
-		Assert.IsNotNull (result);
-		Assert.AreEqual (DeviceEncryptionKind.Tpap, result!.EncryptionKind);
+		Assert.That (result, Is.Not.Null);
+		Assert.That (result!.EncryptionKind, Is.EqualTo (DeviceEncryptionKind.Tpap));
 		}
 
-	[TestMethod]
+	[Test]
 	public void PreferTpap_UsesAdvertisedPortAndPlaintext_WhenTlsIsZero ()
 		{
 		var connectionParameters = new DeviceConnectionParameters (DeviceFamilyKind.SmartTapoHub, DeviceEncryptionKind.Klap);
@@ -88,12 +88,12 @@ public sealed class DiscoverTpapPreferenceTests
 
 		var result = Discover.PreferTpapConnectionParameters (discoveryResult);
 
-		Assert.IsNotNull (result);
-		Assert.IsFalse (result!.UseHttps);
-		Assert.AreEqual (80, result.HttpPort);
+		Assert.That (result, Is.Not.Null);
+		Assert.That (result!.UseHttps, Is.False);
+		Assert.That (result.HttpPort, Is.EqualTo (80));
 		}
 
-	[TestMethod]
+	[Test]
 	public void PreferTpap_UsesHttpsAndPort443_WhenTlsIsEnabledWithoutAdvertisedPort ()
 		{
 		var connectionParameters = new DeviceConnectionParameters (DeviceFamilyKind.SmartTapoHub, DeviceEncryptionKind.Klap);
@@ -102,12 +102,12 @@ public sealed class DiscoverTpapPreferenceTests
 
 		var result = Discover.PreferTpapConnectionParameters (discoveryResult);
 
-		Assert.IsNotNull (result);
-		Assert.IsTrue (result!.UseHttps);
-		Assert.AreEqual (443, result.HttpPort);
+		Assert.That (result, Is.Not.Null);
+		Assert.That (result!.UseHttps, Is.True);
+		Assert.That (result.HttpPort, Is.EqualTo (443));
 		}
 
-	[TestMethod]
+	[Test]
 	public void PreferTpap_PreservesLoginVersion_WhenPromoting ()
 		{
 		var connectionParameters = new DeviceConnectionParameters (DeviceFamilyKind.SmartTapoHub, DeviceEncryptionKind.Klap, loginVersion: 2);
@@ -115,11 +115,11 @@ public sealed class DiscoverTpapPreferenceTests
 
 		var result = Discover.PreferTpapConnectionParameters (discoveryResult);
 
-		Assert.IsNotNull (result);
-		Assert.AreEqual (2, result!.LoginVersion);
+		Assert.That (result, Is.Not.Null);
+		Assert.That (result!.LoginVersion, Is.EqualTo (2));
 		}
 
-	[TestMethod]
+	[Test]
 	public void PreferTpap_ReturnsExistingInstance_WhenAlreadyTpap ()
 		{
 		var connectionParameters = new DeviceConnectionParameters (DeviceFamilyKind.SmartTapoHub, DeviceEncryptionKind.Tpap);
@@ -127,14 +127,14 @@ public sealed class DiscoverTpapPreferenceTests
 
 		var result = Discover.PreferTpapConnectionParameters (discoveryResult);
 
-		Assert.AreSame (connectionParameters, result);
+		Assert.That (result, Is.SameAs (connectionParameters));
 		}
 
-	[TestMethod]
-	[DataRow (DeviceFamilyKind.IotIpCamera, DeviceEncryptionKind.Xor)]
-	[DataRow (DeviceFamilyKind.SmartIpCamera, DeviceEncryptionKind.Aes)]
-	[DataRow (DeviceFamilyKind.SmartTapoDoorbell, DeviceEncryptionKind.Aes)]
-	[DataRow (DeviceFamilyKind.SmartTapoRobovac, DeviceEncryptionKind.Aes)]
+	[Test]
+	[TestCase (DeviceFamilyKind.IotIpCamera, DeviceEncryptionKind.Xor)]
+	[TestCase (DeviceFamilyKind.SmartIpCamera, DeviceEncryptionKind.Aes)]
+	[TestCase (DeviceFamilyKind.SmartTapoDoorbell, DeviceEncryptionKind.Aes)]
+	[TestCase (DeviceFamilyKind.SmartTapoRobovac, DeviceEncryptionKind.Aes)]
 	public void PreferTpap_DoesNotPromoteStrictEncryptionFamilies (DeviceFamilyKind deviceFamily, DeviceEncryptionKind encryptionKind)
 		{
 		// DeviceTransportFactory pins these families to a required encryption kind. Promoting them
@@ -145,7 +145,7 @@ public sealed class DiscoverTpapPreferenceTests
 
 		var result = Discover.PreferTpapConnectionParameters (discoveryResult);
 
-		Assert.AreSame (connectionParameters, result);
-		Assert.AreEqual (encryptionKind, result!.EncryptionKind);
+		Assert.That (result, Is.SameAs (connectionParameters));
+		Assert.That (result!.EncryptionKind, Is.EqualTo (encryptionKind));
 		}
 	}

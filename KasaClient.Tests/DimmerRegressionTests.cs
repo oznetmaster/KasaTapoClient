@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 using KasaTapoClient;
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NUnit.Framework;
 
 namespace KasaClient.Tests;
 
@@ -21,7 +21,7 @@ namespace KasaClient.Tests;
 /// Specs for dimmer behaviour that is not implemented yet live in DimmerSupportTests.cs
 /// on the dimmer-support branch.
 /// </summary>
-[TestClass]
+[TestFixture]
 public sealed class DimmerRegressionTests
 	{
 	/// <summary>
@@ -29,7 +29,7 @@ public sealed class DimmerRegressionTests
 	/// python-kasa models IotDimmer as a subclass of IotPlug for the same reason: the smartbulb
 	/// lighting service is not implemented on these devices.
 	/// </summary>
-	[TestMethod]
+	[Test]
 	public async Task TurnOnAsync_WithLegacyDimmer_SendsRelayStateNotLightingService ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -47,34 +47,33 @@ public sealed class DimmerRegressionTests
 
 		// Guard: the fixture must actually classify as a dimmer, otherwise the assertions
 		// below would pass for the wrong reason.
-		Assert.AreEqual (DeviceType.Dimmer, device.DeviceType);
+		Assert.That (device.DeviceType, Is.EqualTo (DeviceType.Dimmer));
 
 		await device.TurnOnAsync ().ConfigureAwait (false);
 
-		Assert.AreEqual (3, transport.SentCommands.Count);
-		Assert.AreEqual ("{\"system\":{\"set_relay_state\":{\"state\":1}}}", transport.SentCommands[1]);
-		Assert.IsFalse (transport.SentCommands[1].Contains ("lightingservice"));
-		Assert.AreEqual (true, device.IsOn);
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (3));
+		Assert.That (transport.SentCommands[1], Is.EqualTo ("{\"system\":{\"set_relay_state\":{\"state\":1}}}"));
+		Assert.That (transport.SentCommands[1].Contains ("lightingservice"), Is.False);
+		Assert.That (device.IsOn, Is.EqualTo (true));
 		}
 
 	/// <summary>
 	/// A dimmer has no colour temperature. The device should refuse locally rather than emit a
 	/// set_device_info the hardware will reject with an opaque protocol error.
 	/// </summary>
-	[TestMethod]
+	[Test]
 	public async Task SetColorTemperatureAsync_WithSmartDimmer_Throws ()
 		{
 		KasaDevice device = DimmerTestSupport.CreateSmartDimmer (out FakeDeviceTransport transport);
 
 		await device.UpdateAsync ().ConfigureAwait (false);
-		Assert.AreEqual (DeviceType.Dimmer, device.DeviceType);
+		Assert.That (device.DeviceType, Is.EqualTo (DeviceType.Dimmer));
 
-		await Assert.ThrowsExactlyAsync<InvalidOperationException> (
-			() => device.SetColorTemperatureAsync (2700)).ConfigureAwait (false);
+		await Assert.ThatAsync (() => device.SetColorTemperatureAsync (2700), Throws.TypeOf<InvalidOperationException> ()).ConfigureAwait (false);
 
 		foreach (string command in transport.SentCommands)
 			{
-			Assert.IsFalse (command.Contains ("color_temp"), $"No colour-temperature command should reach a dimmer, but got: {command}");
+			Assert.That (command.Contains ("color_temp"), Is.False, $"No colour-temperature command should reach a dimmer, but got: {command}");
 			}
 		}
 	}

@@ -1,6 +1,7 @@
 {
   "enabled": false,
   "timeoutSeconds": 10,
+  "observationDelayMilliseconds": 0,
   "credentials": {
     "userName": "",
     "password": ""
@@ -9,6 +10,8 @@
     "plug": {
       "hosts": [
         {
+          "deviceId": null,
+          "alias": null,
           "host": "replace-with-plug-host-1",
           "port": 9999,
           "transportKind": "Auto",
@@ -19,6 +22,8 @@
           "applicationPath": "/app"
         },
         {
+          "deviceId": null,
+          "alias": null,
           "host": "replace-with-plug-host-2",
           "port": 9999,
           "transportKind": "Auto",
@@ -33,6 +38,8 @@
     "light": {
       "hosts": [
         {
+          "deviceId": null,
+          "alias": null,
           "host": "replace-with-light-host",
           "port": null,
           "transportKind": "Auto",
@@ -47,6 +54,8 @@
     "strip": {
       "hosts": [
         {
+          "deviceId": null,
+          "alias": null,
           "host": "replace-with-strip-host",
           "port": 9999,
           "transportKind": "Auto",
@@ -62,6 +71,8 @@
     "hub": {
       "hosts": [
         {
+          "deviceId": null,
+          "alias": null,
           "host": "replace-with-hub-host",
           "port": 9999,
           "transportKind": "Auto",
@@ -70,7 +81,8 @@
           "useSsl": false,
           "httpPort": null,
           "applicationPath": "/app",
-          "childDeviceId": "replace-with-real-child-id"
+          "childDeviceId": "replace-with-real-child-id",
+          "temperatureChildDeviceId": "replace-with-temperature-sensor-child-id"
         }
       ]
     }

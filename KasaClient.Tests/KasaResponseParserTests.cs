@@ -4,14 +4,14 @@
 using KasaTapoClient;
 using KasaTapoClient.Internal;
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NUnit.Framework;
 
 namespace KasaClient.Tests;
 
-[TestClass]
+[TestFixture]
 public sealed class KasaResponseParserTests
 	{
-	[TestMethod]
+	[Test]
 	public void ParseDeviceState_WithLegacyBulbResponse_PopulatesLightStateAndSystemInfo ()
 		{
 		const string responseJson = """
@@ -37,17 +37,17 @@ public sealed class KasaResponseParserTests
 		KasaResponseParser.ParsedResponse parsed = KasaResponseParser.ParseResponse (responseJson);
 		KasaResponseParser.ParsedDeviceState state = KasaResponseParser.ParseDeviceState (parsed);
 
-		Assert.AreEqual (DeviceType.Bulb, state.SystemInfo.DeviceType);
-		Assert.AreEqual ("Test Bulb", state.SystemInfo.Alias);
-		Assert.IsNotNull (state.LightState);
-		Assert.AreEqual (true, state.LightState.IsOn);
-		Assert.AreEqual (75, state.LightState.Brightness);
-		Assert.AreEqual (2700, state.LightState.ColorTemperature);
-		Assert.AreEqual (120, state.LightState.Hue);
-		Assert.AreEqual (80, state.LightState.Saturation);
+		Assert.That (state.SystemInfo.DeviceType, Is.EqualTo (DeviceType.Bulb));
+		Assert.That (state.SystemInfo.Alias, Is.EqualTo ("Test Bulb"));
+		Assert.That (state.LightState, Is.Not.Null);
+		Assert.That (state.LightState.IsOn, Is.EqualTo (true));
+		Assert.That (state.LightState.Brightness, Is.EqualTo (75));
+		Assert.That (state.LightState.ColorTemperature, Is.EqualTo (2700));
+		Assert.That (state.LightState.Hue, Is.EqualTo (120));
+		Assert.That (state.LightState.Saturation, Is.EqualTo (80));
 		}
 
-	[TestMethod]
+	[Test]
 	public void ParseSmartDeviceState_WithSmartBulbResponse_DecodesAliasAndComponentStates ()
 		{
 		const string responseJson = """
@@ -119,24 +119,24 @@ public sealed class KasaResponseParserTests
 		KasaResponseParser.SmartParsedResponse parsed = KasaResponseParser.ParseSmartResponse (responseJson);
 		KasaResponseParser.ParsedDeviceState state = KasaResponseParser.ParseSmartDeviceState (parsed);
 
-		Assert.AreEqual (DeviceType.Bulb, state.SystemInfo.DeviceType);
-		Assert.AreEqual ("Smart Bulb", state.SystemInfo.Alias);
-		Assert.IsNotNull (state.LightState);
-		Assert.AreEqual (true, state.LightState.IsOn);
-		Assert.AreEqual (60, state.LightState.Brightness);
-		Assert.AreEqual (3500, state.LightState.ColorTemperature);
-		Assert.IsNotNull (state.AutoOffState);
-		Assert.AreEqual (true, state.AutoOffState.Enabled);
-		Assert.AreEqual (15, state.AutoOffState.DelayMinutes);
-		Assert.IsNotNull (state.LedState);
-		Assert.AreEqual (true, state.LedState.Enabled);
-		Assert.IsNotNull (state.CloudState);
-		Assert.AreEqual (true, state.CloudState.IsConnected);
-		Assert.IsNotNull (state.TimeState);
-		Assert.AreEqual ("UTC", state.TimeState.Region);
+		Assert.That (state.SystemInfo.DeviceType, Is.EqualTo (DeviceType.Bulb));
+		Assert.That (state.SystemInfo.Alias, Is.EqualTo ("Smart Bulb"));
+		Assert.That (state.LightState, Is.Not.Null);
+		Assert.That (state.LightState.IsOn, Is.EqualTo (true));
+		Assert.That (state.LightState.Brightness, Is.EqualTo (60));
+		Assert.That (state.LightState.ColorTemperature, Is.EqualTo (3500));
+		Assert.That (state.AutoOffState, Is.Not.Null);
+		Assert.That (state.AutoOffState.Enabled, Is.EqualTo (true));
+		Assert.That (state.AutoOffState.DelayMinutes, Is.EqualTo (15));
+		Assert.That (state.LedState, Is.Not.Null);
+		Assert.That (state.LedState.Enabled, Is.EqualTo (true));
+		Assert.That (state.CloudState, Is.Not.Null);
+		Assert.That (state.CloudState.IsConnected, Is.EqualTo (true));
+		Assert.That (state.TimeState, Is.Not.Null);
+		Assert.That (state.TimeState.Region, Is.EqualTo ("UTC"));
 		}
 
-	[TestMethod]
+	[Test]
 	public void ParseSmartDeviceState_WithAlarmPresetTransitionAndEnergyData_ProjectsEdgeCaseModules ()
 		{
 		const string responseJson = """
@@ -229,31 +229,31 @@ public sealed class KasaResponseParserTests
 		KasaResponseParser.SmartParsedResponse parsed = KasaResponseParser.ParseSmartResponse (responseJson);
 		KasaResponseParser.ParsedDeviceState state = KasaResponseParser.ParseSmartDeviceState (parsed);
 
-		Assert.IsNotNull (state.LightPresetState);
-		Assert.AreEqual ("Light preset 1", state.LightPresetState.ActivePreset);
-		Assert.AreEqual (2, state.LightPresetState.Presets.Count);
-		Assert.AreEqual (50, state.LightPresetState.Presets[0].Brightness);
-		Assert.IsNotNull (state.LightTransitionState);
-		Assert.AreEqual (true, state.LightTransitionState.IsEnabled);
-		Assert.AreEqual (true, state.LightTransitionState.IsTransitionOnEnabled);
-		Assert.AreEqual (12, state.LightTransitionState.TransitionOnDurationSeconds);
-		Assert.AreEqual (40, state.LightTransitionState.TransitionOnMaximumDurationSeconds);
-		Assert.AreEqual (12, state.LightTransitionState.TransitionOnSeconds);
-		Assert.AreEqual (false, state.LightTransitionState.IsTransitionOffEnabled);
-		Assert.AreEqual (30, state.LightTransitionState.TransitionOffDurationSeconds);
-		Assert.AreEqual (45, state.LightTransitionState.TransitionOffMaximumDurationSeconds);
-		Assert.AreEqual (0, state.LightTransitionState.TransitionOffSeconds);
-		Assert.IsNotNull (state.AlarmState);
-		Assert.AreEqual (true, state.AlarmState.IsActive);
-		Assert.AreEqual ("motion", state.AlarmState.Source);
-		Assert.AreEqual ("siren", state.AlarmState.Sound);
-		Assert.AreEqual ("high", state.AlarmState.Volume);
-		Assert.AreEqual (3, state.AlarmState.VolumeLevel);
-		Assert.AreEqual (120, state.AlarmState.DurationSeconds);
-		Assert.IsNotNull (state.EnergyUsage);
-		Assert.AreEqual (12.345d, state.EnergyUsage.CurrentPowerWatts);
-		Assert.AreEqual (230d, state.EnergyUsage.VoltageVolts);
-		Assert.AreEqual (0.1d, state.EnergyUsage.CurrentAmps);
-		Assert.AreEqual (0.678d, state.EnergyUsage.TotalKilowattHours);
+		Assert.That (state.LightPresetState, Is.Not.Null);
+		Assert.That (state.LightPresetState.ActivePreset, Is.EqualTo ("Light preset 1"));
+		Assert.That (state.LightPresetState.Presets.Count, Is.EqualTo (2));
+		Assert.That (state.LightPresetState.Presets[0].Brightness, Is.EqualTo (50));
+		Assert.That (state.LightTransitionState, Is.Not.Null);
+		Assert.That (state.LightTransitionState.IsEnabled, Is.EqualTo (true));
+		Assert.That (state.LightTransitionState.IsTransitionOnEnabled, Is.EqualTo (true));
+		Assert.That (state.LightTransitionState.TransitionOnDurationSeconds, Is.EqualTo (12));
+		Assert.That (state.LightTransitionState.TransitionOnMaximumDurationSeconds, Is.EqualTo (40));
+		Assert.That (state.LightTransitionState.TransitionOnSeconds, Is.EqualTo (12));
+		Assert.That (state.LightTransitionState.IsTransitionOffEnabled, Is.EqualTo (false));
+		Assert.That (state.LightTransitionState.TransitionOffDurationSeconds, Is.EqualTo (30));
+		Assert.That (state.LightTransitionState.TransitionOffMaximumDurationSeconds, Is.EqualTo (45));
+		Assert.That (state.LightTransitionState.TransitionOffSeconds, Is.EqualTo (0));
+		Assert.That (state.AlarmState, Is.Not.Null);
+		Assert.That (state.AlarmState.IsActive, Is.EqualTo (true));
+		Assert.That (state.AlarmState.Source, Is.EqualTo ("motion"));
+		Assert.That (state.AlarmState.Sound, Is.EqualTo ("siren"));
+		Assert.That (state.AlarmState.Volume, Is.EqualTo ("high"));
+		Assert.That (state.AlarmState.VolumeLevel, Is.EqualTo (3));
+		Assert.That (state.AlarmState.DurationSeconds, Is.EqualTo (120));
+		Assert.That (state.EnergyUsage, Is.Not.Null);
+		Assert.That (state.EnergyUsage.CurrentPowerWatts, Is.EqualTo (12.345d));
+		Assert.That (state.EnergyUsage.VoltageVolts, Is.EqualTo (230d));
+		Assert.That (state.EnergyUsage.CurrentAmps, Is.EqualTo (0.1d));
+		Assert.That (state.EnergyUsage.TotalKilowattHours, Is.EqualTo (0.678d));
 		}
 	}

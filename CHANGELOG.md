@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Each entry summarizes t
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/).
 
+## Unreleased — test infrastructure
+
+- Converted test fixtures from MSTest to NUnit 4.6.1 with NUnit3TestAdapter for Visual Studio and `dotnet test`.
+- Added stable live-device selectors, per-run discovery caching, original-state restoration and a read-only hub temperature test. Live settings remain private and live tests are opt-in.
+- No new library or NuGet release accompanies these test changes.
+
 ## [1.8.1] - Dependency version alignment
 
 - **Build**: Fixed a NuGet restore failure (NU1605: package downgrade) caused by Microsoft.Bcl.Memory being pinned to 10.0.12 in KasaTapoClient.csproj while KasaClient.Console, KasaClient.Tests, and the BenchmarkSuite* projects pinned 10.0.11. All projects now reference Microsoft.Bcl.Memory 10.0.12.
@@ -166,7 +172,7 @@ Existing public APIs remain source-compatible. Concurrent operations against the
 
 ## [1.0.2] - Discovery resilience
 
-Improved UDP discovery resilience for Mono and Crestron-style runtime environments by continuing discovery after transient socket receive errors, increasing receive buffer sizing, and keeping diagnostics debug-only. Also stopped tracking the generated `KasaTapoClient.xml` documentation file so release XML assets come only from workflow build outputs.
+Improved UDP discovery resilience for Mono runtime environments by continuing discovery after transient socket receive errors, increasing receive buffer sizing, and keeping diagnostics debug-only. Also stopped tracking the generated `KasaTapoClient.xml` documentation file so release XML assets come only from workflow build outputs.
 
 [1.1.10]: https://github.com/oznetmaster/KasaTapoClient/compare/v1.1.9...v1.1.10
 [1.1.4 – 1.1.9]: https://github.com/oznetmaster/KasaTapoClient/compare/v1.1.3...v1.1.9

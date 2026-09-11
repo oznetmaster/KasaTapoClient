@@ -8,38 +8,38 @@ using System.Threading;
 
 using KasaTapoClient.Internal;
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NUnit.Framework;
 
 namespace KasaClient.Tests;
 
-[TestClass]
+[TestFixture]
 public sealed class TpapTransportRetryPolicyTests
 	{
-	[TestMethod]
+	[Test]
 	public void ShouldRetryLiveSession_TaskCanceledException_IsNotRetryable ()
 		{
 		var exception = new TaskCanceledException ("A task was canceled.");
 
-		Assert.IsFalse (TpapTransport.ShouldRetryLiveSession (exception));
+		Assert.That (TpapTransport.ShouldRetryLiveSession (exception), Is.False);
 		}
 
-	[TestMethod]
+	[Test]
 	public void ShouldRetryLiveSession_OperationCanceledException_IsNotRetryable ()
 		{
 		var exception = new OperationCanceledException ("The operation was canceled.");
 
-		Assert.IsFalse (TpapTransport.ShouldRetryLiveSession (exception));
+		Assert.That (TpapTransport.ShouldRetryLiveSession (exception), Is.False);
 		}
 
-	[TestMethod]
+	[Test]
 	public void ShouldRetryLiveSession_HttpRequestException_TaskWasCanceledMessage_IsNotRetryable ()
 		{
 		var exception = new HttpRequestException ("A task was canceled.");
 
-		Assert.IsFalse (TpapTransport.ShouldRetryLiveSession (exception));
+		Assert.That (TpapTransport.ShouldRetryLiveSession (exception), Is.False);
 		}
 
-	[TestMethod]
+	[Test]
 	public void ShouldRetryLiveSession_IOException_OperationAbortedMessage_IsRetryable ()
 		{
 		// A genuine socket abort (for example the remote device resetting the connection) must still be
@@ -48,34 +48,34 @@ public sealed class TpapTransportRetryPolicyTests
 		// OperationCanceledException via ToCancellationException before ShouldRetryLiveSession is consulted.
 		var exception = new IOException ("The I/O operation has been aborted because of either a thread exit or an application request.");
 
-		Assert.IsTrue (TpapTransport.ShouldRetryLiveSession (exception));
+		Assert.That (TpapTransport.ShouldRetryLiveSession (exception), Is.True);
 		}
 
-	[TestMethod]
+	[Test]
 	public void ShouldRetryLiveSession_HttpRequestException_ConnectionResetMessage_IsRetryable ()
 		{
 		var exception = new HttpRequestException ("Connection reset by peer.");
 
-		Assert.IsTrue (TpapTransport.ShouldRetryLiveSession (exception));
+		Assert.That (TpapTransport.ShouldRetryLiveSession (exception), Is.True);
 		}
 
-	[TestMethod]
+	[Test]
 	public void ShouldRetryLiveSession_HttpRequestException_OperationAbortedMessage_IsRetryable ()
 		{
 		var exception = new HttpRequestException ("The operation has been aborted.");
 
-		Assert.IsTrue (TpapTransport.ShouldRetryLiveSession (exception));
+		Assert.That (TpapTransport.ShouldRetryLiveSession (exception), Is.True);
 		}
 
-	[TestMethod]
+	[Test]
 	public void ShouldRetryLiveSession_UnrelatedException_IsNotRetryable ()
 		{
 		var exception = new InvalidOperationException ("Some unrelated failure.");
 
-		Assert.IsFalse (TpapTransport.ShouldRetryLiveSession (exception));
+		Assert.That (TpapTransport.ShouldRetryLiveSession (exception), Is.False);
 		}
 
-	[TestMethod]
+	[Test]
 	public void ToCancellationException_WrapsInnerExceptionAndPreservesToken ()
 		{
 		using var cts = new CancellationTokenSource ();
@@ -84,11 +84,11 @@ public sealed class TpapTransportRetryPolicyTests
 
 		OperationCanceledException result = TpapTransport.ToCancellationException (inner, cts.Token);
 
-		Assert.AreSame (inner, result.InnerException);
-		Assert.AreEqual (cts.Token, result.CancellationToken);
+		Assert.That (result.InnerException, Is.SameAs (inner));
+		Assert.That (result.CancellationToken, Is.EqualTo (cts.Token));
 		}
 
-	[TestMethod]
+	[Test]
 	public void ShouldRetryLiveSession_TranslatedInternalTimeoutAbort_IsNotRetryable ()
 		{
 		// This reproduces the scenario that caused the ~130s stall for TPAP devices: SendOnceAsync races a
@@ -104,6 +104,6 @@ public sealed class TpapTransportRetryPolicyTests
 
 		OperationCanceledException translated = TpapTransport.ToCancellationException (abortedException, cts.Token);
 
-		Assert.IsFalse (TpapTransport.ShouldRetryLiveSession (translated));
+		Assert.That (TpapTransport.ShouldRetryLiveSession (translated), Is.False);
 		}
 	}

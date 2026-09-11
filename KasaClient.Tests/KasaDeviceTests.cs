@@ -6,14 +6,14 @@ using System.Threading.Tasks;
 
 using KasaTapoClient;
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NUnit.Framework;
 
 namespace KasaClient.Tests;
 
-[TestClass]
+[TestFixture]
 public sealed class KasaDeviceTests
 	{
-	[TestMethod]
+	[Test]
 	public async Task UpdateAsync_WithLegacyResponse_PopulatesSystemInfoAndFeatures ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -30,18 +30,18 @@ public sealed class KasaDeviceTests
 
 		await device.UpdateAsync ().ConfigureAwait (false);
 
-		Assert.IsNotNull (device.SystemInfo);
-		Assert.AreEqual ("Test Plug", device.SystemInfo.Alias);
-		Assert.AreEqual (DeviceType.Plug, device.DeviceType);
-		Assert.AreEqual (true, device.IsOn);
-		Assert.AreEqual (1, transport.SentCommands.Count);
-		Assert.AreEqual (1, transport.SentManyCommands.Count);
-		Assert.AreEqual (KasaTapoClient.Internal.KasaCommands.GET_SYSTEM_INFO, transport.SentCommands[0]);
-		Assert.IsNotNull (device.GetFeature ("state"));
-		Assert.IsNotNull (device.GetFeature ("reboot"));
+		Assert.That (device.SystemInfo, Is.Not.Null);
+		Assert.That (device.SystemInfo.Alias, Is.EqualTo ("Test Plug"));
+		Assert.That (device.DeviceType, Is.EqualTo (DeviceType.Plug));
+		Assert.That (device.IsOn, Is.EqualTo (true));
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (1));
+		Assert.That (transport.SentManyCommands.Count, Is.EqualTo (1));
+		Assert.That (transport.SentCommands[0], Is.EqualTo (KasaTapoClient.Internal.KasaCommands.GET_SYSTEM_INFO));
+		Assert.That (device.GetFeature ("state"), Is.Not.Null);
+		Assert.That (device.GetFeature ("reboot"), Is.Not.Null);
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task UpdateEnergyUsageAsync_WithSmartDevice_RefreshesViaSmartProtocolNotLegacy ()
 		{
 		// Regression test: UpdateEnergyUsageAsync() used to always send the legacy emeter commands
@@ -107,19 +107,19 @@ public sealed class KasaDeviceTests
 		var device = new KasaDevice (configuration, transport);
 
 		await device.UpdateAsync ().ConfigureAwait (false);
-		Assert.IsNotNull (device.EnergyUsage);
-		Assert.AreEqual (5.0d, device.EnergyUsage.CurrentPowerWatts);
+		Assert.That (device.EnergyUsage, Is.Not.Null);
+		Assert.That (device.EnergyUsage.CurrentPowerWatts, Is.EqualTo (5.0d));
 
 		bool result = await device.UpdateEnergyUsageAsync ().ConfigureAwait (false);
 
-		Assert.IsTrue (result);
-		Assert.IsNotNull (device.EnergyUsage);
-		Assert.AreEqual (7.5d, device.EnergyUsage.CurrentPowerWatts);
-		Assert.AreEqual (3, transport.SentCommands.Count);
-		Assert.AreEqual (0, transport.SentManyCommands.Count);
+		Assert.That (result, Is.True);
+		Assert.That (device.EnergyUsage, Is.Not.Null);
+		Assert.That (device.EnergyUsage.CurrentPowerWatts, Is.EqualTo (7.5d));
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (3));
+		Assert.That (transport.SentManyCommands.Count, Is.EqualTo (0));
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task UpdateEnergyUsageAsync_WithSmartV2OptionalEmeterError_UsesEnergyUsageFallback ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -137,15 +137,15 @@ public sealed class KasaDeviceTests
 
 		bool result = await device.UpdateEnergyUsageAsync ().ConfigureAwait (false);
 
-		Assert.IsTrue (result);
-		Assert.IsNotNull (device.EnergyUsage);
-		Assert.AreEqual (7.5d, device.EnergyUsage.CurrentPowerWatts);
-		Assert.AreEqual (3, transport.SentCommands.Count);
-		StringAssert.Contains (transport.SentCommands[1], "\"method\":\"get_emeter_data\"");
-		StringAssert.Contains (transport.SentCommands[2], "\"method\":\"get_energy_usage\"");
+		Assert.That (result, Is.True);
+		Assert.That (device.EnergyUsage, Is.Not.Null);
+		Assert.That (device.EnergyUsage.CurrentPowerWatts, Is.EqualTo (7.5d));
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (3));
+		Assert.That (transport.SentCommands[1], Does.Contain ("\"method\":\"get_emeter_data\""));
+		Assert.That (transport.SentCommands[2], Does.Contain ("\"method\":\"get_energy_usage\""));
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task UpdateEnergyUsageAsync_WithSmartV2NonOptionalEmeterError_Throws ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -160,12 +160,11 @@ public sealed class KasaDeviceTests
 				connectionParameters: new DeviceConnectionParameters (DeviceFamilyKind.SmartKasaPlug, DeviceEncryptionKind.Aes)));
 		var device = new KasaDevice (configuration, transport);
 
-		InvalidOperationException exception = await Assert.ThrowsExactlyAsync<InvalidOperationException> (() => device.UpdateEnergyUsageAsync ()).ConfigureAwait (false);
-
-		StringAssert.Contains (exception.Message, "-1003");
+		await Assert.ThatAsync (() => device.UpdateEnergyUsageAsync (),
+			Throws.TypeOf<InvalidOperationException> ().With.Message.Contains ("-1003")).ConfigureAwait (false);
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task UpdateEnergyUsageAsync_WithSmartV2OptionalCurrentPowerError_ReturnsUsageWithoutPower ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -184,14 +183,14 @@ public sealed class KasaDeviceTests
 
 		bool result = await device.UpdateEnergyUsageAsync ().ConfigureAwait (false);
 
-		Assert.IsTrue (result);
-		Assert.IsNotNull (device.EnergyUsage);
-		Assert.IsNull (device.EnergyUsage.CurrentPowerWatts);
-		Assert.AreEqual (0.13d, device.EnergyUsage.TotalKilowattHours);
-		Assert.AreEqual (4, transport.SentCommands.Count);
+		Assert.That (result, Is.True);
+		Assert.That (device.EnergyUsage, Is.Not.Null);
+		Assert.That (device.EnergyUsage.CurrentPowerWatts, Is.Null);
+		Assert.That (device.EnergyUsage.TotalKilowattHours, Is.EqualTo (0.13d));
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (4));
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task UpdateAsync_WithSmartResponse_PopulatesSmartStatesAndRefreshesModules ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -254,26 +253,26 @@ public sealed class KasaDeviceTests
 
 		await device.UpdateAsync ().ConfigureAwait (false);
 
-		Assert.IsNotNull (device.SystemInfo);
-		Assert.AreEqual ("Smart Plug", device.SystemInfo.Alias);
-		Assert.AreEqual (DeviceType.Plug, device.DeviceType);
-		Assert.AreEqual (true, device.IsOn);
-		Assert.AreEqual (2, transport.SentCommands.Count);
-		Assert.AreEqual (0, transport.SentManyCommands.Count);
-		Assert.IsNotNull (device.CloudState);
-		Assert.AreEqual (true, device.CloudState.IsConnected);
-		Assert.IsNotNull (device.AutoOffState);
-		Assert.AreEqual (20, device.AutoOffState.DelayMinutes);
-		Assert.IsNotNull (device.LedState);
-		Assert.AreEqual (false, device.LedState.Enabled);
-		Assert.IsNotNull (device.EnergyUsage);
-		Assert.AreEqual (12.345d, device.EnergyUsage.CurrentPowerWatts);
-		Assert.IsNotNull (device.TimeState);
-		Assert.AreEqual ("UTC", device.TimeState.Region);
-		Assert.IsNotNull (device.GetFeature ("state"));
+		Assert.That (device.SystemInfo, Is.Not.Null);
+		Assert.That (device.SystemInfo.Alias, Is.EqualTo ("Smart Plug"));
+		Assert.That (device.DeviceType, Is.EqualTo (DeviceType.Plug));
+		Assert.That (device.IsOn, Is.EqualTo (true));
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (2));
+		Assert.That (transport.SentManyCommands.Count, Is.EqualTo (0));
+		Assert.That (device.CloudState, Is.Not.Null);
+		Assert.That (device.CloudState.IsConnected, Is.EqualTo (true));
+		Assert.That (device.AutoOffState, Is.Not.Null);
+		Assert.That (device.AutoOffState.DelayMinutes, Is.EqualTo (20));
+		Assert.That (device.LedState, Is.Not.Null);
+		Assert.That (device.LedState.Enabled, Is.EqualTo (false));
+		Assert.That (device.EnergyUsage, Is.Not.Null);
+		Assert.That (device.EnergyUsage.CurrentPowerWatts, Is.EqualTo (12.345d));
+		Assert.That (device.TimeState, Is.Not.Null);
+		Assert.That (device.TimeState.Region, Is.EqualTo ("UTC"));
+		Assert.That (device.GetFeature ("state"), Is.Not.Null);
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task UpdateAsync_WithPaginatedChildDeviceList_FetchesRemainingPagesAndMergesFullList ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -351,16 +350,16 @@ public sealed class KasaDeviceTests
 
 		await device.UpdateAsync ().ConfigureAwait (false);
 
-		Assert.AreEqual (3, device.Children.Count, "The full, paginated child device list should be merged rather than only the first page.");
-		Assert.IsNotNull (device.GetChild ("child-1"));
-		Assert.IsNotNull (device.GetChild ("child-2"));
-		Assert.IsNotNull (device.GetChild ("child-3"));
-		Assert.AreEqual (3, transport.SentCommands.Count, "One initial multi-request plus two follow-up get_child_device_list page requests should be sent.");
-		StringAssert.Contains (transport.SentCommands[1], "\"start_index\":1");
-		StringAssert.Contains (transport.SentCommands[2], "\"start_index\":2");
+		Assert.That (device.Children.Count, Is.EqualTo (3), "The full, paginated child device list should be merged rather than only the first page.");
+		Assert.That (device.GetChild ("child-1"), Is.Not.Null);
+		Assert.That (device.GetChild ("child-2"), Is.Not.Null);
+		Assert.That (device.GetChild ("child-3"), Is.Not.Null);
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (3), "One initial multi-request plus two follow-up get_child_device_list page requests should be sent.");
+		Assert.That (transport.SentCommands[1], Does.Contain ("\"start_index\":1"));
+		Assert.That (transport.SentCommands[2], Does.Contain ("\"start_index\":2"));
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task UpdateAsync_WithSmartHubChildResponse_MergesChildRefreshData ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -444,21 +443,21 @@ public sealed class KasaDeviceTests
 
 		await device.UpdateAsync ().ConfigureAwait (false);
 
-		Assert.AreEqual (DeviceType.Hub, device.DeviceType);
-		Assert.AreEqual (1, device.Children.Count);
+		Assert.That (device.DeviceType, Is.EqualTo (DeviceType.Hub));
+		Assert.That (device.Children.Count, Is.EqualTo (1));
 		ChildDeviceInfo? child = device.GetChild ("child-1");
-		Assert.IsNotNull (child);
-		Assert.AreEqual ("Button 1", child.Alias);
-		Assert.AreEqual (DeviceType.Sensor, child.DeviceType);
+		Assert.That (child, Is.Not.Null);
+		Assert.That (child.Alias, Is.EqualTo ("Button 1"));
+		Assert.That (child.DeviceType, Is.EqualTo (DeviceType.Sensor));
 		ChildDevice? childDevice = device.GetChildDevice ("child-1");
-		Assert.IsNotNull (childDevice);
-		Assert.AreEqual (true, childDevice.DoubleClick.Enabled);
-		Assert.AreEqual (1, childDevice.TriggerLogs.Logs.Count);
-		Assert.AreEqual ("click", childDevice.TriggerLogs.Logs[0].EventName);
-		Assert.AreEqual (2, transport.SentCommands.Count);
+		Assert.That (childDevice, Is.Not.Null);
+		Assert.That (childDevice.DoubleClick.Enabled, Is.EqualTo (true));
+		Assert.That (childDevice.TriggerLogs.Logs.Count, Is.EqualTo (1));
+		Assert.That (childDevice.TriggerLogs.Logs[0].EventName, Is.EqualTo ("click"));
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (2));
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task TurnChildOffAsync_WithKnownChild_SendsChildRelayCommandAndRefreshesState ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -481,13 +480,13 @@ public sealed class KasaDeviceTests
 		await device.UpdateAsync ().ConfigureAwait (false);
 		await device.TurnChildOffAsync ("child-1").ConfigureAwait (false);
 
-		Assert.AreEqual (3, transport.SentCommands.Count);
-		StringAssert.Contains (transport.SentCommands[1], "\"child_ids\":[\"child-1\"]");
-		StringAssert.Contains (transport.SentCommands[1], "\"state\":0");
-		Assert.AreEqual (false, device.GetChild ("child-1")!.IsOn);
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (3));
+		Assert.That (transport.SentCommands[1], Does.Contain ("\"child_ids\":[\"child-1\"]"));
+		Assert.That (transport.SentCommands[1], Does.Contain ("\"state\":0"));
+		Assert.That (device.GetChild ("child-1")!.IsOn, Is.EqualTo (false));
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task SetBrightnessAsync_WithLegacyBulbTransition_SendsRequestedTransitionPeriodAndRefreshesState ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -510,15 +509,15 @@ public sealed class KasaDeviceTests
 		await device.UpdateAsync ().ConfigureAwait (false);
 		await device.SetBrightnessAsync (60, transitionMilliseconds: 1500).ConfigureAwait (false);
 
-		Assert.AreEqual (3, transport.SentCommands.Count);
-		StringAssert.Contains (transport.SentCommands[1], "\"brightness\":60");
-		StringAssert.Contains (transport.SentCommands[1], "\"transition_period\":1500");
-		Assert.IsNotNull (device.LightState);
-		Assert.AreEqual (60, device.LightState.Brightness);
-		Assert.AreEqual (true, device.LightState.IsOn);
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (3));
+		Assert.That (transport.SentCommands[1], Does.Contain ("\"brightness\":60"));
+		Assert.That (transport.SentCommands[1], Does.Contain ("\"transition_period\":1500"));
+		Assert.That (device.LightState, Is.Not.Null);
+		Assert.That (device.LightState.Brightness, Is.EqualTo (60));
+		Assert.That (device.LightState.IsOn, Is.EqualTo (true));
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task UpdateAsync_WithKl400L5_ExposesSupportedColorTemperatureRange ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -552,12 +551,12 @@ public sealed class KasaDeviceTests
 		await device.UpdateAsync ().ConfigureAwait (false);
 
 		DeviceFeature? feature = device.GetFeature ("color_temperature");
-		Assert.IsNotNull (feature);
-		Assert.AreEqual (2500d, feature.MinimumValue);
-		Assert.AreEqual (9000d, feature.MaximumValue);
+		Assert.That (feature, Is.Not.Null);
+		Assert.That (feature.MinimumValue, Is.EqualTo (2500d));
+		Assert.That (feature.MaximumValue, Is.EqualTo (9000d));
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task SetHsvAsync_WithSmartBulb_SendsSmartCommandAndRefreshesLightState ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -639,21 +638,21 @@ public sealed class KasaDeviceTests
 		await device.UpdateAsync ().ConfigureAwait (false);
 		await device.SetHsvAsync (120, 90, 80).ConfigureAwait (false);
 
-		Assert.AreEqual (3, transport.SentCommands.Count);
-		StringAssert.Contains (transport.SentCommands[1], "\"method\":\"set_device_info\"");
-		StringAssert.Contains (transport.SentCommands[1], "\"device_on\":true");
-		StringAssert.Contains (transport.SentCommands[1], "\"brightness\":80");
-		StringAssert.Contains (transport.SentCommands[1], "\"hue\":120");
-		StringAssert.Contains (transport.SentCommands[1], "\"saturation\":90");
-		StringAssert.Contains (transport.SentCommands[1], "\"color_temp\":0");
-		Assert.IsNotNull (device.LightState);
-		Assert.AreEqual (80, device.LightState.Brightness);
-		Assert.AreEqual (120, device.LightState.Hue);
-		Assert.AreEqual (90, device.LightState.Saturation);
-		Assert.AreEqual (0, device.LightState.ColorTemperature);
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (3));
+		Assert.That (transport.SentCommands[1], Does.Contain ("\"method\":\"set_device_info\""));
+		Assert.That (transport.SentCommands[1], Does.Contain ("\"device_on\":true"));
+		Assert.That (transport.SentCommands[1], Does.Contain ("\"brightness\":80"));
+		Assert.That (transport.SentCommands[1], Does.Contain ("\"hue\":120"));
+		Assert.That (transport.SentCommands[1], Does.Contain ("\"saturation\":90"));
+		Assert.That (transport.SentCommands[1], Does.Contain ("\"color_temp\":0"));
+		Assert.That (device.LightState, Is.Not.Null);
+		Assert.That (device.LightState.Brightness, Is.EqualTo (80));
+		Assert.That (device.LightState.Hue, Is.EqualTo (120));
+		Assert.That (device.LightState.Saturation, Is.EqualTo (90));
+		Assert.That (device.LightState.ColorTemperature, Is.EqualTo (0));
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task SetLightEffectAsync_WithSmartBulb_SendsEffectCommandAndRefreshesEffectState ()
 		{
 		const string initialCoreResponse = """
@@ -791,18 +790,18 @@ public sealed class KasaDeviceTests
 		await device.UpdateAsync ().ConfigureAwait (false);
 		await device.SetLightEffectAsync ("L1").ConfigureAwait (false);
 
-		Assert.AreEqual (7, transport.SentCommands.Count);
-		StringAssert.Contains (transport.SentCommands[4], "\"set_dynamic_light_effect_rule_enable\"");
-		StringAssert.Contains (transport.SentCommands[4], "\"enable\":1");
-		StringAssert.Contains (transport.SentCommands[4], "\"id\":\"L1\"");
-		Assert.IsNotNull (device.LightEffect);
-		Assert.AreEqual (true, device.LightEffect.IsEnabled);
-		Assert.AreEqual ("L1", device.LightEffect.Identifier);
-		Assert.AreEqual ("Party", device.LightEffect.Name);
-		Assert.AreEqual (2, device.AvailableLightEffects.Count);
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (7));
+		Assert.That (transport.SentCommands[4], Does.Contain ("\"set_dynamic_light_effect_rule_enable\""));
+		Assert.That (transport.SentCommands[4], Does.Contain ("\"enable\":1"));
+		Assert.That (transport.SentCommands[4], Does.Contain ("\"id\":\"L1\""));
+		Assert.That (device.LightEffect, Is.Not.Null);
+		Assert.That (device.LightEffect.IsEnabled, Is.EqualTo (true));
+		Assert.That (device.LightEffect.Identifier, Is.EqualTo ("L1"));
+		Assert.That (device.LightEffect.Name, Is.EqualTo ("Party"));
+		Assert.That (device.AvailableLightEffects.Count, Is.EqualTo (2));
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task SetLightTransitionsEnabledAsync_WithSmartBulb_SendsEnableCommandAndRefreshesTransitionState ()
 		{
 		const string initialResponse = """
@@ -907,23 +906,23 @@ public sealed class KasaDeviceTests
 		await device.UpdateAsync ().ConfigureAwait (false);
 		await device.SetLightTransitionsEnabledAsync (true).ConfigureAwait (false);
 
-		Assert.AreEqual (6, transport.SentCommands.Count);
-		StringAssert.Contains (transport.SentCommands[2], "\"method\":\"set_on_off_gradually_info\"");
-		StringAssert.Contains (transport.SentCommands[2], "\"on_state\":{");
-		StringAssert.Contains (transport.SentCommands[2], "\"duration\":0");
-		StringAssert.Contains (transport.SentCommands[2], "\"enable\":true");
-		StringAssert.Contains (transport.SentCommands[3], "\"method\":\"set_on_off_gradually_info\"");
-		StringAssert.Contains (transport.SentCommands[3], "\"off_state\":{");
-		StringAssert.Contains (transport.SentCommands[3], "\"duration\":0");
-		StringAssert.Contains (transport.SentCommands[3], "\"enable\":true");
-		Assert.IsNotNull (device.LightTransitionState);
-		Assert.AreEqual (12, device.LightTransitionState.TransitionOnSeconds);
-		Assert.AreEqual (12, device.LightTransitionState.TransitionOnDurationSeconds);
-		Assert.AreEqual (8, device.LightTransitionState.TransitionOffSeconds);
-		Assert.AreEqual (8, device.LightTransitionState.TransitionOffDurationSeconds);
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (6));
+		Assert.That (transport.SentCommands[2], Does.Contain ("\"method\":\"set_on_off_gradually_info\""));
+		Assert.That (transport.SentCommands[2], Does.Contain ("\"on_state\":{"));
+		Assert.That (transport.SentCommands[2], Does.Contain ("\"duration\":0"));
+		Assert.That (transport.SentCommands[2], Does.Contain ("\"enable\":true"));
+		Assert.That (transport.SentCommands[3], Does.Contain ("\"method\":\"set_on_off_gradually_info\""));
+		Assert.That (transport.SentCommands[3], Does.Contain ("\"off_state\":{"));
+		Assert.That (transport.SentCommands[3], Does.Contain ("\"duration\":0"));
+		Assert.That (transport.SentCommands[3], Does.Contain ("\"enable\":true"));
+		Assert.That (device.LightTransitionState, Is.Not.Null);
+		Assert.That (device.LightTransitionState.TransitionOnSeconds, Is.EqualTo (12));
+		Assert.That (device.LightTransitionState.TransitionOnDurationSeconds, Is.EqualTo (12));
+		Assert.That (device.LightTransitionState.TransitionOffSeconds, Is.EqualTo (8));
+		Assert.That (device.LightTransitionState.TransitionOffDurationSeconds, Is.EqualTo (8));
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task SetLightTransitionsEnabledAsync_WithSmartBulbV1_SendsTopLevelEnableCommand ()
 		{
 		const string initialResponse = """
@@ -1015,16 +1014,16 @@ public sealed class KasaDeviceTests
 		await device.UpdateAsync ().ConfigureAwait (false);
 		await device.SetLightTransitionsEnabledAsync (true).ConfigureAwait (false);
 
-		Assert.AreEqual (5, transport.SentCommands.Count);
-		StringAssert.Contains (transport.SentCommands[2], "\"method\":\"set_on_off_gradually_info\"");
-		StringAssert.Contains (transport.SentCommands[2], "\"enable\":true");
-		Assert.IsFalse (transport.SentCommands[2].Contains ("\"on_state\":"));
-		Assert.IsFalse (transport.SentCommands[2].Contains ("\"off_state\":"));
-		Assert.IsNotNull (device.LightTransitionState);
-		Assert.AreEqual (true, device.LightTransitionState.IsEnabled);
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (5));
+		Assert.That (transport.SentCommands[2], Does.Contain ("\"method\":\"set_on_off_gradually_info\""));
+		Assert.That (transport.SentCommands[2], Does.Contain ("\"enable\":true"));
+		Assert.That (transport.SentCommands[2].Contains ("\"on_state\":"), Is.False);
+		Assert.That (transport.SentCommands[2].Contains ("\"off_state\":"), Is.False);
+		Assert.That (device.LightTransitionState, Is.Not.Null);
+		Assert.That (device.LightTransitionState.IsEnabled, Is.EqualTo (true));
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task UpdateAsync_WithSmartBulbV1_ExposesSingleSmoothTransitionsFeature ()
 		{
 		const string response = """
@@ -1071,13 +1070,13 @@ public sealed class KasaDeviceTests
 
 		await device.UpdateAsync ().ConfigureAwait (false);
 
-		Assert.AreEqual (1, device.GetSmartComponentVersion ("on_off_gradually"));
-		Assert.IsNotNull (device.GetFeature ("smooth_transitions"));
-		Assert.IsNull (device.GetFeature ("smooth_transition_on"));
-		Assert.IsNull (device.GetFeature ("smooth_transition_off"));
+		Assert.That (device.GetSmartComponentVersion ("on_off_gradually"), Is.EqualTo (1));
+		Assert.That (device.GetFeature ("smooth_transitions"), Is.Not.Null);
+		Assert.That (device.GetFeature ("smooth_transition_on"), Is.Null);
+		Assert.That (device.GetFeature ("smooth_transition_off"), Is.Null);
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task UpdateAsync_WithSmartBulbV2_ExposesDirectionalTransitionFeaturesWithDeviceMaximums ()
 		{
 		const string response = """
@@ -1129,17 +1128,17 @@ public sealed class KasaDeviceTests
 
 		await device.UpdateAsync ().ConfigureAwait (false);
 
-		Assert.AreEqual (2, device.GetSmartComponentVersion ("on_off_gradually"));
+		Assert.That (device.GetSmartComponentVersion ("on_off_gradually"), Is.EqualTo (2));
 		DeviceFeature? onFeature = device.GetFeature ("smooth_transition_on");
 		DeviceFeature? offFeature = device.GetFeature ("smooth_transition_off");
-		Assert.IsNotNull (onFeature);
-		Assert.IsNotNull (offFeature);
-		Assert.AreEqual (40d, onFeature.MaximumValue);
-		Assert.AreEqual (45d, offFeature.MaximumValue);
-		Assert.IsNull (device.GetFeature ("smooth_transitions"));
+		Assert.That (onFeature, Is.Not.Null);
+		Assert.That (offFeature, Is.Not.Null);
+		Assert.That (onFeature.MaximumValue, Is.EqualTo (40d));
+		Assert.That (offFeature.MaximumValue, Is.EqualTo (45d));
+		Assert.That (device.GetFeature ("smooth_transitions"), Is.Null);
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task SetLightTurnOnTransitionAsync_WithSmartBulb_UsesDeviceReportedMaximumDuration ()
 		{
 		const string initialResponse = """
@@ -1241,12 +1240,12 @@ public sealed class KasaDeviceTests
 		await device.UpdateAsync ().ConfigureAwait (false);
 		await device.SetLightTurnOnTransitionAsync (90).ConfigureAwait (false);
 
-		Assert.IsNotNull (device.LightTransitionState);
-		Assert.AreEqual (90, device.LightTransitionState.TransitionOnSeconds);
-		Assert.AreEqual (90, device.LightTransitionState.TransitionOnMaximumDurationSeconds);
+		Assert.That (device.LightTransitionState, Is.Not.Null);
+		Assert.That (device.LightTransitionState.TransitionOnSeconds, Is.EqualTo (90));
+		Assert.That (device.LightTransitionState.TransitionOnMaximumDurationSeconds, Is.EqualTo (90));
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task SetLightTurnOnTransitionAsync_WithSmartBulb_SendsOnStateCommandAndRefreshesTransitionState ()
 		{
 		const string initialResponse = """
@@ -1348,22 +1347,22 @@ public sealed class KasaDeviceTests
 		await device.UpdateAsync ().ConfigureAwait (false);
 		await device.SetLightTurnOnTransitionAsync (15).ConfigureAwait (false);
 
-		Assert.AreEqual (5, transport.SentCommands.Count);
-		StringAssert.Contains (transport.SentCommands[2], "\"method\":\"set_on_off_gradually_info\"");
-		StringAssert.Contains (transport.SentCommands[2], "\"on_state\":{");
-		StringAssert.Contains (transport.SentCommands[2], "\"enable\":true");
-		StringAssert.Contains (transport.SentCommands[2], "\"duration\":15");
-		Assert.IsNotNull (device.LightTransitionState);
-		Assert.AreEqual (true, device.LightTransitionState.IsEnabled);
-		Assert.AreEqual (true, device.LightTransitionState.IsTransitionOnEnabled);
-		Assert.AreEqual (15, device.LightTransitionState.TransitionOnSeconds);
-		Assert.AreEqual (15, device.LightTransitionState.TransitionOnDurationSeconds);
-		Assert.AreEqual (true, device.LightTransitionState.IsTransitionOffEnabled);
-		Assert.AreEqual (8, device.LightTransitionState.TransitionOffSeconds);
-		Assert.AreEqual (8, device.LightTransitionState.TransitionOffDurationSeconds);
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (5));
+		Assert.That (transport.SentCommands[2], Does.Contain ("\"method\":\"set_on_off_gradually_info\""));
+		Assert.That (transport.SentCommands[2], Does.Contain ("\"on_state\":{"));
+		Assert.That (transport.SentCommands[2], Does.Contain ("\"enable\":true"));
+		Assert.That (transport.SentCommands[2], Does.Contain ("\"duration\":15"));
+		Assert.That (device.LightTransitionState, Is.Not.Null);
+		Assert.That (device.LightTransitionState.IsEnabled, Is.EqualTo (true));
+		Assert.That (device.LightTransitionState.IsTransitionOnEnabled, Is.EqualTo (true));
+		Assert.That (device.LightTransitionState.TransitionOnSeconds, Is.EqualTo (15));
+		Assert.That (device.LightTransitionState.TransitionOnDurationSeconds, Is.EqualTo (15));
+		Assert.That (device.LightTransitionState.IsTransitionOffEnabled, Is.EqualTo (true));
+		Assert.That (device.LightTransitionState.TransitionOffSeconds, Is.EqualTo (8));
+		Assert.That (device.LightTransitionState.TransitionOffDurationSeconds, Is.EqualTo (8));
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task SetLightTurnOffTransitionAsync_WithSmartBulb_SendsOffStateCommandAndRefreshesTransitionState ()
 		{
 		const string initialResponse = """
@@ -1465,22 +1464,22 @@ public sealed class KasaDeviceTests
 		await device.UpdateAsync ().ConfigureAwait (false);
 		await device.SetLightTurnOffTransitionAsync (0).ConfigureAwait (false);
 
-		Assert.AreEqual (5, transport.SentCommands.Count);
-		StringAssert.Contains (transport.SentCommands[2], "\"method\":\"set_on_off_gradually_info\"");
-		StringAssert.Contains (transport.SentCommands[2], "\"off_state\":{");
-		StringAssert.Contains (transport.SentCommands[2], "\"enable\":false");
-		StringAssert.Contains (transport.SentCommands[2], "\"duration\":8");
-		Assert.IsNotNull (device.LightTransitionState);
-		Assert.AreEqual (true, device.LightTransitionState.IsEnabled);
-		Assert.AreEqual (true, device.LightTransitionState.IsTransitionOnEnabled);
-		Assert.AreEqual (12, device.LightTransitionState.TransitionOnSeconds);
-		Assert.AreEqual (12, device.LightTransitionState.TransitionOnDurationSeconds);
-		Assert.AreEqual (false, device.LightTransitionState.IsTransitionOffEnabled);
-		Assert.AreEqual (0, device.LightTransitionState.TransitionOffSeconds);
-		Assert.AreEqual (8, device.LightTransitionState.TransitionOffDurationSeconds);
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (5));
+		Assert.That (transport.SentCommands[2], Does.Contain ("\"method\":\"set_on_off_gradually_info\""));
+		Assert.That (transport.SentCommands[2], Does.Contain ("\"off_state\":{"));
+		Assert.That (transport.SentCommands[2], Does.Contain ("\"enable\":false"));
+		Assert.That (transport.SentCommands[2], Does.Contain ("\"duration\":8"));
+		Assert.That (device.LightTransitionState, Is.Not.Null);
+		Assert.That (device.LightTransitionState.IsEnabled, Is.EqualTo (true));
+		Assert.That (device.LightTransitionState.IsTransitionOnEnabled, Is.EqualTo (true));
+		Assert.That (device.LightTransitionState.TransitionOnSeconds, Is.EqualTo (12));
+		Assert.That (device.LightTransitionState.TransitionOnDurationSeconds, Is.EqualTo (12));
+		Assert.That (device.LightTransitionState.IsTransitionOffEnabled, Is.EqualTo (false));
+		Assert.That (device.LightTransitionState.TransitionOffSeconds, Is.EqualTo (0));
+		Assert.That (device.LightTransitionState.TransitionOffDurationSeconds, Is.EqualTo (8));
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task ClearLightEffectAsync_WithSmartLightStrip_SendsDisablePayloadAndRefreshesEffectState ()
 		{
 		const string initialResponse = """
@@ -1574,16 +1573,16 @@ public sealed class KasaDeviceTests
 		await device.UpdateAsync ().ConfigureAwait (false);
 		await device.ClearLightEffectAsync ().ConfigureAwait (false);
 
-		Assert.AreEqual (4, transport.SentCommands.Count);
-		StringAssert.Contains (transport.SentCommands[2], "\"method\":\"set_lighting_effect\"");
-		StringAssert.Contains (transport.SentCommands[2], "\"enable\":0");
-		Assert.IsNotNull (device.LightEffect);
-		Assert.AreEqual (false, device.LightEffect.IsEnabled);
-		Assert.IsNotNull (device.LightStripEffect.State);
-		Assert.AreEqual (17, device.LightStripEffect.AvailableEffects.Count);
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (4));
+		Assert.That (transport.SentCommands[2], Does.Contain ("\"method\":\"set_lighting_effect\""));
+		Assert.That (transport.SentCommands[2], Does.Contain ("\"enable\":0"));
+		Assert.That (device.LightEffect, Is.Not.Null);
+		Assert.That (device.LightEffect.IsEnabled, Is.EqualTo (false));
+		Assert.That (device.LightStripEffect.State, Is.Not.Null);
+		Assert.That (device.LightStripEffect.AvailableEffects.Count, Is.EqualTo (17));
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task GetScannedChildDevicesAsync_WithHubCategories_ReturnsDetectedChildren ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -1658,17 +1657,17 @@ public sealed class KasaDeviceTests
 		await device.UpdateAsync ().ConfigureAwait (false);
 		ChildSetupScanResult result = await device.GetScannedChildDevicesAsync ().ConfigureAwait (false);
 
-		CollectionAssert.AreEquivalent (new[] { "subg.trigger.button", "subg.sensor.contact" }, (System.Collections.ICollection)result.SupportedCategories);
-		Assert.AreEqual (2, result.DetectedDevices.Count);
-		Assert.AreEqual ("scan-1", result.DetectedDevices[0].DeviceId);
-		Assert.AreEqual ("S200B", result.DetectedDevices[0].Model);
-		Assert.AreEqual ("subg.trigger.button", result.DetectedDevices[0].Category);
-		StringAssert.Contains (transport.SentCommands[1], "\"method\":\"get_scan_child_device_list\"");
-		StringAssert.Contains (transport.SentCommands[1], "subg.trigger.button");
-		StringAssert.Contains (transport.SentCommands[1], "subg.sensor.contact");
+		Assert.That ((System.Collections.ICollection)result.SupportedCategories, Is.EquivalentTo (new[] { "subg.trigger.button", "subg.sensor.contact" }));
+		Assert.That (result.DetectedDevices.Count, Is.EqualTo (2));
+		Assert.That (result.DetectedDevices[0].DeviceId, Is.EqualTo ("scan-1"));
+		Assert.That (result.DetectedDevices[0].Model, Is.EqualTo ("S200B"));
+		Assert.That (result.DetectedDevices[0].Category, Is.EqualTo ("subg.trigger.button"));
+		Assert.That (transport.SentCommands[1], Does.Contain ("\"method\":\"get_scan_child_device_list\""));
+		Assert.That (transport.SentCommands[1], Does.Contain ("subg.trigger.button"));
+		Assert.That (transport.SentCommands[1], Does.Contain ("subg.sensor.contact"));
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task PairAndUnpairChildDeviceAsync_WithHub_SendsCommandsAndRefreshesChildren ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -1823,16 +1822,16 @@ public sealed class KasaDeviceTests
 		IReadOnlyList<DetectedChildDevice> added = await device.PairScannedChildDevicesAsync (scanResult.DetectedDevices).ConfigureAwait (false);
 		await device.UnpairChildDeviceAsync ("scan-1").ConfigureAwait (false);
 
-		Assert.AreEqual (1, added.Count);
-		Assert.AreEqual ("scan-1", added[0].DeviceId);
-		StringAssert.Contains (transport.SentCommands[1], "\"method\":\"add_child_device_list\"");
-		StringAssert.Contains (transport.SentCommands[1], "\"device_id\":\"scan-1\"");
-		StringAssert.Contains (transport.SentCommands[3], "\"method\":\"remove_child_device_list\"");
-		StringAssert.Contains (transport.SentCommands[3], "\"device_id\":\"scan-1\"");
-		Assert.IsNull (device.GetChild ("scan-1"));
+		Assert.That (added.Count, Is.EqualTo (1));
+		Assert.That (added[0].DeviceId, Is.EqualTo ("scan-1"));
+		Assert.That (transport.SentCommands[1], Does.Contain ("\"method\":\"add_child_device_list\""));
+		Assert.That (transport.SentCommands[1], Does.Contain ("\"device_id\":\"scan-1\""));
+		Assert.That (transport.SentCommands[3], Does.Contain ("\"method\":\"remove_child_device_list\""));
+		Assert.That (transport.SentCommands[3], Does.Contain ("\"device_id\":\"scan-1\""));
+		Assert.That (device.GetChild ("scan-1"), Is.Null);
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task UpdateAsync_WithSensorChildRefresh_ProjectsTypedChildModules ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -1964,36 +1963,36 @@ public sealed class KasaDeviceTests
 		await device.UpdateAsync ().ConfigureAwait (false);
 
 		ChildDevice sensor = device.GetChildDevice ("sensor-1")!;
-		Assert.AreEqual (85, sensor.Battery.BatteryLevel);
-		Assert.AreEqual (true, sensor.Battery.BatteryLow);
-		Assert.AreEqual (true, sensor.Contact.IsOpen);
-		Assert.AreEqual (true, sensor.Motion.MotionDetected);
-		Assert.AreEqual ("wet", sensor.WaterLeak.State!.Status);
-		Assert.AreEqual (true, sensor.WaterLeak.State.Alert);
-		Assert.AreEqual (1700000001L, sensor.WaterLeak.State.AlertTimestamp);
-		Assert.AreEqual (21.5d, sensor.Temperature.Temperature);
-		Assert.AreEqual (true, sensor.Temperature.Warning);
-		Assert.AreEqual ("celsius", sensor.Temperature.Unit);
-		Assert.AreEqual (40d, sensor.Humidity.MinimumComfortHumidity);
-		Assert.AreEqual (70d, sensor.Humidity.MaximumComfortHumidity);
+		Assert.That (sensor.Battery.BatteryLevel, Is.EqualTo (85));
+		Assert.That (sensor.Battery.BatteryLow, Is.EqualTo (true));
+		Assert.That (sensor.Contact.IsOpen, Is.EqualTo (true));
+		Assert.That (sensor.Motion.MotionDetected, Is.EqualTo (true));
+		Assert.That (sensor.WaterLeak.State!.Status, Is.EqualTo ("wet"));
+		Assert.That (sensor.WaterLeak.State.Alert, Is.EqualTo (true));
+		Assert.That (sensor.WaterLeak.State.AlertTimestamp, Is.EqualTo (1700000001L));
+		Assert.That (sensor.Temperature.Temperature, Is.EqualTo (21.5d));
+		Assert.That (sensor.Temperature.Warning, Is.EqualTo (true));
+		Assert.That (sensor.Temperature.Unit, Is.EqualTo ("celsius"));
+		Assert.That (sensor.Humidity.MinimumComfortHumidity, Is.EqualTo (40d));
+		Assert.That (sensor.Humidity.MaximumComfortHumidity, Is.EqualTo (70d));
 
 		ChildDevice trv = device.GetChildDevice ("trv-1")!;
-		Assert.AreEqual (true, trv.FrostProtection.Enabled);
-		Assert.AreEqual (7, trv.FrostProtection.MinimumTemperature);
-		Assert.AreEqual (true, trv.ChildProtection.Enabled);
-		Assert.AreEqual (23.5d, trv.TemperatureControl.TargetTemperature);
-		Assert.AreEqual (5, trv.TemperatureControl.MinimumTargetTemperature);
-		Assert.AreEqual (30, trv.TemperatureControl.MaximumTargetTemperature);
-		Assert.AreEqual (2, trv.TemperatureControl.TemperatureOffset);
-		CollectionAssert.AreEqual (new[] { "heating", "window_open" }, (System.Collections.ICollection)trv.TemperatureControl.States);
-		Assert.AreEqual (22d, trv.Thermostat.CurrentTemperature);
-		Assert.AreEqual ("celsius", trv.Thermostat.Unit);
-		Assert.AreEqual (1, trv.TriggerLogs.Logs.Count);
-		Assert.AreEqual ("started", trv.TriggerLogs.Logs[0].EventName);
-		Assert.AreEqual (3, transport.SentCommands.Count);
+		Assert.That (trv.FrostProtection.Enabled, Is.EqualTo (true));
+		Assert.That (trv.FrostProtection.MinimumTemperature, Is.EqualTo (7));
+		Assert.That (trv.ChildProtection.Enabled, Is.EqualTo (true));
+		Assert.That (trv.TemperatureControl.TargetTemperature, Is.EqualTo (23.5d));
+		Assert.That (trv.TemperatureControl.MinimumTargetTemperature, Is.EqualTo (5));
+		Assert.That (trv.TemperatureControl.MaximumTargetTemperature, Is.EqualTo (30));
+		Assert.That (trv.TemperatureControl.TemperatureOffset, Is.EqualTo (2));
+		Assert.That ((System.Collections.ICollection)trv.TemperatureControl.States, Is.EqualTo (new[] { "heating", "window_open" }));
+		Assert.That (trv.Thermostat.CurrentTemperature, Is.EqualTo (22d));
+		Assert.That (trv.Thermostat.Unit, Is.EqualTo ("celsius"));
+		Assert.That (trv.TriggerLogs.Logs.Count, Is.EqualTo (1));
+		Assert.That (trv.TriggerLogs.Logs[0].EventName, Is.EqualTo ("started"));
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (3));
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task SetLightEffectAsync_WithSmartPlug_ThrowsInvalidOperationException ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -2032,10 +2031,10 @@ public sealed class KasaDeviceTests
 				connectionParameters: new DeviceConnectionParameters (DeviceFamilyKind.SmartTapoPlug, DeviceEncryptionKind.Aes)));
 		var device = new KasaDevice (configuration, transport);
 
-		await Assert.ThrowsExactlyAsync<InvalidOperationException> (() => device.SetLightEffectAsync ("Aurora")).ConfigureAwait (false);
+		await Assert.ThatAsync (() => device.SetLightEffectAsync ("Aurora"), Throws.TypeOf<InvalidOperationException> ()).ConfigureAwait (false);
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task TurnChildOnAsync_WithUnknownChild_ThrowsInvalidOperationException ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -2053,10 +2052,10 @@ public sealed class KasaDeviceTests
 		var device = new KasaDevice (configuration, transport);
 
 		await device.UpdateAsync ().ConfigureAwait (false);
-		await Assert.ThrowsExactlyAsync<InvalidOperationException> (() => device.TurnChildOnAsync ("missing-child")).ConfigureAwait (false);
+		await Assert.ThatAsync (() => device.TurnChildOnAsync ("missing-child"), Throws.TypeOf<InvalidOperationException> ()).ConfigureAwait (false);
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task GetScannedChildDevicesAsync_WithNonHub_ThrowsInvalidOperationException ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -2096,10 +2095,10 @@ public sealed class KasaDeviceTests
 		var device = new KasaDevice (configuration, transport);
 
 		await device.UpdateAsync ().ConfigureAwait (false);
-		await Assert.ThrowsExactlyAsync<InvalidOperationException> (() => device.GetScannedChildDevicesAsync ()).ConfigureAwait (false);
+		await Assert.ThatAsync (() => device.GetScannedChildDevicesAsync (), Throws.TypeOf<InvalidOperationException> ()).ConfigureAwait (false);
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task ExecuteCommandAsync_WithUpdateAfterCommand_RefreshesStateBeforeReturningResponse ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -2119,14 +2118,14 @@ public sealed class KasaDeviceTests
 			KasaTapoClient.Internal.KasaCommands.CreateSetRelayStateCommand (true),
 			DeviceStateUpdateMode.UpdateAfterCommand).ConfigureAwait (false);
 
-		Assert.AreEqual ("{\"system\":{\"set_relay_state\":{\"err_code\":0}}}", response);
-		Assert.AreEqual (2, transport.SentCommands.Count);
-		Assert.AreEqual (1, transport.SentManyCommands.Count);
-		Assert.AreEqual ("Updated Plug", device.SystemInfo?.Alias);
-		Assert.AreEqual (true, device.IsOn);
+		Assert.That (response, Is.EqualTo ("{\"system\":{\"set_relay_state\":{\"err_code\":0}}}"));
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (2));
+		Assert.That (transport.SentManyCommands.Count, Is.EqualTo (1));
+		Assert.That (device.SystemInfo?.Alias, Is.EqualTo ("Updated Plug"));
+		Assert.That (device.IsOn, Is.EqualTo (true));
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task ExecuteSmartCommandAsync_BuildsSmartRequestAndRefreshesStateWhenRequested ()
 		{
 		var transport = new FakeDeviceTransport (
@@ -2171,16 +2170,16 @@ public sealed class KasaDeviceTests
 			new Newtonsoft.Json.Linq.JObject { ["device_on"] = true },
 			DeviceStateUpdateMode.UpdateAfterCommand).ConfigureAwait (false);
 
-		Assert.AreEqual ("{\"result\":{\"error_code\":0}}", response);
-		Assert.AreEqual (3, transport.SentCommands.Count);
-		StringAssert.Contains (transport.SentCommands[0], "\"method\":\"set_device_info\"");
-		StringAssert.Contains (transport.SentCommands[0], "\"request_time_milis\"");
-		StringAssert.Contains (transport.SentCommands[0], "\"terminal_uuid\"");
-		Assert.AreEqual ("Plug", device.Alias);
-		Assert.AreEqual (true, device.IsOn);
+		Assert.That (response, Is.EqualTo ("{\"result\":{\"error_code\":0}}"));
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (3));
+		Assert.That (transport.SentCommands[0], Does.Contain ("\"method\":\"set_device_info\""));
+		Assert.That (transport.SentCommands[0], Does.Contain ("\"request_time_milis\""));
+		Assert.That (transport.SentCommands[0], Does.Contain ("\"terminal_uuid\""));
+		Assert.That (device.Alias, Is.EqualTo ("Plug"));
+		Assert.That (device.IsOn, Is.EqualTo (true));
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task ExecuteCommandAsync_ConcurrentCalls_SerializesTransportAccess ()
 		{
 		int activeSends = 0;
@@ -2188,27 +2187,27 @@ public sealed class KasaDeviceTests
 		var transport = new FakeDeviceTransport (
 			sendHandler: async (_, cancellationToken) =>
 				{
-				int active = Interlocked.Increment (ref activeSends);
-				int observed;
-				do
-					{
-					observed = maxActiveSends;
-					if (active <= observed)
+					int active = Interlocked.Increment (ref activeSends);
+					int observed;
+					do
 						{
-						break;
+						observed = maxActiveSends;
+						if (active <= observed)
+							{
+							break;
+							}
 						}
-					}
-				while (Interlocked.CompareExchange (ref maxActiveSends, active, observed) != observed);
+					while (Interlocked.CompareExchange (ref maxActiveSends, active, observed) != observed);
 
-				try
-					{
-					await Task.Delay (25, cancellationToken).ConfigureAwait (false);
-					return "{\"ok\":true}";
-					}
-				finally
-					{
-					Interlocked.Decrement (ref activeSends);
-					}
+					try
+						{
+						await Task.Delay (25, cancellationToken).ConfigureAwait (false);
+						return "{\"ok\":true}";
+						}
+					finally
+						{
+						Interlocked.Decrement (ref activeSends);
+						}
 				});
 		DeviceConfiguration configuration = new ("127.0.0.1");
 		var device = new KasaDevice (configuration, transport);
@@ -2218,8 +2217,7 @@ public sealed class KasaDeviceTests
 			device.ExecuteCommandAsync ("{\"op\":2}"),
 			device.ExecuteCommandAsync ("{\"op\":3}")).ConfigureAwait (false);
 
-		Assert.AreEqual (3, transport.SentCommands.Count);
-		Assert.AreEqual (1, maxActiveSends);
+		Assert.That (transport.SentCommands.Count, Is.EqualTo (3));
+		Assert.That (maxActiveSends, Is.EqualTo (1));
 		}
 	}
-

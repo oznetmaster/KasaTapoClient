@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 using KasaTapoClient;
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NUnit.Framework;
 
 namespace KasaClient.Tests;
 
@@ -22,48 +22,47 @@ namespace KasaClient.Tests;
 /// The relay-state and colour-temperature regression guards live in DimmerRegressionTests.cs;
 /// this file covers the capability that was actually missing.
 /// </summary>
-[TestClass]
+[TestFixture]
 public sealed class DimmerSupportTests
 	{
 	/// <summary>
 	/// A dimmer has no color control. Setting HSV should refuse locally rather than send hue/saturation
 	/// to hardware that cannot act on them.
 	/// </summary>
-	[TestMethod]
+	[Test]
 	public async Task SetHsvAsync_WithSmartDimmer_Throws ()
 		{
 		KasaDevice device = DimmerTestSupport.CreateSmartDimmer (out FakeDeviceTransport transport);
 		await device.UpdateAsync ().ConfigureAwait (false);
-		Assert.AreEqual (DeviceType.Dimmer, device.DeviceType);
+		Assert.That (device.DeviceType, Is.EqualTo (DeviceType.Dimmer));
 
-		await Assert.ThrowsExactlyAsync<InvalidOperationException> (
-			() => device.SetHsvAsync (120, 50, 40)).ConfigureAwait (false);
+		await Assert.ThatAsync (() => device.SetHsvAsync (120, 50, 40), Throws.TypeOf<InvalidOperationException> ()).ConfigureAwait (false);
 
 		foreach (string command in transport.SentCommands)
 			{
-			Assert.IsFalse (command.Contains ("\"hue\""), $"No hue/saturation command should reach a dimmer, but got: {command}");
+			Assert.That (command.Contains ("\"hue\""), Is.False, $"No hue/saturation command should reach a dimmer, but got: {command}");
 			}
 		}
 
 	/// <summary>
 	/// A SMART-protocol dimmer accepts brightness through set_device_info, and nothing else.
 	/// </summary>
-	[TestMethod]
+	[Test]
 	public async Task SetBrightnessAsync_WithSmartDimmer_SendsBrightnessOnly ()
 		{
 		KasaDevice device = DimmerTestSupport.CreateSmartDimmer (out FakeDeviceTransport transport);
 		await device.UpdateAsync ().ConfigureAwait (false);
-		Assert.AreEqual (DeviceType.Dimmer, device.DeviceType);
+		Assert.That (device.DeviceType, Is.EqualTo (DeviceType.Dimmer));
 
 		int commandsBefore = transport.SentCommands.Count;
 		await device.SetBrightnessAsync (40).ConfigureAwait (false);
 
 		string setCommand = DimmerTestSupport.FindCommand (transport, commandsBefore, "set_device_info")
-			?? throw new AssertFailedException ("SetBrightnessAsync should have issued a set_device_info request.");
-		StringAssert.Contains (setCommand, "\"brightness\":40");
-		Assert.IsFalse (setCommand.Contains ("color_temp"), "Brightness-only change must not carry color_temp.");
-		Assert.IsFalse (setCommand.Contains ("\"hue\""), "Brightness-only change must not carry hue.");
-		Assert.IsFalse (setCommand.Contains ("saturation"), "Brightness-only change must not carry saturation.");
+			?? throw new AssertionException ("SetBrightnessAsync should have issued a set_device_info request.");
+		Assert.That (setCommand, Does.Contain ("\"brightness\":40"));
+		Assert.That (setCommand.Contains ("color_temp"), Is.False, "Brightness-only change must not carry color_temp.");
+		Assert.That (setCommand.Contains ("\"hue\""), Is.False, "Brightness-only change must not carry hue.");
+		Assert.That (setCommand.Contains ("saturation"), Is.False, "Brightness-only change must not carry saturation.");
 		}
 
 	/// <summary>
@@ -73,20 +72,20 @@ public sealed class DimmerSupportTests
 	/// because the device advertises the "brightness" component; gating on DeviceType alone can
 	/// never reach this device.
 	/// </summary>
-	[TestMethod]
+	[Test]
 	public async Task SetBrightnessAsync_WithKs240_SucceedsDespiteWallSwitchClassification ()
 		{
 		KasaDevice device = DimmerTestSupport.CreateSmartDevice (
 			"KS240", "SMART.KASASWITCH", "RmFuIERpbW1lcg==", DimmerTestSupport.DIMMER_WITH_CHILDREN_COMPONENTS, out FakeDeviceTransport transport);
 		await device.UpdateAsync ().ConfigureAwait (false);
-		Assert.AreEqual (DeviceType.WallSwitch, device.DeviceType);
+		Assert.That (device.DeviceType, Is.EqualTo (DeviceType.WallSwitch));
 
 		int commandsBefore = transport.SentCommands.Count;
 		await device.SetBrightnessAsync (40).ConfigureAwait (false);
 
 		string setCommand = DimmerTestSupport.FindCommand (transport, commandsBefore, "set_device_info")
-			?? throw new AssertFailedException ("A device advertising the brightness component should accept SetBrightnessAsync.");
-		StringAssert.Contains (setCommand, "\"brightness\":40");
+			?? throw new AssertionException ("A device advertising the brightness component should accept SetBrightnessAsync.");
+		Assert.That (setCommand, Does.Contain ("\"brightness\":40"));
 		}
 
 	/// <summary>
@@ -95,19 +94,19 @@ public sealed class DimmerSupportTests
 	/// classifies as Plug and can never reach the dimmer branch. Brightness must still work via the
 	/// advertised component.
 	/// </summary>
-	[TestMethod]
+	[Test]
 	public async Task SetBrightnessAsync_WithDimmablePlug_SucceedsDespitePlugClassification ()
 		{
 		KasaDevice device = DimmerTestSupport.CreateSmartDevice (
 			"P135", "SMART.TAPOPLUG", "RGltbWFibGUgUGx1Zw==", DimmerTestSupport.DIMMER_COMPONENTS, out FakeDeviceTransport transport);
 		await device.UpdateAsync ().ConfigureAwait (false);
-		Assert.AreEqual (DeviceType.Plug, device.DeviceType);
+		Assert.That (device.DeviceType, Is.EqualTo (DeviceType.Plug));
 
 		int commandsBefore = transport.SentCommands.Count;
 		await device.SetBrightnessAsync (40).ConfigureAwait (false);
 
 		string setCommand = DimmerTestSupport.FindCommand (transport, commandsBefore, "set_device_info")
-			?? throw new AssertFailedException ("A device advertising the brightness component should accept SetBrightnessAsync.");
-		StringAssert.Contains (setCommand, "\"brightness\":40");
+			?? throw new AssertionException ("A device advertising the brightness component should accept SetBrightnessAsync.");
+		Assert.That (setCommand, Does.Contain ("\"brightness\":40"));
 		}
 	}

@@ -10,9 +10,11 @@ using System.Threading.Tasks;
 using KasaTapoClient;
 using KasaTapoClient.Internal;
 
+using NUnit.Framework;
+
 namespace KasaClient.Tests;
 
-[TestClass]
+[TestFixture]
 public sealed class DiscoverConnectDeduplicationTests
 	{
 	private static async Task<bool> ConnectAndExpectFailureAsync (Task<KasaDevice> connectTask)
@@ -28,37 +30,37 @@ public sealed class DiscoverConnectDeduplicationTests
 			}
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task ConnectAsync_ConcurrentCallsForSameDevice_ShareSingleConnectionAttempt ()
 		{
 		var listener = new TcpListener (IPAddress.Loopback, 0);
 		listener.Start ();
-		int port = ((IPEndPoint) listener.LocalEndpoint).Port;
+		int port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
 		int acceptedConnectionCount = 0;
 		using var acceptCancellation = new CancellationTokenSource ();
 
 		Task acceptLoop = Task.Run (async () =>
 			{
-			try
-				{
-				while (!acceptCancellation.IsCancellationRequested)
+				try
 					{
-					TcpClient client = await listener.AcceptTcpClientAsync ().ConfigureAwait (false);
-					Interlocked.Increment (ref acceptedConnectionCount);
+					while (!acceptCancellation.IsCancellationRequested)
+						{
+						TcpClient client = await listener.AcceptTcpClientAsync ().ConfigureAwait (false);
+						Interlocked.Increment (ref acceptedConnectionCount);
 
-					// Never respond so the transport read eventually times out on its own; just
-					// keep the socket open briefly before dropping it so it does not look like an
-					// immediate reset to the caller.
-					_ = Task.Delay (TimeSpan.FromMilliseconds (200)).ContinueWith (_ => client.Dispose (), TaskScheduler.Default);
+						// Never respond so the transport read eventually times out on its own; just
+						// keep the socket open briefly before dropping it so it does not look like an
+						// immediate reset to the caller.
+						_ = Task.Delay (TimeSpan.FromMilliseconds (200)).ContinueWith (_ => client.Dispose (), TaskScheduler.Default);
+						}
 					}
-				}
-			catch (ObjectDisposedException)
-				{
-				}
-			catch (SocketException)
-				{
-				}
+				catch (ObjectDisposedException)
+					{
+					}
+				catch (SocketException)
+					{
+					}
 			});
 
 		try
@@ -81,8 +83,8 @@ public sealed class DiscoverConnectDeduplicationTests
 			bool firstFailed = await ConnectAndExpectFailureAsync (firstConnect).ConfigureAwait (false);
 			bool secondFailed = await ConnectAndExpectFailureAsync (secondConnect).ConfigureAwait (false);
 
-			Assert.IsTrue (firstFailed, "The first connect was expected to fail against the fake, non-responsive listener.");
-			Assert.IsTrue (secondFailed, "The second connect was expected to fail against the fake, non-responsive listener.");
+			Assert.That (firstFailed, Is.True, "The first connect was expected to fail against the fake, non-responsive listener.");
+			Assert.That (secondFailed, Is.True, "The second connect was expected to fail against the fake, non-responsive listener.");
 			}
 		finally
 			{
@@ -97,36 +99,36 @@ public sealed class DiscoverConnectDeduplicationTests
 				}
 			}
 
-		Assert.AreEqual (1, acceptedConnectionCount, "Concurrent ConnectAsync calls for the same device identity should share a single physical connection attempt.");
+		Assert.That (acceptedConnectionCount, Is.EqualTo (1), "Concurrent ConnectAsync calls for the same device identity should share a single physical connection attempt.");
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task ConnectAsync_SequentialCallsForSameDevice_EachOpenOwnConnection ()
 		{
 		var listener = new TcpListener (IPAddress.Loopback, 0);
 		listener.Start ();
-		int port = ((IPEndPoint) listener.LocalEndpoint).Port;
+		int port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
 		int acceptedConnectionCount = 0;
 		using var acceptCancellation = new CancellationTokenSource ();
 
 		Task acceptLoop = Task.Run (async () =>
 			{
-			try
-				{
-				while (!acceptCancellation.IsCancellationRequested)
+				try
 					{
-					TcpClient client = await listener.AcceptTcpClientAsync ().ConfigureAwait (false);
-					Interlocked.Increment (ref acceptedConnectionCount);
-					client.Dispose ();
+					while (!acceptCancellation.IsCancellationRequested)
+						{
+						TcpClient client = await listener.AcceptTcpClientAsync ().ConfigureAwait (false);
+						Interlocked.Increment (ref acceptedConnectionCount);
+						client.Dispose ();
+						}
 					}
-				}
-			catch (ObjectDisposedException)
-				{
-				}
-			catch (SocketException)
-				{
-				}
+				catch (ObjectDisposedException)
+					{
+					}
+				catch (SocketException)
+					{
+					}
 			});
 
 		try
@@ -145,8 +147,8 @@ public sealed class DiscoverConnectDeduplicationTests
 			bool firstFailed = await ConnectAndExpectFailureAsync (Discover.ConnectAsync (configuration, updateState: true)).ConfigureAwait (false);
 			bool secondFailed = await ConnectAndExpectFailureAsync (Discover.ConnectAsync (configuration, updateState: true)).ConfigureAwait (false);
 
-			Assert.IsTrue (firstFailed, "The first connect was expected to fail against the fake, non-responsive listener.");
-			Assert.IsTrue (secondFailed, "The second connect was expected to fail against the fake, non-responsive listener.");
+			Assert.That (firstFailed, Is.True, "The first connect was expected to fail against the fake, non-responsive listener.");
+			Assert.That (secondFailed, Is.True, "The second connect was expected to fail against the fake, non-responsive listener.");
 			}
 		finally
 			{
@@ -161,15 +163,15 @@ public sealed class DiscoverConnectDeduplicationTests
 				}
 			}
 
-		Assert.AreEqual (2, acceptedConnectionCount, "Non-overlapping ConnectAsync calls for the same device identity should each open their own connection.");
+		Assert.That (acceptedConnectionCount, Is.EqualTo (2), "Non-overlapping ConnectAsync calls for the same device identity should each open their own connection.");
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task GetOrConnectSharedAsync_RepeatedCallsForSameDevice_ReuseSharedInstanceUntilDisposed ()
 		{
 		var listener = new TcpListener (IPAddress.Loopback, 0);
 		listener.Start ();
-		int port = ((IPEndPoint) listener.LocalEndpoint).Port;
+		int port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
 		int acceptedConnectionCount = 0;
 		using var acceptCancellation = new CancellationTokenSource ();
@@ -178,21 +180,21 @@ public sealed class DiscoverConnectDeduplicationTests
 
 		Task acceptLoop = Task.Run (async () =>
 			{
-			try
-				{
-				while (!acceptCancellation.IsCancellationRequested)
+				try
 					{
-					TcpClient client = await listener.AcceptTcpClientAsync ().ConfigureAwait (false);
-					Interlocked.Increment (ref acceptedConnectionCount);
-					_ = ServeLegacyRequestsAsync (client, sysInfoResponse, acceptCancellation.Token);
+					while (!acceptCancellation.IsCancellationRequested)
+						{
+						TcpClient client = await listener.AcceptTcpClientAsync ().ConfigureAwait (false);
+						Interlocked.Increment (ref acceptedConnectionCount);
+						_ = ServeLegacyRequestsAsync (client, sysInfoResponse, acceptCancellation.Token);
+						}
 					}
-				}
-			catch (ObjectDisposedException)
-				{
-				}
-			catch (SocketException)
-				{
-				}
+				catch (ObjectDisposedException)
+					{
+					}
+				catch (SocketException)
+					{
+					}
 			});
 
 		try
@@ -208,15 +210,15 @@ public sealed class DiscoverConnectDeduplicationTests
 			KasaDevice firstDevice = await Discover.GetOrConnectSharedAsync (configuration, updateState: true).ConfigureAwait (false);
 			KasaDevice secondDevice = await Discover.GetOrConnectSharedAsync (configuration, updateState: true).ConfigureAwait (false);
 
-			Assert.AreSame (firstDevice, secondDevice, "Non-overlapping GetOrConnectSharedAsync calls for an already-connected device identity should reuse the same shared instance.");
-			Assert.AreEqual (1, acceptedConnectionCount, "Reusing the cached shared device should not open a second connection.");
+			Assert.That (secondDevice, Is.SameAs (firstDevice), "Non-overlapping GetOrConnectSharedAsync calls for an already-connected device identity should reuse the same shared instance.");
+			Assert.That (acceptedConnectionCount, Is.EqualTo (1), "Reusing the cached shared device should not open a second connection.");
 
 			firstDevice.Dispose ();
 
 			KasaDevice thirdDevice = await Discover.GetOrConnectSharedAsync (configuration, updateState: true).ConfigureAwait (false);
 
-			Assert.AreNotSame (firstDevice, thirdDevice, "Once the shared instance is disposed, the next GetOrConnectSharedAsync call should replace it with a fresh instance.");
-			Assert.AreEqual (2, acceptedConnectionCount, "A fresh connection should be opened once the previously cached shared device was disposed.");
+			Assert.That (thirdDevice, Is.Not.SameAs (firstDevice), "Once the shared instance is disposed, the next GetOrConnectSharedAsync call should replace it with a fresh instance.");
+			Assert.That (acceptedConnectionCount, Is.EqualTo (2), "A fresh connection should be opened once the previously cached shared device was disposed.");
 
 			thirdDevice.Dispose ();
 			}
@@ -234,12 +236,12 @@ public sealed class DiscoverConnectDeduplicationTests
 			}
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task GetOrConnectSharedAsync_CacheHitWithUpdateStateTrue_RefreshesSharedInstanceState ()
 		{
 		var listener = new TcpListener (IPAddress.Loopback, 0);
 		listener.Start ();
-		int port = ((IPEndPoint) listener.LocalEndpoint).Port;
+		int port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
 		int acceptedConnectionCount = 0;
 		using var acceptCancellation = new CancellationTokenSource ();
@@ -254,21 +256,21 @@ public sealed class DiscoverConnectDeduplicationTests
 
 		Task acceptLoop = Task.Run (async () =>
 			{
-			try
-				{
-				while (!acceptCancellation.IsCancellationRequested)
+				try
 					{
-					TcpClient client = await listener.AcceptTcpClientAsync ().ConfigureAwait (false);
-					Interlocked.Increment (ref acceptedConnectionCount);
-					_ = ServeSequencedLegacyRequestsAsync (client, sysInfoResponses, acceptCancellation.Token);
+					while (!acceptCancellation.IsCancellationRequested)
+						{
+						TcpClient client = await listener.AcceptTcpClientAsync ().ConfigureAwait (false);
+						Interlocked.Increment (ref acceptedConnectionCount);
+						_ = ServeSequencedLegacyRequestsAsync (client, sysInfoResponses, acceptCancellation.Token);
+						}
 					}
-				}
-			catch (ObjectDisposedException)
-				{
-				}
-			catch (SocketException)
-				{
-				}
+				catch (ObjectDisposedException)
+					{
+					}
+				catch (SocketException)
+					{
+					}
 			});
 
 		try
@@ -283,13 +285,13 @@ public sealed class DiscoverConnectDeduplicationTests
 
 			KasaDevice firstDevice = await Discover.GetOrConnectSharedAsync (configuration, updateState: true).ConfigureAwait (false);
 
-			Assert.AreEqual (0, firstDevice.Children.Count, "The first connect should observe the initial, empty child list.");
+			Assert.That (firstDevice.Children.Count, Is.EqualTo (0), "The first connect should observe the initial, empty child list.");
 
 			KasaDevice secondDevice = await Discover.GetOrConnectSharedAsync (configuration, updateState: true).ConfigureAwait (false);
 
-			Assert.AreSame (firstDevice, secondDevice, "Non-overlapping GetOrConnectSharedAsync calls for an already-connected device identity should reuse the same shared instance.");
-			Assert.AreEqual (1, acceptedConnectionCount, "Reusing the cached shared device should not open a second connection.");
-			Assert.AreEqual (1, secondDevice.Children.Count, "A cache-hit call with updateState: true must refresh the shared instance's state, not return the stale state captured at first connect.");
+			Assert.That (secondDevice, Is.SameAs (firstDevice), "Non-overlapping GetOrConnectSharedAsync calls for an already-connected device identity should reuse the same shared instance.");
+			Assert.That (acceptedConnectionCount, Is.EqualTo (1), "Reusing the cached shared device should not open a second connection.");
+			Assert.That (secondDevice.Children.Count, Is.EqualTo (1), "A cache-hit call with updateState: true must refresh the shared instance's state, not return the stale state captured at first connect.");
 
 			secondDevice.Dispose ();
 			}
@@ -307,37 +309,37 @@ public sealed class DiscoverConnectDeduplicationTests
 			}
 		}
 
-	[TestMethod]
+	[Test]
 	public async Task ConnectAsync_ConcurrentCallsWithMismatchedConfigurations_EachOpenOwnConnection ()
 		{
 		var listener = new TcpListener (IPAddress.Loopback, 0);
 		listener.Start ();
-		int port = ((IPEndPoint) listener.LocalEndpoint).Port;
+		int port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
 		int acceptedConnectionCount = 0;
 		using var acceptCancellation = new CancellationTokenSource ();
 
 		Task acceptLoop = Task.Run (async () =>
 			{
-			try
-				{
-				while (!acceptCancellation.IsCancellationRequested)
+				try
 					{
-					TcpClient client = await listener.AcceptTcpClientAsync ().ConfigureAwait (false);
-					Interlocked.Increment (ref acceptedConnectionCount);
+					while (!acceptCancellation.IsCancellationRequested)
+						{
+						TcpClient client = await listener.AcceptTcpClientAsync ().ConfigureAwait (false);
+						Interlocked.Increment (ref acceptedConnectionCount);
 
-					// Never respond so the transport read eventually times out on its own; just
-					// keep the socket open briefly before dropping it so it does not look like an
-					// immediate reset to the caller.
-					_ = Task.Delay (TimeSpan.FromMilliseconds (200)).ContinueWith (_ => client.Dispose (), TaskScheduler.Default);
+						// Never respond so the transport read eventually times out on its own; just
+						// keep the socket open briefly before dropping it so it does not look like an
+						// immediate reset to the caller.
+						_ = Task.Delay (TimeSpan.FromMilliseconds (200)).ContinueWith (_ => client.Dispose (), TaskScheduler.Default);
+						}
 					}
-				}
-			catch (ObjectDisposedException)
-				{
-				}
-			catch (SocketException)
-				{
-				}
+				catch (ObjectDisposedException)
+					{
+					}
+				catch (SocketException)
+					{
+					}
 			});
 
 		try
@@ -366,8 +368,8 @@ public sealed class DiscoverConnectDeduplicationTests
 			bool firstFailed = await ConnectAndExpectFailureAsync (firstConnect).ConfigureAwait (false);
 			bool secondFailed = await ConnectAndExpectFailureAsync (secondConnect).ConfigureAwait (false);
 
-			Assert.IsTrue (firstFailed, "The first connect was expected to fail against the fake, non-responsive listener.");
-			Assert.IsTrue (secondFailed, "The second connect was expected to fail against the fake, non-responsive listener.");
+			Assert.That (firstFailed, Is.True, "The first connect was expected to fail against the fake, non-responsive listener.");
+			Assert.That (secondFailed, Is.True, "The second connect was expected to fail against the fake, non-responsive listener.");
 			}
 		finally
 			{
@@ -382,7 +384,7 @@ public sealed class DiscoverConnectDeduplicationTests
 				}
 			}
 
-		Assert.AreEqual (2, acceptedConnectionCount, "Concurrent ConnectAsync calls for the same device identity but with mismatched configurations should each open their own connection.");
+		Assert.That (acceptedConnectionCount, Is.EqualTo (2), "Concurrent ConnectAsync calls for the same device identity but with mismatched configurations should each open their own connection.");
 		}
 
 	private static async Task ServeLegacyRequestsAsync (TcpClient client, string responseJson, CancellationToken cancellationToken)

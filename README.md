@@ -223,7 +223,17 @@ dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework ne
 
 ## Testing and Benchmark Scaffolding
 
-The repository includes MSTest-based test scaffolding as part of the committed solution layout.
+The test projects have been converted from MSTest to the official NUnit 4.6.1 package. This test infrastructure update does not change the published library version or require a new NuGet release. `KasaClient.Tests` targets `net472` and `net10.0` and includes NUnit3TestAdapter for Visual Studio Test Explorer and `dotnet test`.
+
+Run the deterministic tests on both targets with:
+
+```powershell
+dotnet test KasaClient.Tests/KasaClient.Tests.csproj --configuration Debug
+```
+
+The shared `.runsettings` excludes the `Live` category by default. Existing CI filters (`TestCategory!=Live`) also work with NUnit. To opt into live-device tests after configuring `LiveTestSettings.json`, use `--settings .runsettings.live`; these tests can change device state. To check discovery without running them, add `--list-tests`. A separate settings file is necessary because the default settings exclusion is combined with command-line filters.
+
+Fixtures use `LifeCycle.InstancePerTestCase` to preserve a fresh instance for every test. Live fixtures remain non-parallel. The migration retains data-driven cases and exact asynchronous exception checks.
 
 - `KasaClient.Tests` contains deterministic unit coverage and optional live-device integration coverage
 - Live-test scaffolding is included for exercising real hardware paths when a compatible device environment is available
@@ -264,8 +274,26 @@ Public documentation for this repository is available on GitHub Pages:
 
 - `KasaClient` — the main library project published to NuGet
 - `KasaClient.Console` — a console-based client for discovery and control
-- `KasaClient.Tests` — MSTest-based deterministic tests, optional live integration tests, and supporting scaffolding
+- `KasaClient.Tests` — NUnit-based deterministic tests, optional live integration tests, and supporting scaffolding
 - `BenchmarkSuite1`, `BenchmarkSuite2`, `BenchmarkSuite3` — Benchmark.NET measurement suites used during transport and latency investigation
+
+### Live device identity and private configuration
+
+Keep the real `KasaClient.Tests/LiveTestSettings.json` in your local Git exclusions (`.git/info/exclude`). Publish only `LiveTestSettings.sample.json` with placeholders. Credentials, device identities, aliases, addresses, child-device IDs, and live-test output are local configuration and results, not release assets. The normal CI workflows explicitly exclude the `Live` category.
+
+Each device entry may use `deviceId` (preferred), a unique discovery `alias`, or the existing `host`. For example, a light entry can be `{ "deviceId": "replace-with-discovered-device-id" }`, or `{ "alias": "My test light" }`. Obtain IDs from `DiscoveryResult.DeviceId`. If a device ID is provided it takes precedence over alias and host. Missing or ambiguous matches fail without falling back to another device. Aliases must be unique and can change when a device is renamed.
+
+With a stable selector, the fixture uses `Discover.DiscoverAsync` to resolve the current address and advertised connection parameters before connecting, including after a retry. Saved addresses and explicit transport options are used only for host-based entries. NUnit case names use the selector instead of the changing address. Test-case enumeration reads configuration without contacting equipment; only live-test execution resolves and connects to the selected device. Device IDs and aliases remain in the local configuration, never in test source.
+
+`TestDataDirectory` is an optional NUnit parameter for the settings directory. `EnableLiveTests` overrides the JSON `enabled` value for that operation. When no override is supplied, the JSON value remains the default. Keep it false unless explicitly opting into live execution. These fixtures can change device state, so use equipment reserved for testing.
+
+Live tests that change a device capture the reported state before sending control commands and restore that state in `finally`, including after a failed assertion. Power tests restore the original on/off state; the brightness test restores both brightness and power. If the required initial state is unavailable, the test fails before changing the device. Restoration is verified by refreshing the device, and a restoration failure fails the test. The hub tests only read state.
+
+Discovery results are shared only within one NUnit run. Every new run, including a filtered selection, starts with an empty discovery cache. A missing device or a transient connection failure triggers a fresh scan. Each test still establishes its own connection and reads the device's current state before any changes.
+
+Live progress includes elapsed time for discovery, connection and initial state, test actions, and restoration. Set `observationDelayMilliseconds` in private settings to `0` (the default) to omit deliberate observation pauses, or `2000` to keep each visible state for two seconds. State verification still waits for the device to report the expected result. Values from 0 to 60000 are accepted.
+
+For unattended temperature checks, set `temperatureChildDeviceId` on the hub entry to a T310 or T315 child ID. `Hub_TemperatureSensor_RefreshesReportedReading` refreshes the sensor twice, checks that its reading is finite and has a supported, consistent unit, and logs both readings. It does not require a temperature change or modify any device settings. It has both `Live` and `Unattended` categories; select this test or filter by both categories for unattended runs. A successful refresh reads the hub's latest reported value; it does not prove that the battery sensor transmitted a new sample between requests.
 
 ## Acknowledgements
 

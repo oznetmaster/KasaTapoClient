@@ -6,14 +6,14 @@ using System.Diagnostics;
 
 using KasaTapoClient.Internal;
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NUnit.Framework;
 
 namespace KasaClient.Tests;
 
-[TestClass]
+[TestFixture]
 public sealed class TpapTransportSecureRandomTests
 	{
-	[TestMethod]
+	[Test]
 	public void CreateSecureRandom_CompletesQuickly ()
 		{
 		// Guards against a regression to SecureRandom's default parameterless constructor, whose
@@ -25,11 +25,11 @@ public sealed class TpapTransportSecureRandomTests
 
 		stopwatch.Stop ();
 
-		Assert.IsNotNull (random);
-		Assert.IsTrue (stopwatch.Elapsed < TimeSpan.FromSeconds (2), $"CreateSecureRandom took {stopwatch.Elapsed}, which suggests it is no longer using a fast seeding path.");
+		Assert.That (random, Is.Not.Null);
+		Assert.That (stopwatch.Elapsed < TimeSpan.FromSeconds (2), Is.True, $"CreateSecureRandom took {stopwatch.Elapsed}, which suggests it is no longer using a fast seeding path.");
 		}
 
-	[TestMethod]
+	[Test]
 	public void CreateSecureRandom_ProducesNonZeroRandomBytes ()
 		{
 		var random = TpapTransport.CreateSecureRandom ();
@@ -37,10 +37,10 @@ public sealed class TpapTransportSecureRandomTests
 		byte[] bytes = new byte[32];
 		random.NextBytes (bytes);
 
-		Assert.IsTrue (Array.Exists (bytes, b => b != 0), "Generated random bytes were all zero.");
+		Assert.That (Array.Exists (bytes, b => b != 0), Is.True, "Generated random bytes were all zero.");
 		}
 
-	[TestMethod]
+	[Test]
 	public void CreateSecureRandom_ReturnsDistinctInstancesWithDifferentOutput ()
 		{
 		var first = TpapTransport.CreateSecureRandom ();
@@ -51,6 +51,6 @@ public sealed class TpapTransportSecureRandomTests
 		first.NextBytes (firstBytes);
 		second.NextBytes (secondBytes);
 
-		CollectionAssert.AreNotEqual (firstBytes, secondBytes);
+		Assert.That (secondBytes, Is.Not.EqualTo (firstBytes));
 		}
 	}
