@@ -35,6 +35,12 @@ jobs:
       - name: Build solution
         run: dotnet build KasaClient.slnx --configuration Release --no-restore
 
+      - name: Compile direct connection example against published package
+        run: dotnet build examples/DirectTapoPlug/DirectTapoPlug.csproj --configuration Release --warnaserror
+
+      - name: Compile discovery diagnostics against published package
+        run: dotnet build examples/DiscoveryDiagnostics/DiscoveryDiagnostics.csproj --configuration Release --warnaserror
+
       - name: Run tests
         run: dotnet test KasaClient.Tests/KasaClient.Tests.csproj --configuration Release --no-build --framework net10.0 --filter "TestCategory!=Live"
 

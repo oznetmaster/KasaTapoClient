@@ -7,10 +7,16 @@
 ```csharp
 using KasaTapoClient;
 
-IReadOnlyList<DiscoveryResult> discoveredDevices = await Discover.DiscoverDevicesAsync().ConfigureAwait(false);
+IReadOnlyList<DiscoveryResult> discoveredDevices = await Discover.DiscoverAsync().ConfigureAwait(false);
+if (discoveredDevices.Count == 0)
+    throw new InvalidOperationException ("No devices discovered; try targeted discovery or a known protocol configuration.");
+
+var credentials = new DeviceCredentials (
+    Environment.GetEnvironmentVariable ("TAPO_USERNAME"),
+    Environment.GetEnvironmentVariable ("TAPO_PASSWORD"));
 DiscoveryResult firstDevice = discoveredDevices[0];
 
-using KasaDevice discoveredDevice = await Discover.ConnectAsync(firstDevice.Configuration).ConfigureAwait(false);
+using KasaDevice discoveredDevice = await Discover.ConnectAsync(firstDevice, credentials: credentials).ConfigureAwait(false);
 await discoveredDevice.UpdateAsync().ConfigureAwait(false);
 ```
 
@@ -18,15 +24,7 @@ Discovery is the easiest first step when you want to inspect what supported devi
 
 ## Connect to a known device
 
-```csharp
-using KasaTapoClient;
-
-DeviceConfiguration configuration = await Discover.ResolveConfigurationAsync(
-	new DeviceConfiguration("device-host-or-ip")).ConfigureAwait(false);
-
-using KasaDevice device = await Discover.ConnectAsync(configuration).ConfigureAwait(false);
-await device.UpdateAsync().ConfigureAwait(false);
-```
+See the complete [direct Tapo plug connection example](getting-started.md#connect-to-a-tapo-plug-by-ip), including credentials, HTTP endpoint paths, protocol selection and a runnable project compiled against NuGet 1.8.1. Explicit HTTP transport configuration bypasses discovery; Auto still performs targeted discovery.
 
 ## Control a light
 

@@ -5,14 +5,14 @@ It targets `.NET Framework 4.7.2` and `.NET 10`, and is intended to provide a pr
 
 ## Release status
 
-This repository is being prepared for public release as `KasaTapoClient` and is currently intended to remain private until the release-facing assets and workflows are finalized.
+The library is available publicly as the `KasaTapoClient` NuGet package. The direct-connection example is checked against version 1.8.1.
 
 ## Installation
 
 ### Library package
 
 The main package is produced from `KasaClient/KasaTapoClient.csproj`.
-Once published, it can be consumed from NuGet in the usual way.
+Install it with `dotnet add package KasaTapoClient --version 1.8.1`.
 
 ### Build from source
 
@@ -52,16 +52,7 @@ dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework ne
 
 ## Basic library usage
 
-```csharp
-using KasaTapoClient;
-
-DeviceConfiguration configuration = await Discover.ResolveConfigurationAsync(
-	new DeviceConfiguration("device-host-or-ip")).ConfigureAwait(false);
-
-using KasaDevice device = await Discover.ConnectAsync(configuration).ConfigureAwait(false);
-await device.TurnLightOnAsync().ConfigureAwait(false);
-await device.UpdateAsync().ConfigureAwait(false);
-```
+See the [complete direct connection by IP example](../README.md#connect-to-a-tapo-plug-by-ip) and [runnable console project](../examples/DirectTapoPlug/Program.cs). They cover credentials, protocol-specific parameters, the `/app` HTTP endpoint, connecting, refreshing state and controlling a plug with the published 1.8.1 API.
 
 ## Transport notes
 

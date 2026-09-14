@@ -4,8 +4,9 @@ All notable changes to this project are documented here. Each entry summarizes t
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/).
 
-## Unreleased — test infrastructure
+## Unreleased — documentation and test infrastructure
 
+- Correct unavailable API references in the README and documentation site. Add a direct Tapo plug connection example pinned to NuGet 1.8.1, explain `/app`, explicit protocol selection versus Auto discovery, and compile the example for both target frameworks in documentation CI (issue #6).
 - Converted test fixtures from MSTest to NUnit 4.6.1 with NUnit3TestAdapter for Visual Studio and `dotnet test`.
 - Added stable live-device selectors, per-run discovery caching, original-state restoration and a read-only hub temperature test. Live settings remain private and live tests are opt-in.
 - No new library or NuGet release accompanies these test changes.
