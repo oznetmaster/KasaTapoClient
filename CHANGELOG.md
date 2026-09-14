@@ -6,6 +6,8 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 ## Unreleased — documentation and test infrastructure
 
+- Add dedicated pull-request and branch CI tests on net472 and .NET 10, excluding live tests and retaining per-runtime results. Test/CI-only change; no library behavior or package release.
+
 - Correct unavailable API references in the README and documentation site. Add a direct Tapo plug connection example pinned to NuGet 1.8.1, explain `/app`, explicit protocol selection versus Auto discovery, and compile the example for both target frameworks in documentation CI (issue #6).
 - Converted test fixtures from MSTest to NUnit 4.6.1 with NUnit3TestAdapter for Visual Studio and `dotnet test`.
 - Added stable live-device selectors, per-run discovery caching, original-state restoration and a read-only hub temperature test. Live settings remain private and live tests are opt-in.

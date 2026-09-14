@@ -416,3 +416,7 @@ Behavioral and compatibility reference work in this project draws on the upstrea
 ## License
 
 MIT © 2026 Neil Colvin — see [LICENSE](LICENSE).
+
+## Continuous integration tests
+
+The [Unit tests workflow](.github/workflows/unit-tests.yml) runs on pull requests and pushes to the main development branch. Separate Windows jobs test **net472** and **.NET 10**, retaining a result file for each suite/runtime. Live tests are excluded; no account credentials or physical devices are needed. These checks do not publish packages or releases.
