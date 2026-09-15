@@ -12,6 +12,7 @@ on:
         type: string
 
 permissions:
+  checks: read
   contents: write
 
 jobs:
@@ -27,6 +28,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Verify configured release checks
+        shell: pwsh
+        working-directory: ${{ github.workspace }}/.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUIRED_RELEASE_CHECKS: ${{ vars.RELEASE_REQUIRED_CHECKS }}
+        run: '& ./.github/scripts/Wait-RequiredReleaseChecks.ps1'
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:

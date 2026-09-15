@@ -1,0 +1,39 @@
+# Copyright (c) 2026 Neil Colvin. See LICENSE for terms.
+name: Validate release source
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Publish .NET Package"]
+    types: [completed]
+permissions:
+  contents: read
+  actions: write
+concurrency:
+  group: validate-release-source
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify release-check policy
+        shell: pwsh
+        run: '& ./.github/scripts/Test-RequiredReleaseChecks.ps1'
+      - name: Validate the current default-branch source
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $branch = gh api "repos/$env:GITHUB_REPOSITORY" --jq .default_branch
+          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($branch)) { throw 'Cannot resolve the default branch.' }
+          # A release-created commit does not trigger normal push workflows with GITHUB_TOKEN.
+          # Explicit workflow dispatch does, without granting access to other repositories.
+          foreach ($workflow in @('unit-tests.yml')) {
+            gh workflow run $workflow -R $env:GITHUB_REPOSITORY --ref $branch
+            if ($LASTEXITCODE -ne 0) { throw 'Post-release validation dispatch failed.' }
+          }

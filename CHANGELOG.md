@@ -1,5 +1,10 @@
 # Changelog
 
+## CI validation - 2026-09-15 (no package release)
+
+- Revalidate the current default-branch source after successful release workflows, including version commits created by GitHub Actions.
+- Allow maintainers to configure exact-source, App-specific checks that must pass before publishing through `RELEASE_REQUIRED_CHECKS`; missing, failed or unconfirmed checks block the release.
+
 All notable changes to this project are documented here. Each entry summarizes the corresponding [GitHub release](https://github.com/oznetmaster/KasaTapoClient/releases), which remains the authoritative, detailed record (including build assets) for that version. This file exists as a single, scannable index of the full version history.
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/).
