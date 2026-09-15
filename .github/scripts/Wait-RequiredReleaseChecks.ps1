@@ -29,9 +29,11 @@ $revision = (git rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0 -or $revision -notmatch '^[0-9a-f]{40}$') { throw 'Cannot identify the exact checked-out release source.' }
 $deadline = [DateTime]::UtcNow.AddMinutes(10)
 do {
-    $json = gh api "repos/$env:GITHUB_REPOSITORY/commits/$revision/check-runs?filter=all&per_page=100" --paginate --slurp --jq '[.[].check_runs[]]'
+    $json = gh api "repos/$env:GITHUB_REPOSITORY/commits/$revision/check-runs?filter=all&per_page=100" --paginate --slurp
     if ($LASTEXITCODE) { throw 'Required-check lookup failed; release is blocked.' }
-    $state = Get-RequiredReleaseCheckState @(ConvertFrom-Json ($json | Out-String)) $required $revision
+    $pages = @(ConvertFrom-Json ($json | Out-String))
+    $runs = @($pages | ForEach-Object { $_.check_runs })
+    $state = Get-RequiredReleaseCheckState $runs $required $revision
     if ($state -eq 'Passed') { Write-Output "Required release checks passed for $revision."; return }
     if ($state -eq 'Failed') { throw 'A required check failed or did not establish success; release is blocked.' }
     if ([DateTime]::UtcNow -ge $deadline) { throw 'Required checks are still missing or pending; release is blocked.' }
