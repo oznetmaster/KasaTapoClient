@@ -4,7 +4,7 @@ All notable changes to this project are documented here. Each entry summarizes t
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/).
 
-## Unreleased — documentation and test infrastructure
+## Test and development tooling - 2026-09-15 (no library release)
 
 - Add dedicated pull-request and branch CI tests on net472 and .NET 10, excluding live tests and retaining per-runtime results. Test/CI-only change; no library behavior or package release.
 
