@@ -10,8 +10,18 @@ on:
         description: Version or tag to publish, for example 1.2.3 or v1.2.3
         required: true
         type: string
+      skip_hardware_checks:
+        description: Publish without hardware validation when the processor or local runner is unavailable
+        required: false
+        type: boolean
+        default: false
+      hardware_skip_reason:
+        description: Reason for skipping hardware checks (required when selected)
+        required: false
+        type: string
 
 permissions:
+  actions: read
   checks: read
   contents: write
 
@@ -34,6 +44,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REQUIRED_RELEASE_CHECKS: ${{ vars.RELEASE_REQUIRED_CHECKS }}
+          REQUIRED_HOSTED_WORKFLOWS: '["unit-tests.yml"]'
+          RELEASE_SKIP_HARDWARE_CHECKS: ${{ inputs.skip_hardware_checks }}
+          RELEASE_HARDWARE_SKIP_REASON: ${{ inputs.hardware_skip_reason }}
         run: '& ./.github/scripts/Wait-RequiredReleaseChecks.ps1'
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
