@@ -1,5 +1,8 @@
 # KasaTapoClient
 
+For shipped changes, see the [changelog](CHANGELOG.md). Test, CI and build history is recorded separately in [development and validation history](DEVELOPMENT-HISTORY.md).
+
+
 A .NET client library for TP-Link Kasa and Tapo devices, enabling local-network discovery, monitoring, inspection, and control of supported plugs, bulbs, light strips, power strips, hubs, and selected child devices.
 
 TP-Link, Kasa, and Tapo are trademarks of their respective owners. This project is an independent, unofficial .NET library and is not affiliated with or endorsed by TP-Link.
