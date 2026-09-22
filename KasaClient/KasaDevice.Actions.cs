@@ -4,6 +4,7 @@
 // for protocol/compatibility reference only; no python-kasa source was copied. See ATTRIBUTIONS.md.
 
 using System;
+using KasaTapoClient.Internal;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -30,7 +31,7 @@ public sealed partial class KasaDevice
 		{
 		if (UsesSmartProtocol ())
 			{
-			await ExecuteCommandCoreAsync (KasaTapoClient.Internal.KasaCommands.CreateSmartRequest ("set_device_info", new Newtonsoft.Json.Linq.JObject { ["device_on"] = isOn }), cancellationToken).ConfigureAwait (false);
+			await ExecuteCommandCoreAsync (KasaTapoClient.Internal.KasaCommands.CreateSmartRequest ("set_device_info", new SmartDeviceSettingsDto { DeviceOn = isOn }), cancellationToken).ConfigureAwait (false);
 			await UpdateCoreAsync (cancellationToken).ConfigureAwait (false);
 			return;
 			}
@@ -68,7 +69,7 @@ public sealed partial class KasaDevice
 			throw new InvalidOperationException ($"The child device '{childDeviceId}' was not found on '{Host}'.");
 			}
 
-		if (GetChildRawState (childDeviceId)?.DoubleClickInfo?.Enable is null)
+		if (GetChildState (childDeviceId)?.DoubleClickInfo?.Enable is null)
 			{
 			throw new NotSupportedException ($"The child device '{childDeviceId}' on '{Host}' does not report double-click support.");
 			}
@@ -77,7 +78,7 @@ public sealed partial class KasaDevice
 			KasaTapoClient.Internal.KasaCommands.CreateSmartChildRequest (
 				childDeviceId,
 				KasaTapoClient.Internal.KasaCommands.SMART_SET_DOUBLE_CLICK_INFO_METHOD,
-				new Newtonsoft.Json.Linq.JObject { ["enable"] = enabled }),
+				new EnabledParametersDto { Enable = enabled }),
 			cancellationToken).ConfigureAwait (false);
 		await UpdateCoreAsync (cancellationToken).ConfigureAwait (false);
 		}
@@ -94,7 +95,7 @@ public sealed partial class KasaDevice
 			throw new InvalidOperationException ($"The child device '{childDeviceId}' was not found on '{Host}'.");
 			}
 
-		if (GetChildRawState (childDeviceId)?.ReportInterval is null)
+		if (GetChildState (childDeviceId)?.ReportInterval is null)
 			{
 			throw new NotSupportedException ($"The child device '{childDeviceId}' on '{Host}' does not report a configurable report interval.");
 			}
@@ -103,7 +104,7 @@ public sealed partial class KasaDevice
 			KasaTapoClient.Internal.KasaCommands.CreateSmartChildRequest (
 				childDeviceId,
 				"set_device_info",
-				new Newtonsoft.Json.Linq.JObject { ["report_interval"] = reportIntervalSeconds }),
+				new ReportIntervalParametersDto { ReportInterval = reportIntervalSeconds }),
 			cancellationToken).ConfigureAwait (false);
 		await UpdateCoreAsync (cancellationToken).ConfigureAwait (false);
 		}
@@ -133,35 +134,35 @@ public sealed partial class KasaDevice
 
 		if (UsesSmartProtocol ())
 			{
-			var parameters = new Newtonsoft.Json.Linq.JObject ();
+			var parameters = new SmartDeviceSettingsDto ();
 			bool isColorUpdate = hue is int || saturation is int;
 			if (isOn is bool smartPowerState)
 				{
-				parameters["device_on"] = smartPowerState;
+				parameters.DeviceOn = smartPowerState;
 				}
 			else if (isColorUpdate)
 				{
-				parameters["device_on"] = true;
+				parameters.DeviceOn = true;
 				}
 			if (brightness is int brightnessValue)
 				{
-				parameters["brightness"] = brightnessValue;
+				parameters.Brightness = brightnessValue;
 				}
 			if (colorTemperature is int colorTemperatureValue)
 				{
-				parameters["color_temp"] = colorTemperatureValue;
+				parameters.ColorTemperature = colorTemperatureValue;
 				}
 			if (hue is int hueValue)
 				{
-				parameters["hue"] = hueValue;
+				parameters.Hue = hueValue;
 				}
 			if (saturation is int saturationValue)
 				{
-				parameters["saturation"] = saturationValue;
+				parameters.Saturation = saturationValue;
 				}
 			if (isColorUpdate)
 				{
-				parameters["color_temp"] = 0;
+				parameters.ColorTemperature = 0;
 				}
 
 			CancellationToken operationCancellationToken = cancellationToken;

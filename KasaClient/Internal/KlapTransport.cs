@@ -10,7 +10,6 @@ using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
-using Newtonsoft.Json.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -66,14 +65,14 @@ internal sealed class KlapTransport : IDisposableDeviceTransport
 			}
 
 		await EnsureHandshakeAsync (cancellationToken).ConfigureAwait (false);
-		var mergedResponse = new JObject ();
+		var mergedResponse = new KasaResponseParser.LegacyResponseDto ();
 		foreach (string payload in commandJsonPayloads)
 			{
 				string responseJson = await SendEncryptedAsync (payload, cancellationToken).ConfigureAwait (false);
-				JsonSupport.MergeObjects (mergedResponse, JsonSupport.ParseObject (responseJson));
+				mergedResponse.Merge (WireJson.Read<KasaResponseParser.LegacyResponseDto> (responseJson));
 			}
 
-		return mergedResponse.ToJsonString (JsonSupport.COMPACT_JSON);
+		return WireJson.Serialize (mergedResponse);
 		}
 
 	public void Dispose ()

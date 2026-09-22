@@ -12,7 +12,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
-using Newtonsoft.Json.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -299,32 +298,30 @@ internal sealed class DiscoveryClient
 					}
 
 				string response = Encoding.UTF8.GetString (packet.Buffer, 16, packet.Buffer.Length - 16);
-				JObject root = JsonSupport.ParseObject (response);
-				JObject? data = root["result"] as JObject
-					?? root["params"] as JObject
-					?? root;
+				DiscoveryPayloadDto root = WireJson.Read<DiscoveryPayloadDto> (response);
+				DiscoveryPayloadDto data = root.Result ?? root.Parameters ?? root;
 				if (data is null)
 					{
 					return false;
 					}
 
 				string host = packet.RemoteEndPoint.Address.ToString ();
-				string? model = data["model"]?.GetValue<string?> () ?? data["device_model"]?.GetValue<string?> () ?? data["device_model_name"]?.GetValue<string?> ();
-				string? encodedAlias = data["nickname"]?.GetValue<string?> () ?? data["alias"]?.GetValue<string?> () ?? data["device_name"]?.GetValue<string?> ();
+				string? model = data.Model ?? data.DeviceModel ?? data.DeviceModelName;
+				string? encodedAlias = data.Nickname ?? data.Alias ?? data.DeviceName;
 				string? alias = string.IsNullOrWhiteSpace (encodedAlias)
 					? encodedAlias
 					: KasaResponseParser.DecodeSmartAlias (encodedAlias);
-				string? deviceId = data["device_id"]?.GetValue<string?> () ?? data["deviceId"]?.GetValue<string?> ();
+				string? deviceId = data.DeviceId ?? data.LegacyDeviceId;
 				if (string.IsNullOrWhiteSpace (model) && string.IsNullOrWhiteSpace (alias) && string.IsNullOrWhiteSpace (deviceId))
 					{
 					return false;
 					}
-				DeviceType deviceType = DetermineTapoDeviceType (model, data["type"]?.GetValue<string?> (), data["device_type"]?.GetValue<string?> ());
+				DeviceType deviceType = DetermineTapoDeviceType (model, data.Type, data.DeviceType);
 				DiscoveryTransportMetadata metadata = GetDiscoveryTransportMetadata (data, model, packet.RemoteEndPoint.Port);
 				TpapDiscoveryMetadata? tpapMetadata = TryParseTpapDiscoveryMetadata (data);
-				int? protocolVersion = data["protocol_version"]?.GetValue<int?> ();
-				bool? tpapPreferred = data["tpap_preferred"]?.GetValue<bool?> ();
-				result = new DiscoveryResult (host, deviceType, alias, model, deviceId, response, metadata.TransportKind, metadata.SupportsHttps, metadata.Port, metadata.ConnectionParameters, tpapMetadata, protocolVersion, tpapPreferred);
+				int? protocolVersion = data.ProtocolVersion;
+				bool? tpapPreferred = data.TpapPreferred;
+				result = new DiscoveryResult (host, deviceType, alias, model, deviceId, metadata.TransportKind, metadata.SupportsHttps, metadata.Port, metadata.ConnectionParameters, tpapMetadata, protocolVersion, tpapPreferred);
 				return true;
 			}
 		catch
@@ -405,14 +402,14 @@ internal sealed class DiscoveryClient
 		return DeviceType.Unknown;
 		}
 
-	private static DiscoveryTransportMetadata GetDiscoveryTransportMetadata (JObject data, string? model, int responsePort)
+	private static DiscoveryTransportMetadata GetDiscoveryTransportMetadata (DiscoveryPayloadDto data, string? model, int responsePort)
 		{
-		if (data["mgt_encrypt_schm"] is JObject encryptionScheme)
+		if (data.EncryptionScheme is DiscoveryEncryptionSchemeDto encryptionScheme)
 			{
-				bool supportsHttps = encryptionScheme["is_support_https"]?.GetValue<bool?> () == true;
-				int? port = encryptionScheme["http_port"]?.GetValue<int?> ();
+				bool supportsHttps = encryptionScheme.SupportsHttps == true;
+				int? port = encryptionScheme.HttpPort;
 				string? encryptTypeText = ResolveDiscoveryEncryptType (data, encryptionScheme);
-				string? deviceTypeText = data["device_type"]?.GetValue<string?> () ?? data["type"]?.GetValue<string?> ();
+				string? deviceTypeText = data.DeviceType ?? data.Type;
 				int? loginVersion = ResolveDiscoveryLoginVersion (data, encryptionScheme);
 				if (port is null || port <= 0)
 					{
@@ -431,12 +428,12 @@ internal sealed class DiscoveryClient
 						port));
 			}
 
-		if (data["encrypt_type"] is not null || data["encrypt_info"] is JObject)
+		if (data.EncryptionType is not null || data.EncryptionInfo is not null)
 			{
-				bool supportsHttps = data["is_support_https"]?.GetValue<bool?> () == true || responsePort == KLAP_DISCOVERY_PORT;
+				bool supportsHttps = data.SupportsHttps == true || responsePort == KLAP_DISCOVERY_PORT;
 				int port = supportsHttps ? 443 : 80;
-				string? encryptTypeText = data["encrypt_type"]?.GetValue<string?> ();
-				string? deviceTypeText = data["device_type"]?.GetValue<string?> () ?? data["type"]?.GetValue<string?> ();
+				string? encryptTypeText = data.EncryptionType?.Name;
+				string? deviceTypeText = data.DeviceType ?? data.Type;
 				return new DiscoveryTransportMetadata (
 					DeviceTransportKind.HttpToken,
 					supportsHttps,
@@ -456,36 +453,36 @@ internal sealed class DiscoveryClient
 			new DeviceConnectionParameters (DetermineLegacyDeviceFamilyKind (model), DeviceEncryptionKind.Xor, useHttps: false, httpPort: null));
 		}
 
-	private static string? ResolveDiscoveryEncryptType (JObject data, JObject encryptionScheme)
+	private static string? ResolveDiscoveryEncryptType (DiscoveryPayloadDto data, DiscoveryEncryptionSchemeDto encryptionScheme)
 		{
-		string? encryptTypeText = encryptionScheme["encrypt_type"]?.GetValue<string?> ();
+		string? encryptTypeText = encryptionScheme.EncryptionType;
 		if (!string.IsNullOrWhiteSpace (encryptTypeText))
 			{
 			return encryptTypeText;
 			}
 
-		return data["encrypt_info"] is JObject encryptInfo
-			? encryptInfo["sym_schm"]?.GetValue<string?> ()
+		return data.EncryptionInfo is DiscoveryEncryptionInfoDto encryptInfo
+			? encryptInfo.SymmetricScheme
 			: null;
 		}
 
-	private static int? ResolveDiscoveryLoginVersion (JObject data, JObject encryptionScheme)
+	private static int? ResolveDiscoveryLoginVersion (DiscoveryPayloadDto data, DiscoveryEncryptionSchemeDto encryptionScheme)
 		{
-		int? loginVersion = encryptionScheme["lv"]?.GetValue<int?> ();
+		int? loginVersion = encryptionScheme.LoginVersion;
 		if (loginVersion is not null)
 			{
 			return loginVersion;
 			}
 
-		if (data["encrypt_type"] is not JArray encryptTypes)
+		if (data.EncryptionType?.Versions is not List<int?> encryptTypes)
 			{
 			return null;
 			}
 
 		int? maxLoginVersion = null;
-		foreach (JToken? encryptType in encryptTypes)
+		foreach (int? encryptType in encryptTypes)
 			{
-			if (encryptType?.GetValue<int?> () is not int candidate)
+			if (encryptType is not int candidate)
 				{
 				continue;
 				}
@@ -498,20 +495,20 @@ internal sealed class DiscoveryClient
 		return maxLoginVersion;
 		}
 
-	private static TpapDiscoveryMetadata? TryParseTpapDiscoveryMetadata (JObject data)
+	private static TpapDiscoveryMetadata? TryParseTpapDiscoveryMetadata (DiscoveryPayloadDto data)
 		{
-		if (data["tpap"] is not JObject tpap)
+		if (data.Tpap is not TpapDiscoveryDto tpap)
 			{
 			return null;
 			}
 
 		List<int>? pakeModes = null;
-		if (tpap["pake"] is JArray pakeArray)
+		if (tpap.Pake is List<int?> pakeArray)
 			{
 			pakeModes = [];
-			foreach (JToken? item in pakeArray)
+			foreach (int? item in pakeArray)
 				{
-				if (item?.GetValue<int?> () is int mode)
+				if (item is int mode)
 					{
 					pakeModes.Add (mode);
 					}
@@ -519,11 +516,11 @@ internal sealed class DiscoveryClient
 			}
 
 		return new TpapDiscoveryMetadata (
-			tpap["port"]?.GetValue<int?> (),
+			tpap.Port,
 			pakeModes,
-			tpap["tls"]?.GetValue<int?> (),
-			tpap["dac"]?.GetValue<int?> (),
-			tpap["noc"]?.GetValue<int?> ());
+			tpap.Tls,
+			tpap.Dac,
+			tpap.Noc);
 		}
 
 	private static DeviceFamilyKind DetermineDeviceFamilyKind (string? deviceType, string? model, bool supportsHttps)
@@ -660,13 +657,7 @@ internal sealed class DiscoveryClient
 			}
 
 		string publicKeyPem = CreateDiscoveryPublicKeyPem ();
-		string payload = new JObject
-			{
-			["params"] = new JObject
-				{
-				["rsa_key"] = publicKeyPem,
-				},
-			}.ToJsonString (JsonSupport.COMPACT_JSON);
+		string payload = WireJson.Serialize (new DiscoveryQueryDto { Parameters = new DiscoveryQueryParametersDto { RsaKey = publicKeyPem } });
 		byte[] payloadBytes = Encoding.UTF8.GetBytes (payload);
 		var query = new byte[16 + payloadBytes.Length];
 		query[0] = 2;

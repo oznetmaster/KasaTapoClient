@@ -8,8 +8,8 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Sockets;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -21,10 +21,10 @@ namespace KasaClient.Tests;
 
 internal static class LiveTestSupport
 	{
-	private static readonly JsonSerializerSettings JSON_OPTIONS = new ()
+	private static readonly JsonSerializerOptions JSON_OPTIONS = new ()
 		{
-		Converters = { new StringEnumConverter () },
-		MissingMemberHandling = MissingMemberHandling.Ignore,
+		Converters = { new JsonStringEnumConverter () },
+		PropertyNameCaseInsensitive = true,
 		};
 
 	private static LiveDiscoveryCache? _runDiscovery;
@@ -262,7 +262,7 @@ internal static class LiveTestSupport
 			}
 
 		string json = File.ReadAllText (configPath);
-		LiveTestSettings? settings = JsonConvert.DeserializeObject<LiveTestSettings> (json, JSON_OPTIONS);
+		LiveTestSettings? settings = JsonSerializer.Deserialize<LiveTestSettings> (json, JSON_OPTIONS);
 		if (settings != null && (settings.ObservationDelayMilliseconds < 0 || settings.ObservationDelayMilliseconds > 60000))
 			throw new InvalidDataException ("observationDelayMilliseconds must be between 0 and 60000.");
 		// An explicit NUnit parameter overrides the configuration for this operation only.

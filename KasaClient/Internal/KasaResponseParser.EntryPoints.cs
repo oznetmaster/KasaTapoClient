@@ -7,8 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace KasaTapoClient.Internal;
 
@@ -20,7 +18,6 @@ internal static partial class KasaResponseParser
 		LegacySystemInfoDto systemInfo = response.System?.GetSystemInfo
 			?? throw new InvalidDataException ("The device response did not contain system.get_sysinfo data.");
 		return new ParsedResponse (
-			responseJson,
 			systemInfo,
 			response.Emeter ?? response.SmartEmeter,
 			(response.Emeter ?? response.SmartEmeter)?.GetRealtime,
@@ -36,7 +33,6 @@ internal static partial class KasaResponseParser
 		{
 		LegacyResponseDto response = DeserializeResponse (responseJson);
 		return new ParsedResponse (
-			responseJson,
 			systemInfo,
 			response.Emeter ?? response.SmartEmeter,
 			(response.Emeter ?? response.SmartEmeter)?.GetRealtime,
@@ -50,24 +46,19 @@ internal static partial class KasaResponseParser
 
 	internal static SmartParsedResponse ParseSmartResponse (string responseJson)
 		{
-		JObject root = JsonSupport.ParseObject (responseJson);
-		JArray responses = root["result"]?["responses"] as JArray
+		SmartEnvelopeDto root = WireJson.Read<SmartEnvelopeDto> (responseJson);
+		List<SmartMethodResponseDto> responses = root.Result?.Responses
 			?? throw new InvalidDataException ("The smart device response did not contain result.responses.");
 
 		SmartEnvelopeResultDto? deviceInfoResult = null;
 		SmartEnvelopeResultDto? componentResult = null;
 		SmartEnvelopeResultDto? childDeviceListResult = null;
 		SmartEnvelopeResultDto? childComponentListResult = null;
-		Dictionary<string, JObject> moduleResults = new (StringComparer.Ordinal);
-		foreach (JToken? responseNode in responses)
+		Dictionary<string, object> moduleResults = new (StringComparer.Ordinal);
+		foreach (SmartMethodResponseDto responseObject in responses)
 			{
-			if (responseNode is not JObject responseObject)
-				{
-				continue;
-				}
-
-			string? method = responseObject["method"]?.GetValue<string> ();
-			JObject? resultObject = responseObject["result"] as JObject;
+			string? method = responseObject.Method;
+			object? resultObject = responseObject.Result;
 			if (!string.IsNullOrWhiteSpace (method) && resultObject is not null)
 				{
 				moduleResults[method!] = resultObject;
@@ -75,19 +66,19 @@ internal static partial class KasaResponseParser
 
 			if (string.Equals (method, KasaCommands.SMART_GET_DEVICE_INFO_METHOD, StringComparison.Ordinal))
 				{
-				deviceInfoResult = DeserializeSmartEnvelopeResult (resultObject);
+				deviceInfoResult = resultObject as SmartEnvelopeResultDto;
 				}
 			else if (string.Equals (method, KasaCommands.SMART_COMPONENT_NEGO_METHOD, StringComparison.Ordinal))
 				{
-				componentResult = DeserializeSmartEnvelopeResult (resultObject);
+				componentResult = resultObject as SmartEnvelopeResultDto;
 				}
 			else if (string.Equals (method, KasaCommands.SMART_GET_CHILD_DEVICE_LIST_METHOD, StringComparison.Ordinal))
 				{
-				childDeviceListResult = DeserializeSmartEnvelopeResult (resultObject);
+				childDeviceListResult = resultObject as SmartEnvelopeResultDto;
 				}
 			else if (string.Equals (method, KasaCommands.SMART_GET_CHILD_DEVICE_COMPONENT_LIST_METHOD, StringComparison.Ordinal))
 				{
-				childComponentListResult = DeserializeSmartEnvelopeResult (resultObject);
+				childComponentListResult = resultObject as SmartEnvelopeResultDto;
 				}
 			}
 
@@ -143,7 +134,6 @@ internal static partial class KasaResponseParser
 			}
 
 		return new SmartParsedResponse (
-			responseJson,
 			new SmartDeviceInfoDto (
 				deviceInfo.Model,
 				deviceInfo.Type,
@@ -180,37 +170,21 @@ internal static partial class KasaResponseParser
 
 	internal static SmartChildDeviceListDto? ParseSmartChildDeviceListPage (string responseJson)
 		{
-		JObject root = JsonSupport.ParseObject (responseJson);
-		if (root["result"] is not JObject resultObject)
-			{
-			return null;
-			}
-
-		SmartEnvelopeResultDto? pageResult = JsonConvert.DeserializeObject<SmartEnvelopeResultDto> (resultObject.ToJsonString (JsonSupport.COMPACT_JSON), JsonSupport.COMPACT_JSON);
-		if (pageResult?.ChildDeviceList is not List<SmartChildDeviceDto> children)
-			{
-			return null;
-			}
-
-		return new SmartChildDeviceListDto (children, pageResult.Sum, pageResult.StartIndex);
+		SmartEnvelopeResultDto? page = WireJson.Read<SmartEnvelopeDto> (responseJson).Result;
+		return page?.ChildDeviceList is List<SmartChildDeviceDto> children ? new SmartChildDeviceListDto (children, page.Sum, page.StartIndex) : null;
 		}
 
-	internal static IReadOnlyDictionary<string, JObject> ParseSmartModuleResults (string responseJson)
+	internal static IReadOnlyDictionary<string, object> ParseSmartModuleResults (string responseJson)
 		{
-		JObject root = JsonSupport.ParseObject (responseJson);
-		JArray responses = root["result"]?["responses"] as JArray
+		SmartEnvelopeDto root = WireJson.Read<SmartEnvelopeDto> (responseJson);
+		List<SmartMethodResponseDto> responses = root.Result?.Responses
 			?? throw new InvalidDataException ("The smart device response did not contain result.responses.");
 
-		Dictionary<string, JObject> moduleResults = new (StringComparer.Ordinal);
-		foreach (JToken? responseNode in responses)
+		Dictionary<string, object> moduleResults = new (StringComparer.Ordinal);
+		foreach (SmartMethodResponseDto responseObject in responses)
 			{
-			if (responseNode is not JObject responseObject)
-				{
-				continue;
-				}
-
-			string? method = responseObject["method"]?.GetValue<string> ();
-			JObject? resultObject = responseObject["result"] as JObject;
+			string? method = responseObject.Method;
+			object? resultObject = responseObject.Result;
 			if (!string.IsNullOrWhiteSpace (method) && resultObject is not null)
 				{
 				moduleResults[method!] = resultObject;
@@ -220,32 +194,24 @@ internal static partial class KasaResponseParser
 		return moduleResults;
 		}
 
-	internal static JObject? ParseSmartModuleResult (string responseJson, string expectedMethod, out int? errorCode)
+	internal static object? ParseSmartModuleResult (string responseJson, string expectedMethod, out int? errorCode)
 		{
-		JObject root = JsonSupport.ParseObject (responseJson);
-		JArray responses = root["result"]?["responses"] as JArray
+		List<SmartMethodResponseDto> responses = WireJson.Read<SmartEnvelopeDto> (responseJson).Result?.Responses
 			?? throw new InvalidDataException ("The smart device response did not contain result.responses.");
-
-		foreach (JToken? responseNode in responses)
+		foreach (SmartMethodResponseDto response in responses)
 			{
-			if (responseNode is not JObject responseObject
-				|| !string.Equals (responseObject["method"]?.GetValue<string> (), expectedMethod, StringComparison.Ordinal))
-				{
-				continue;
-				}
-
-			errorCode = responseObject["error_code"]?.GetValue<int?> ();
-			return responseObject["result"] as JObject;
+			if (!string.Equals (response.Method, expectedMethod, StringComparison.Ordinal)) continue;
+			errorCode = response.ErrorCode;
+			return response.Result;
 			}
-
 		throw new InvalidDataException ($"The smart device response did not contain {expectedMethod} data.");
 		}
 
-	internal static EnergyUsage? ParseSmartEnergyUsage (IReadOnlyDictionary<string, JObject> moduleResults) => CreateSmartEnergyUsage (moduleResults);
+	internal static EnergyUsage? ParseSmartEnergyUsage (IReadOnlyDictionary<string, object> moduleResults) => CreateSmartEnergyUsage (moduleResults);
 
 	internal static DeviceSystemInfo ParseSystemInfo (ParsedResponse response)
 		{
-		return CreateSystemInfo (response.SystemInfo, response.RawJson);
+		return CreateSystemInfo (response.SystemInfo);
 		}
 
 	internal static ParsedDeviceState ParseSmartDeviceState (SmartParsedResponse response)
@@ -282,7 +248,7 @@ internal static partial class KasaResponseParser
 	internal static ParsedDeviceState ParseDeviceState (ParsedResponse response)
 		{
 		EnergyUsage? energyUsage = response.EmeterInfo is LegacyEmeterRealtimeDto emeterInfo
-			? CreateEnergyUsage (emeterInfo, response.Emeter?.GetDayStat, response.Emeter?.GetMonthStat, response.RawJson)
+			? CreateEnergyUsage (emeterInfo, response.Emeter?.GetDayStat, response.Emeter?.GetMonthStat)
 			: null;
 		LightState? lightState = response.SystemInfo.LightState is null
 			? null
@@ -290,11 +256,11 @@ internal static partial class KasaResponseParser
 		RuleModuleState? ruleState = CreateRuleModuleState (response);
 
 		return new ParsedDeviceState (
-			CreateSystemInfo (response.SystemInfo, response.RawJson),
+			CreateSystemInfo (response.SystemInfo),
 			energyUsage,
 			lightState,
 			CreateLightPresetState (lightState),
-			CreateLegacyLightTransitionState (response.SystemInfo.LightState, response.RawJson),
+			CreateLegacyLightTransitionState (response.SystemInfo.LightState),
 			CreateLightStripEffectState (lightState, DetermineLegacyDeviceType (response.SystemInfo)),
 			alarmState: null,
 			overheatProtectionState: null,
@@ -320,15 +286,12 @@ internal static partial class KasaResponseParser
 			throw new InvalidDataException ("The device response did not contain emeter.get_realtime data.");
 			}
 
-		return CreateEnergyUsage (emeterInfo, response.Emeter?.GetDayStat, response.Emeter?.GetMonthStat, response.RawJson);
+		return CreateEnergyUsage (emeterInfo, response.Emeter?.GetDayStat, response.Emeter?.GetMonthStat);
 		}
 
 	internal static ParsedResponse MergeParsedResponse (ParsedResponse primary, ParsedResponse overlay)
 		{
-		JObject merged = JsonSupport.ParseObject (primary.RawJson);
-		JsonSupport.MergeObjects (merged, JsonSupport.ParseObject (overlay.RawJson));
 		return new ParsedResponse (
-			merged.ToJsonString (JsonSupport.COMPACT_JSON),
 			overlay.SystemInfo ?? primary.SystemInfo,
 			overlay.Emeter ?? primary.Emeter,
 			overlay.EmeterInfo ?? primary.EmeterInfo,
@@ -351,14 +314,13 @@ internal static partial class KasaResponseParser
 		{
 		try
 			{
-			DeviceSystemInfo parsed = CreateSystemInfo (response.SystemInfo, response.RawJson);
+			DeviceSystemInfo parsed = CreateSystemInfo (response.SystemInfo);
 			discoveryResult = new DiscoveryResult (
 				endpoint.Address.ToString (),
 				parsed.DeviceType,
 				parsed.Alias,
 				parsed.Model,
 				parsed.DeviceId,
-				response.RawJson,
 				DeviceTransportKind.LegacyXor,
 				supportsHttps: false,
 				port: endpoint.Port,

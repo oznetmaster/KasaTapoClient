@@ -6,6 +6,13 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 This changelog records shipped features, fixes, compatibility and runtime dependency changes. See [development and validation history](DEVELOPMENT-HISTORY.md) for tests, CI, build tooling and work not yet released.
 
+## [2.0.0] - Typed wire contracts and public API cleanup
+
+- **Breaking:** Removed public `RawJson` state properties and `KasaDevice.ExecuteCommandAsync` / `ExecuteSmartCommandAsync`. Use typed state, control methods and child modules; see [migration guidance](MIGRATION-2.0.md).
+- **Serialization:** Replaced Newtonsoft.Json and manual JSON DOM processing with attribute-controlled System.Text.Json request/response models across discovery, authentication, commands and state handling.
+- **Dependencies:** Removed Newtonsoft.Json and unused log4net; uses stable System.Text.Json 10.0.12 on both supported frameworks.
+- **Console:** Removed arbitrary JSON command entry points and reads child event state through typed modules.
+
 ## [1.8.1] - Dependency version alignment
 
 - **Build**: Fixed a NuGet restore failure (NU1605: package downgrade) caused by Microsoft.Bcl.Memory being pinned to 10.0.12 in KasaTapoClient.csproj while KasaClient.Console, KasaClient.Tests, and the BenchmarkSuite* projects pinned 10.0.11. All projects now reference Microsoft.Bcl.Memory 10.0.12.

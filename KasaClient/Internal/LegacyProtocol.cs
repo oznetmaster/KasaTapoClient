@@ -10,67 +10,349 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace KasaTapoClient.Internal;
 
 internal static partial class KasaResponseParser
 	{
-	private static readonly Dictionary<string, JObject> SMART_LIGHT_STRIP_EFFECT_PAYLOADS =
-		new Dictionary<string, JObject> (StringComparer.OrdinalIgnoreCase)
+	private static readonly Dictionary<string, Func<LightStripEffectParametersDto>> SMART_LIGHT_STRIP_EFFECT_PAYLOADS =
+		new Dictionary<string, Func<LightStripEffectParametersDto>> (StringComparer.OrdinalIgnoreCase)
 			{
-			["Aurora"] = ParseSmartLightStripEffectPayload ("""
-				{"custom":0,"id":"TapoStrip_1MClvV18i15Jq3bvJVf0eP","brightness":100,"name":"Aurora","enable":1,"segments":[0],"expansion_strategy":1,"display_colors":[[120,100,100],[240,100,100],[260,100,100],[280,100,100]],"type":"sequence","duration":0,"transition":1500,"direction":4,"spread":7,"repeat_times":0,"sequence":[[120,100,100],[240,100,100],[260,100,100],[280,100,100]]}
-				"""),
-			["Bubbling Cauldron"] = ParseSmartLightStripEffectPayload ("""
-				{"custom":0,"id":"TapoStrip_6DlumDwO2NdfHppy50vJtu","brightness":100,"name":"Bubbling Cauldron","enable":1,"segments":[0],"expansion_strategy":1,"display_colors":[[100,100,100],[270,100,100]],"type":"random","hue_range":[100,270],"saturation_range":[80,100],"brightness_range":[50,100],"duration":0,"transition":200,"init_states":[[270,100,100]],"fadeoff":1000,"random_seed":24,"backgrounds":[[270,40,50]]}
-				"""),
-			["Candy Cane"] = ParseSmartLightStripEffectPayload ("""
-				{"custom":0,"id":"TapoStrip_6Dy0Nc45vlhFPEzG021Pe9","brightness":100,"name":"Candy Cane","enable":1,"segments":[0],"expansion_strategy":1,"display_colors":[[0,0,100],[0,81,100]],"type":"sequence","duration":700,"transition":500,"direction":1,"spread":1,"repeat_times":0,"sequence":[[0,0,100],[0,0,100],[360,81,100],[0,0,100],[0,0,100],[360,81,100],[360,81,100],[0,0,100],[0,0,100],[360,81,100],[360,81,100],[360,81,100],[360,81,100],[0,0,100],[0,0,100],[360,81,100]]}
-				"""),
-			["Christmas"] = ParseSmartLightStripEffectPayload ("""
-				{"custom":0,"id":"TapoStrip_5zkiG6avJ1IbhjiZbRlWvh","brightness":100,"name":"Christmas","enable":1,"segments":[0],"expansion_strategy":1,"display_colors":[[136,98,100],[350,97,100]],"type":"random","hue_range":[136,146],"saturation_range":[90,100],"brightness_range":[50,100],"duration":5000,"transition":0,"init_states":[[136,0,100]],"fadeoff":2000,"random_seed":100,"backgrounds":[[136,98,75],[136,0,0],[350,0,100],[350,97,94]]}
-				"""),
-			["Flicker"] = ParseSmartLightStripEffectPayload ("""
-				{"custom":0,"id":"TapoStrip_4HVKmMc6vEzjm36jXaGwMs","brightness":100,"name":"Flicker","enable":1,"segments":[1],"expansion_strategy":1,"display_colors":[[30,81,100],[40,100,100]],"type":"random","hue_range":[30,40],"saturation_range":[100,100],"brightness_range":[50,100],"duration":0,"transition":0,"transition_range":[375,500],"init_states":[[30,81,80]]}
-				"""),
-			["Grandma's Christmas Lights"] = ParseSmartLightStripEffectPayload ("""
-				{"custom":0,"id":"TapoStrip_3Gk6CmXOXbjCiwz9iD543C","brightness":100,"name":"Grandma's Christmas Lights","enable":1,"segments":[0],"expansion_strategy":1,"display_colors":[[30,100,100],[240,100,100],[130,100,100],[0,100,100]],"type":"sequence","duration":5000,"transition":100,"direction":1,"spread":1,"repeat_times":0,"sequence":[[30,100,100],[30,0,0],[30,0,0],[240,100,100],[240,0,0],[240,0,0],[240,0,100],[240,0,0],[240,0,0],[130,100,100],[130,0,0],[130,0,0],[0,100,100],[0,0,0],[0,0,0]]}
-				"""),
-			["Hanukkah"] = ParseSmartLightStripEffectPayload ("""
-				{"custom":0,"id":"TapoStrip_2YTk4wramLKv5XZ9KFDVYm","brightness":100,"name":"Hanukkah","enable":1,"segments":[1],"expansion_strategy":1,"display_colors":[[200,100,100]],"type":"random","hue_range":[200,210],"saturation_range":[0,100],"brightness_range":[50,100],"duration":1500,"transition":0,"transition_range":[400,500],"init_states":[[35,81,80]]}
-				"""),
-			["Haunted Mansion"] = ParseSmartLightStripEffectPayload ("""
-				{"custom":0,"id":"TapoStrip_4rJ6JwC7I9st3tQ8j4lwlI","brightness":100,"name":"Haunted Mansion","enable":1,"segments":[80],"expansion_strategy":2,"display_colors":[[44,9,100]],"type":"random","hue_range":[45,45],"saturation_range":[10,10],"brightness_range":[0,80],"duration":0,"transition":0,"transition_range":[50,1500],"init_states":[[45,10,100]],"fadeoff":200,"random_seed":1,"backgrounds":[[45,10,100]]}
-				"""),
-			["Icicle"] = ParseSmartLightStripEffectPayload ("""
-				{"custom":0,"id":"TapoStrip_7UcYLeJbiaxVIXCxr21tpx","brightness":100,"name":"Icicle","enable":1,"segments":[0],"expansion_strategy":1,"display_colors":[[190,100,100]],"type":"sequence","duration":0,"transition":400,"direction":4,"spread":3,"repeat_times":0,"sequence":[[190,100,70],[190,100,70],[190,30,50],[190,100,70],[190,100,70]]}
-				"""),
-			["Lightning"] = ParseSmartLightStripEffectPayload ("""
-				{"custom":0,"id":"TapoStrip_7OGzfSfnOdhoO2ri4gOHWn","brightness":100,"name":"Lightning","enable":1,"segments":[7],"expansion_strategy":1,"display_colors":[[210,9,100],[200,50,100],[200,100,100]],"type":"random","hue_range":[240,240],"saturation_range":[10,11],"brightness_range":[90,100],"duration":0,"transition":50,"init_states":[[240,30,100]],"fadeoff":150,"random_seed":50,"backgrounds":[[200,100,100],[200,50,10],[210,10,50],[240,10,0]]}
-				"""),
-			["Ocean"] = ParseSmartLightStripEffectPayload ("""
-				{"custom":0,"id":"TapoStrip_0fOleCdwSgR0nfjkReeYfw","brightness":100,"name":"Ocean","enable":1,"segments":[0],"expansion_strategy":1,"display_colors":[[198,84,100]],"type":"sequence","duration":0,"transition":2000,"direction":3,"spread":16,"repeat_times":0,"sequence":[[198,84,30],[198,70,30],[198,10,30]]}
-				"""),
-			["Rainbow"] = ParseSmartLightStripEffectPayload ("""
-				{"custom":0,"id":"TapoStrip_7CC5y4lsL8pETYvmz7UOpQ","brightness":100,"name":"Rainbow","enable":1,"segments":[0],"expansion_strategy":1,"display_colors":[[0,100,100],[100,100,100],[200,100,100],[300,100,100]],"type":"sequence","duration":0,"transition":1500,"direction":1,"spread":12,"repeat_times":0,"sequence":[[0,100,100],[100,100,100],[200,100,100],[300,100,100]]}
-				"""),
-			["Raindrop"] = ParseSmartLightStripEffectPayload ("""
-				{"custom":0,"id":"TapoStrip_1t2nWlTBkV8KXBZ0TWvBjs","brightness":100,"name":"Raindrop","enable":1,"segments":[0],"expansion_strategy":1,"display_colors":[[200,9,100],[200,19,100]],"type":"random","hue_range":[200,200],"saturation_range":[10,20],"brightness_range":[10,30],"duration":0,"transition":1000,"init_states":[[200,40,100]],"fadeoff":1000,"random_seed":24,"backgrounds":[[200,40,0]]}
-				"""),
-			["Spring"] = ParseSmartLightStripEffectPayload ("""
-				{"custom":0,"id":"TapoStrip_1nL6GqZ5soOxj71YDJOlZL","brightness":100,"name":"Spring","enable":1,"segments":[0],"expansion_strategy":1,"display_colors":[[0,30,100],[130,100,100]],"type":"random","hue_range":[0,90],"saturation_range":[30,100],"brightness_range":[90,100],"duration":600,"transition":0,"transition_range":[2000,6000],"init_states":[[80,30,100]],"fadeoff":1000,"random_seed":20,"backgrounds":[[130,100,40]]}
-				"""),
-			["Sunrise"] = ParseSmartLightStripEffectPayload ("""
-				{"custom":0,"id":"TapoStrip_1OVSyXIsDxrt4j7OxyRvqi","brightness":100,"name":"Sunrise","enable":1,"segments":[0],"expansion_strategy":2,"display_colors":[[0,0,100],[30,95,100],[0,100,100]],"type":"pulse","duration":600,"transition":60000,"direction":1,"spread":1,"repeat_times":1,"run_time":0,"sequence":[[0,100,5],[0,100,5],[10,100,6],[15,100,7],[20,100,8],[20,100,10],[30,100,12],[30,95,15],[30,90,20],[30,80,25],[30,75,30],[30,70,40],[30,60,50],[30,50,60],[30,20,70],[30,0,100]],"trans_sequence":[]}
-				"""),
-			["Sunset"] = ParseSmartLightStripEffectPayload ("""
-				{"custom":0,"id":"TapoStrip_5NiN0Y8GAUD78p4neKk9EL","brightness":100,"name":"Sunset","enable":1,"segments":[0],"expansion_strategy":2,"display_colors":[[0,100,100],[30,95,100],[0,0,100]],"type":"pulse","duration":600,"transition":60000,"direction":1,"spread":1,"repeat_times":1,"run_time":0,"sequence":[[30,0,100],[30,20,100],[30,50,99],[30,60,98],[30,70,97],[30,75,95],[30,80,93],[30,90,90],[30,95,85],[30,100,80],[20,100,70],[20,100,60],[15,100,50],[10,100,40],[0,100,30],[0,100,0]],"trans_sequence":[]}
-				"""),
-			["Valentines"] = ParseSmartLightStripEffectPayload ("""
-				{"custom":0,"id":"TapoStrip_2q1Vio9sSjHmaC7JS9d30l","brightness":100,"name":"Valentines","enable":1,"segments":[0],"expansion_strategy":1,"display_colors":[[339,19,100],[19,50,100],[0,100,100],[339,40,100]],"type":"random","hue_range":[340,340],"saturation_range":[30,40],"brightness_range":[90,100],"duration":600,"transition":2000,"init_states":[[340,30,100]],"fadeoff":3000,"random_seed":100,"backgrounds":[[340,20,50],[20,50,50],[0,100,50]]}
-				""")
+			["Aurora"] = () => new LightStripEffectParametersDto
+				{
+				Custom = 0,
+				Id = "TapoStrip_1MClvV18i15Jq3bvJVf0eP",
+				Brightness = 100,
+				Name = "Aurora",
+				Enable = 1,
+				Segments = new int[] { 0 },
+				ExpansionStrategy = 1,
+				DisplayColors = new int[][] { new int[] { 120, 100, 100 }, new int[] { 240, 100, 100 }, new int[] { 260, 100, 100 }, new int[] { 280, 100, 100 } },
+				Type = "sequence",
+				Duration = 0,
+				Transition = 1500,
+				Direction = 4,
+				Spread = 7,
+				RepeatTimes = 0,
+				Sequence = new int[][] { new int[] { 120, 100, 100 }, new int[] { 240, 100, 100 }, new int[] { 260, 100, 100 }, new int[] { 280, 100, 100 } },
+				},
+			["Bubbling Cauldron"] = () => new LightStripEffectParametersDto
+				{
+				Custom = 0,
+				Id = "TapoStrip_6DlumDwO2NdfHppy50vJtu",
+				Brightness = 100,
+				Name = "Bubbling Cauldron",
+				Enable = 1,
+				Segments = new int[] { 0 },
+				ExpansionStrategy = 1,
+				DisplayColors = new int[][] { new int[] { 100, 100, 100 }, new int[] { 270, 100, 100 } },
+				Type = "random",
+				HueRange = new int[] { 100, 270 },
+				SaturationRange = new int[] { 80, 100 },
+				BrightnessRange = new int[] { 50, 100 },
+				Duration = 0,
+				Transition = 200,
+				InitStates = new int[][] { new int[] { 270, 100, 100 } },
+				Fadeoff = 1000,
+				RandomSeed = 24,
+				Backgrounds = new int[][] { new int[] { 270, 40, 50 } },
+				},
+			["Candy Cane"] = () => new LightStripEffectParametersDto
+				{
+				Custom = 0,
+				Id = "TapoStrip_6Dy0Nc45vlhFPEzG021Pe9",
+				Brightness = 100,
+				Name = "Candy Cane",
+				Enable = 1,
+				Segments = new int[] { 0 },
+				ExpansionStrategy = 1,
+				DisplayColors = new int[][] { new int[] { 0, 0, 100 }, new int[] { 0, 81, 100 } },
+				Type = "sequence",
+				Duration = 700,
+				Transition = 500,
+				Direction = 1,
+				Spread = 1,
+				RepeatTimes = 0,
+				Sequence = new int[][] { new int[] { 0, 0, 100 }, new int[] { 0, 0, 100 }, new int[] { 360, 81, 100 }, new int[] { 0, 0, 100 }, new int[] { 0, 0, 100 }, new int[] { 360, 81, 100 }, new int[] { 360, 81, 100 }, new int[] { 0, 0, 100 }, new int[] { 0, 0, 100 }, new int[] { 360, 81, 100 }, new int[] { 360, 81, 100 }, new int[] { 360, 81, 100 }, new int[] { 360, 81, 100 }, new int[] { 0, 0, 100 }, new int[] { 0, 0, 100 }, new int[] { 360, 81, 100 } },
+				},
+			["Christmas"] = () => new LightStripEffectParametersDto
+				{
+				Custom = 0,
+				Id = "TapoStrip_5zkiG6avJ1IbhjiZbRlWvh",
+				Brightness = 100,
+				Name = "Christmas",
+				Enable = 1,
+				Segments = new int[] { 0 },
+				ExpansionStrategy = 1,
+				DisplayColors = new int[][] { new int[] { 136, 98, 100 }, new int[] { 350, 97, 100 } },
+				Type = "random",
+				HueRange = new int[] { 136, 146 },
+				SaturationRange = new int[] { 90, 100 },
+				BrightnessRange = new int[] { 50, 100 },
+				Duration = 5000,
+				Transition = 0,
+				InitStates = new int[][] { new int[] { 136, 0, 100 } },
+				Fadeoff = 2000,
+				RandomSeed = 100,
+				Backgrounds = new int[][] { new int[] { 136, 98, 75 }, new int[] { 136, 0, 0 }, new int[] { 350, 0, 100 }, new int[] { 350, 97, 94 } },
+				},
+			["Flicker"] = () => new LightStripEffectParametersDto
+				{
+				Custom = 0,
+				Id = "TapoStrip_4HVKmMc6vEzjm36jXaGwMs",
+				Brightness = 100,
+				Name = "Flicker",
+				Enable = 1,
+				Segments = new int[] { 1 },
+				ExpansionStrategy = 1,
+				DisplayColors = new int[][] { new int[] { 30, 81, 100 }, new int[] { 40, 100, 100 } },
+				Type = "random",
+				HueRange = new int[] { 30, 40 },
+				SaturationRange = new int[] { 100, 100 },
+				BrightnessRange = new int[] { 50, 100 },
+				Duration = 0,
+				Transition = 0,
+				TransitionRange = new int[] { 375, 500 },
+				InitStates = new int[][] { new int[] { 30, 81, 80 } },
+				},
+			["Grandma's Christmas Lights"] = () => new LightStripEffectParametersDto
+				{
+				Custom = 0,
+				Id = "TapoStrip_3Gk6CmXOXbjCiwz9iD543C",
+				Brightness = 100,
+				Name = "Grandma's Christmas Lights",
+				Enable = 1,
+				Segments = new int[] { 0 },
+				ExpansionStrategy = 1,
+				DisplayColors = new int[][] { new int[] { 30, 100, 100 }, new int[] { 240, 100, 100 }, new int[] { 130, 100, 100 }, new int[] { 0, 100, 100 } },
+				Type = "sequence",
+				Duration = 5000,
+				Transition = 100,
+				Direction = 1,
+				Spread = 1,
+				RepeatTimes = 0,
+				Sequence = new int[][] { new int[] { 30, 100, 100 }, new int[] { 30, 0, 0 }, new int[] { 30, 0, 0 }, new int[] { 240, 100, 100 }, new int[] { 240, 0, 0 }, new int[] { 240, 0, 0 }, new int[] { 240, 0, 100 }, new int[] { 240, 0, 0 }, new int[] { 240, 0, 0 }, new int[] { 130, 100, 100 }, new int[] { 130, 0, 0 }, new int[] { 130, 0, 0 }, new int[] { 0, 100, 100 }, new int[] { 0, 0, 0 }, new int[] { 0, 0, 0 } },
+				},
+			["Hanukkah"] = () => new LightStripEffectParametersDto
+				{
+				Custom = 0,
+				Id = "TapoStrip_2YTk4wramLKv5XZ9KFDVYm",
+				Brightness = 100,
+				Name = "Hanukkah",
+				Enable = 1,
+				Segments = new int[] { 1 },
+				ExpansionStrategy = 1,
+				DisplayColors = new int[][] { new int[] { 200, 100, 100 } },
+				Type = "random",
+				HueRange = new int[] { 200, 210 },
+				SaturationRange = new int[] { 0, 100 },
+				BrightnessRange = new int[] { 50, 100 },
+				Duration = 1500,
+				Transition = 0,
+				TransitionRange = new int[] { 400, 500 },
+				InitStates = new int[][] { new int[] { 35, 81, 80 } },
+				},
+			["Haunted Mansion"] = () => new LightStripEffectParametersDto
+				{
+				Custom = 0,
+				Id = "TapoStrip_4rJ6JwC7I9st3tQ8j4lwlI",
+				Brightness = 100,
+				Name = "Haunted Mansion",
+				Enable = 1,
+				Segments = new int[] { 80 },
+				ExpansionStrategy = 2,
+				DisplayColors = new int[][] { new int[] { 44, 9, 100 } },
+				Type = "random",
+				HueRange = new int[] { 45, 45 },
+				SaturationRange = new int[] { 10, 10 },
+				BrightnessRange = new int[] { 0, 80 },
+				Duration = 0,
+				Transition = 0,
+				TransitionRange = new int[] { 50, 1500 },
+				InitStates = new int[][] { new int[] { 45, 10, 100 } },
+				Fadeoff = 200,
+				RandomSeed = 1,
+				Backgrounds = new int[][] { new int[] { 45, 10, 100 } },
+				},
+			["Icicle"] = () => new LightStripEffectParametersDto
+				{
+				Custom = 0,
+				Id = "TapoStrip_7UcYLeJbiaxVIXCxr21tpx",
+				Brightness = 100,
+				Name = "Icicle",
+				Enable = 1,
+				Segments = new int[] { 0 },
+				ExpansionStrategy = 1,
+				DisplayColors = new int[][] { new int[] { 190, 100, 100 } },
+				Type = "sequence",
+				Duration = 0,
+				Transition = 400,
+				Direction = 4,
+				Spread = 3,
+				RepeatTimes = 0,
+				Sequence = new int[][] { new int[] { 190, 100, 70 }, new int[] { 190, 100, 70 }, new int[] { 190, 30, 50 }, new int[] { 190, 100, 70 }, new int[] { 190, 100, 70 } },
+				},
+			["Lightning"] = () => new LightStripEffectParametersDto
+				{
+				Custom = 0,
+				Id = "TapoStrip_7OGzfSfnOdhoO2ri4gOHWn",
+				Brightness = 100,
+				Name = "Lightning",
+				Enable = 1,
+				Segments = new int[] { 7 },
+				ExpansionStrategy = 1,
+				DisplayColors = new int[][] { new int[] { 210, 9, 100 }, new int[] { 200, 50, 100 }, new int[] { 200, 100, 100 } },
+				Type = "random",
+				HueRange = new int[] { 240, 240 },
+				SaturationRange = new int[] { 10, 11 },
+				BrightnessRange = new int[] { 90, 100 },
+				Duration = 0,
+				Transition = 50,
+				InitStates = new int[][] { new int[] { 240, 30, 100 } },
+				Fadeoff = 150,
+				RandomSeed = 50,
+				Backgrounds = new int[][] { new int[] { 200, 100, 100 }, new int[] { 200, 50, 10 }, new int[] { 210, 10, 50 }, new int[] { 240, 10, 0 } },
+				},
+			["Ocean"] = () => new LightStripEffectParametersDto
+				{
+				Custom = 0,
+				Id = "TapoStrip_0fOleCdwSgR0nfjkReeYfw",
+				Brightness = 100,
+				Name = "Ocean",
+				Enable = 1,
+				Segments = new int[] { 0 },
+				ExpansionStrategy = 1,
+				DisplayColors = new int[][] { new int[] { 198, 84, 100 } },
+				Type = "sequence",
+				Duration = 0,
+				Transition = 2000,
+				Direction = 3,
+				Spread = 16,
+				RepeatTimes = 0,
+				Sequence = new int[][] { new int[] { 198, 84, 30 }, new int[] { 198, 70, 30 }, new int[] { 198, 10, 30 } },
+				},
+			["Rainbow"] = () => new LightStripEffectParametersDto
+				{
+				Custom = 0,
+				Id = "TapoStrip_7CC5y4lsL8pETYvmz7UOpQ",
+				Brightness = 100,
+				Name = "Rainbow",
+				Enable = 1,
+				Segments = new int[] { 0 },
+				ExpansionStrategy = 1,
+				DisplayColors = new int[][] { new int[] { 0, 100, 100 }, new int[] { 100, 100, 100 }, new int[] { 200, 100, 100 }, new int[] { 300, 100, 100 } },
+				Type = "sequence",
+				Duration = 0,
+				Transition = 1500,
+				Direction = 1,
+				Spread = 12,
+				RepeatTimes = 0,
+				Sequence = new int[][] { new int[] { 0, 100, 100 }, new int[] { 100, 100, 100 }, new int[] { 200, 100, 100 }, new int[] { 300, 100, 100 } },
+				},
+			["Raindrop"] = () => new LightStripEffectParametersDto
+				{
+				Custom = 0,
+				Id = "TapoStrip_1t2nWlTBkV8KXBZ0TWvBjs",
+				Brightness = 100,
+				Name = "Raindrop",
+				Enable = 1,
+				Segments = new int[] { 0 },
+				ExpansionStrategy = 1,
+				DisplayColors = new int[][] { new int[] { 200, 9, 100 }, new int[] { 200, 19, 100 } },
+				Type = "random",
+				HueRange = new int[] { 200, 200 },
+				SaturationRange = new int[] { 10, 20 },
+				BrightnessRange = new int[] { 10, 30 },
+				Duration = 0,
+				Transition = 1000,
+				InitStates = new int[][] { new int[] { 200, 40, 100 } },
+				Fadeoff = 1000,
+				RandomSeed = 24,
+				Backgrounds = new int[][] { new int[] { 200, 40, 0 } },
+				},
+			["Spring"] = () => new LightStripEffectParametersDto
+				{
+				Custom = 0,
+				Id = "TapoStrip_1nL6GqZ5soOxj71YDJOlZL",
+				Brightness = 100,
+				Name = "Spring",
+				Enable = 1,
+				Segments = new int[] { 0 },
+				ExpansionStrategy = 1,
+				DisplayColors = new int[][] { new int[] { 0, 30, 100 }, new int[] { 130, 100, 100 } },
+				Type = "random",
+				HueRange = new int[] { 0, 90 },
+				SaturationRange = new int[] { 30, 100 },
+				BrightnessRange = new int[] { 90, 100 },
+				Duration = 600,
+				Transition = 0,
+				TransitionRange = new int[] { 2000, 6000 },
+				InitStates = new int[][] { new int[] { 80, 30, 100 } },
+				Fadeoff = 1000,
+				RandomSeed = 20,
+				Backgrounds = new int[][] { new int[] { 130, 100, 40 } },
+				},
+			["Sunrise"] = () => new LightStripEffectParametersDto
+				{
+				Custom = 0,
+				Id = "TapoStrip_1OVSyXIsDxrt4j7OxyRvqi",
+				Brightness = 100,
+				Name = "Sunrise",
+				Enable = 1,
+				Segments = new int[] { 0 },
+				ExpansionStrategy = 2,
+				DisplayColors = new int[][] { new int[] { 0, 0, 100 }, new int[] { 30, 95, 100 }, new int[] { 0, 100, 100 } },
+				Type = "pulse",
+				Duration = 600,
+				Transition = 60000,
+				Direction = 1,
+				Spread = 1,
+				RepeatTimes = 1,
+				RunTime = 0,
+				Sequence = new int[][] { new int[] { 0, 100, 5 }, new int[] { 0, 100, 5 }, new int[] { 10, 100, 6 }, new int[] { 15, 100, 7 }, new int[] { 20, 100, 8 }, new int[] { 20, 100, 10 }, new int[] { 30, 100, 12 }, new int[] { 30, 95, 15 }, new int[] { 30, 90, 20 }, new int[] { 30, 80, 25 }, new int[] { 30, 75, 30 }, new int[] { 30, 70, 40 }, new int[] { 30, 60, 50 }, new int[] { 30, 50, 60 }, new int[] { 30, 20, 70 }, new int[] { 30, 0, 100 } },
+				TransSequence = Array.Empty<int[]> (),
+				},
+			["Sunset"] = () => new LightStripEffectParametersDto
+				{
+				Custom = 0,
+				Id = "TapoStrip_5NiN0Y8GAUD78p4neKk9EL",
+				Brightness = 100,
+				Name = "Sunset",
+				Enable = 1,
+				Segments = new int[] { 0 },
+				ExpansionStrategy = 2,
+				DisplayColors = new int[][] { new int[] { 0, 100, 100 }, new int[] { 30, 95, 100 }, new int[] { 0, 0, 100 } },
+				Type = "pulse",
+				Duration = 600,
+				Transition = 60000,
+				Direction = 1,
+				Spread = 1,
+				RepeatTimes = 1,
+				RunTime = 0,
+				Sequence = new int[][] { new int[] { 30, 0, 100 }, new int[] { 30, 20, 100 }, new int[] { 30, 50, 99 }, new int[] { 30, 60, 98 }, new int[] { 30, 70, 97 }, new int[] { 30, 75, 95 }, new int[] { 30, 80, 93 }, new int[] { 30, 90, 90 }, new int[] { 30, 95, 85 }, new int[] { 30, 100, 80 }, new int[] { 20, 100, 70 }, new int[] { 20, 100, 60 }, new int[] { 15, 100, 50 }, new int[] { 10, 100, 40 }, new int[] { 0, 100, 30 }, new int[] { 0, 100, 0 } },
+				TransSequence = Array.Empty<int[]> (),
+				},
+			["Valentines"] = () => new LightStripEffectParametersDto
+				{
+				Custom = 0,
+				Id = "TapoStrip_2q1Vio9sSjHmaC7JS9d30l",
+				Brightness = 100,
+				Name = "Valentines",
+				Enable = 1,
+				Segments = new int[] { 0 },
+				ExpansionStrategy = 1,
+				DisplayColors = new int[][] { new int[] { 339, 19, 100 }, new int[] { 19, 50, 100 }, new int[] { 0, 100, 100 }, new int[] { 339, 40, 100 } },
+				Type = "random",
+				HueRange = new int[] { 340, 340 },
+				SaturationRange = new int[] { 30, 40 },
+				BrightnessRange = new int[] { 90, 100 },
+				Duration = 600,
+				Transition = 2000,
+				InitStates = new int[][] { new int[] { 340, 30, 100 } },
+				Fadeoff = 3000,
+				RandomSeed = 100,
+				Backgrounds = new int[][] { new int[] { 340, 20, 50 }, new int[] { 20, 50, 50 }, new int[] { 0, 100, 50 } },
+				}
 			};
 
 	private static readonly IReadOnlyList<LightEffectDefinition> SMART_LIGHT_STRIP_EFFECTS =
@@ -95,34 +377,17 @@ internal static partial class KasaResponseParser
 		];
 	private const int SMART_LIGHT_TRANSITION_DEFAULT_MAXIMUM_SECONDS = 60;
 
-	internal static JObject CreateSmartLightStripEffectPayload (string? effect)
+	internal static LightStripEffectParametersDto CreateSmartLightStripEffectPayload (string? effect)
 		{
-		if (string.IsNullOrWhiteSpace (effect))
-			{
-			return new JObject
-				{
-				["enable"] = 0,
-				};
-			}
-
-		string effectName = effect!;
-		if (!SMART_LIGHT_STRIP_EFFECT_PAYLOADS.TryGetValue (effectName, out JObject? payload))
-			{
-			throw new ArgumentException ($"Unknown smart light-strip effect '{effectName}'.", nameof (effect));
-			}
-
-		return (JObject?)payload.DeepClone ()
-			?? throw new InvalidOperationException ($"The smart light-strip effect '{effectName}' could not be cloned.");
+		if (string.IsNullOrWhiteSpace (effect)) return new LightStripEffectParametersDto { Enable = 0 };
+		if (!SMART_LIGHT_STRIP_EFFECT_PAYLOADS.TryGetValue (effect!, out Func<LightStripEffectParametersDto>? factory))
+			throw new ArgumentException ($"Unknown smart light-strip effect '{effect}'.", nameof (effect));
+		return factory ();
 		}
-
-	private static JObject ParseSmartLightStripEffectPayload (string json) =>
-		JToken.Parse (json) as JObject
-		?? throw new InvalidOperationException ("The built-in smart light-strip effect payload could not be parsed.");
 
 	internal sealed class ParsedResponse
 		{
 		internal ParsedResponse (
-			string rawJson,
 			LegacySystemInfoDto systemInfo,
 			LegacyEmeterModuleDto? emeter,
 			LegacyEmeterRealtimeDto? emeterInfo,
@@ -133,7 +398,6 @@ internal static partial class KasaResponseParser
 			LegacyCloudModuleDto? cloud,
 			LegacyHomeKitModuleDto? homeKit)
 			{
-			RawJson = rawJson;
 			SystemInfo = systemInfo;
 			Emeter = emeter;
 			EmeterInfo = emeterInfo;
@@ -143,11 +407,6 @@ internal static partial class KasaResponseParser
 			Time = time;
 			Cloud = cloud;
 			HomeKit = homeKit;
-			}
-
-		internal string RawJson
-			{
-			get;
 			}
 
 		internal LegacySystemInfoDto SystemInfo
@@ -353,16 +612,14 @@ internal static partial class KasaResponseParser
 	internal sealed class SmartParsedResponse
 		{
 		internal SmartParsedResponse (
-			string rawJson,
 			SmartDeviceInfoDto deviceInfo,
 			IReadOnlyList<string> componentIds,
 			IReadOnlyDictionary<string, int> componentVersions,
 			SmartChildDeviceListDto? childDeviceList,
 			IReadOnlyDictionary<string, IReadOnlyList<string>> childComponentIds,
 			IReadOnlyDictionary<string, SmartChildDeviceDto> childOverrides,
-			IReadOnlyDictionary<string, JObject> moduleResults)
+			IReadOnlyDictionary<string, object> moduleResults)
 			{
-			RawJson = rawJson;
 			DeviceInfo = deviceInfo;
 			ComponentIds = componentIds;
 			ComponentVersions = componentVersions;
@@ -371,140 +628,137 @@ internal static partial class KasaResponseParser
 			ChildOverrides = childOverrides;
 			ModuleResults = moduleResults;
 			}
-
-		internal string RawJson { get; }
 		internal SmartDeviceInfoDto DeviceInfo { get; }
 		internal IReadOnlyList<string> ComponentIds { get; }
 		internal IReadOnlyDictionary<string, int> ComponentVersions { get; }
 		internal SmartChildDeviceListDto? ChildDeviceList { get; }
 		internal IReadOnlyDictionary<string, IReadOnlyList<string>> ChildComponentIds { get; }
 		internal IReadOnlyDictionary<string, SmartChildDeviceDto> ChildOverrides { get; }
-		internal IReadOnlyDictionary<string, JObject> ModuleResults { get; }
+		internal IReadOnlyDictionary<string, object> ModuleResults { get; }
 		}
 
 	internal sealed class SmartEnvelopeDto
 		{
-		[JsonProperty ("result")]
+		[System.Text.Json.Serialization.JsonPropertyName ("result")]
 		public SmartEnvelopeResultDto? Result { get; set; }
 		}
 
 	internal sealed class SmartEnvelopeResultDto
 		{
-		[JsonProperty ("responses")]
+		[System.Text.Json.Serialization.JsonPropertyName ("responses")]
 		public List<SmartMethodResponseDto>? Responses { get; set; }
 
-		[JsonProperty ("component_list")]
+		[System.Text.Json.Serialization.JsonPropertyName ("component_list")]
 		public List<SmartComponentDto>? ComponentList { get; set; }
 
-		[JsonProperty ("child_device_list")]
+		[System.Text.Json.Serialization.JsonPropertyName ("child_device_list")]
 		public List<SmartChildDeviceDto>? ChildDeviceList { get; set; }
 
-		[JsonProperty ("child_component_list")]
+		[System.Text.Json.Serialization.JsonPropertyName ("child_component_list")]
 		public List<SmartChildComponentDto>? ChildComponentList { get; set; }
 
-		[JsonProperty ("sum")]
+		[System.Text.Json.Serialization.JsonPropertyName ("sum")]
 		public int? Sum { get; set; }
 
-		[JsonProperty ("start_index")]
+		[System.Text.Json.Serialization.JsonPropertyName ("start_index")]
 		public int? StartIndex { get; set; }
 
-		[JsonProperty ("model")]
+		[System.Text.Json.Serialization.JsonPropertyName ("model")]
 		public string? Model { get; set; }
 
-		[JsonProperty ("type")]
+		[System.Text.Json.Serialization.JsonPropertyName ("type")]
 		public string? Type { get; set; }
 
-		[JsonProperty ("device_id")]
+		[System.Text.Json.Serialization.JsonPropertyName ("device_id")]
 		public string? DeviceId { get; set; }
 
-		[JsonProperty ("nickname")]
+		[System.Text.Json.Serialization.JsonPropertyName ("nickname")]
 		public string? Nickname { get; set; }
 
-		[JsonProperty ("avatar")]
+		[System.Text.Json.Serialization.JsonPropertyName ("avatar")]
 		public string? Avatar { get; set; }
 
-		[JsonProperty ("device_on")]
+		[System.Text.Json.Serialization.JsonPropertyName ("device_on")]
 		public bool? DeviceOn { get; set; }
 
-		[JsonProperty ("fw_ver")]
+		[System.Text.Json.Serialization.JsonPropertyName ("fw_ver")]
 		public string? FirmwareVersion { get; set; }
 
-		[JsonProperty ("hw_ver")]
+		[System.Text.Json.Serialization.JsonPropertyName ("hw_ver")]
 		public string? HardwareVersion { get; set; }
 
-		[JsonProperty ("mac")]
+		[System.Text.Json.Serialization.JsonPropertyName ("mac")]
 		public string? Mac { get; set; }
 
-		[JsonProperty ("rssi")]
+		[System.Text.Json.Serialization.JsonPropertyName ("rssi")]
 		public int? Rssi { get; set; }
 
-		[JsonProperty ("signal_level")]
+		[System.Text.Json.Serialization.JsonPropertyName ("signal_level")]
 		public int? SignalLevel { get; set; }
 
-		[JsonProperty ("ssid")]
+		[System.Text.Json.Serialization.JsonPropertyName ("ssid")]
 		public string? Ssid { get; set; }
 
-		[JsonProperty ("on_time")]
+		[System.Text.Json.Serialization.JsonPropertyName ("on_time")]
 		public int? OnTimeSeconds { get; set; }
 
-		[JsonProperty ("specs")]
+		[System.Text.Json.Serialization.JsonPropertyName ("specs")]
 		public string? Specs { get; set; }
 
-		[JsonProperty ("device_category_list")]
+		[System.Text.Json.Serialization.JsonPropertyName ("device_category_list")]
 		public List<SmartChildSetupCategoryDto>? DeviceCategoryList { get; set; }
 
-		[JsonProperty ("brightness")]
+		[System.Text.Json.Serialization.JsonPropertyName ("brightness")]
 		public int? Brightness { get; set; }
 
-		[JsonProperty ("hue")]
+		[System.Text.Json.Serialization.JsonPropertyName ("hue")]
 		public int? Hue { get; set; }
 
-		[JsonProperty ("saturation")]
+		[System.Text.Json.Serialization.JsonPropertyName ("saturation")]
 		public int? Saturation { get; set; }
 
-		[JsonProperty ("color_temp")]
+		[System.Text.Json.Serialization.JsonPropertyName ("color_temp")]
 		public int? ColorTemperature { get; set; }
 
-		[JsonProperty ("lighting_effect")]
+		[System.Text.Json.Serialization.JsonPropertyName ("lighting_effect")]
 		public LegacyLightingEffectDto? LightingEffect { get; set; }
 
-		[JsonProperty ("overheated")]
+		[System.Text.Json.Serialization.JsonPropertyName ("overheated")]
 		public bool? Overheated { get; set; }
 
-		[JsonProperty ("power_protection")]
+		[System.Text.Json.Serialization.JsonPropertyName ("power_protection")]
 		public bool? PowerProtection { get; set; }
 
-		[JsonProperty ("power_protect")]
+		[System.Text.Json.Serialization.JsonPropertyName ("power_protect")]
 		public bool? PowerProtect { get; set; }
 
-		[JsonProperty ("speaker")]
+		[System.Text.Json.Serialization.JsonPropertyName ("speaker")]
 		public bool? Speaker { get; set; }
 
-		[JsonProperty ("smooth_transition_on")]
+		[System.Text.Json.Serialization.JsonPropertyName ("smooth_transition_on")]
 		public int? SmoothTransitionOn { get; set; }
 
-		[JsonProperty ("smooth_transition_off")]
+		[System.Text.Json.Serialization.JsonPropertyName ("smooth_transition_off")]
 		public int? SmoothTransitionOff { get; set; }
 
-		[JsonProperty ("transition_period")]
+		[System.Text.Json.Serialization.JsonPropertyName ("transition_period")]
 		public int? TransitionPeriod { get; set; }
 		}
 
+	[System.Text.Json.Serialization.JsonConverter (typeof (SmartMethodResponseConverter))]
 	internal sealed class SmartMethodResponseDto
 		{
-		[JsonProperty ("method")]
 		public string? Method { get; set; }
-
-		[JsonProperty ("result")]
-		public SmartEnvelopeResultDto? Result { get; set; }
+		public int? ErrorCode { get; set; }
+		public object? Result { get; set; }
 		}
 
 	internal sealed class SmartComponentDto
 		{
-		[JsonProperty ("id")]
+		[System.Text.Json.Serialization.JsonPropertyName ("id")]
 		public string? Id { get; set; }
 
-		[JsonProperty ("ver_code")]
+		[System.Text.Json.Serialization.JsonPropertyName ("ver_code")]
 		public int? VersionCode { get; set; }
 		}
 
@@ -583,1153 +837,1444 @@ internal static partial class KasaResponseParser
 
 	internal sealed class SmartChildDeviceDto
 		{
-		[JsonProperty ("device_id")]
+		[System.Text.Json.Serialization.JsonPropertyName ("device_id")]
 		public string? DeviceId { get; set; }
 
-		[JsonProperty ("nickname")]
+		[System.Text.Json.Serialization.JsonPropertyName ("nickname")]
 		public string? Nickname { get; set; }
 
-		[JsonProperty ("model")]
+		[System.Text.Json.Serialization.JsonPropertyName ("model")]
 		public string? Model { get; set; }
 
-		[JsonProperty ("category")]
+		[System.Text.Json.Serialization.JsonPropertyName ("category")]
 		public string? Category { get; set; }
 
-		[JsonProperty ("type")]
+		[System.Text.Json.Serialization.JsonPropertyName ("type")]
 		public string? Type { get; set; }
 
-		[JsonProperty ("fw_ver")]
+		[System.Text.Json.Serialization.JsonPropertyName ("fw_ver")]
 		public string? FirmwareVersion { get; set; }
 
-		[JsonProperty ("signal_level")]
+		[System.Text.Json.Serialization.JsonPropertyName ("signal_level")]
 		public int? SignalLevel { get; set; }
 
-		[JsonProperty ("rssi")]
+		[System.Text.Json.Serialization.JsonPropertyName ("rssi")]
 		public int? Rssi { get; set; }
 
-		[JsonProperty ("status")]
+		[System.Text.Json.Serialization.JsonPropertyName ("status")]
 		public string? Status { get; set; }
 
-		[JsonProperty ("battery_percentage")]
+		[System.Text.Json.Serialization.JsonPropertyName ("battery_percentage")]
 		public int? BatteryPercentage { get; set; }
 
-		[JsonProperty ("at_low_battery")]
+		[System.Text.Json.Serialization.JsonPropertyName ("at_low_battery")]
 		public bool? AtLowBattery { get; set; }
 
-		[JsonProperty ("is_low")]
+		[System.Text.Json.Serialization.JsonPropertyName ("is_low")]
 		public bool? IsLowBattery { get; set; }
 
-		[JsonProperty ("current_temp")]
+		[System.Text.Json.Serialization.JsonPropertyName ("current_temp")]
 		public double? CurrentTemperature { get; set; }
 
-		[JsonProperty ("current_temp_exception")]
-		[JsonConverter (typeof (NullableFlexibleInt32Converter))]
+		[System.Text.Json.Serialization.JsonPropertyName ("current_temp_exception")]
+		[System.Text.Json.Serialization.JsonConverter (typeof (FlexibleNullableInt32Converter))]
 		public int? CurrentTemperatureException { get; set; }
 
-		[JsonProperty ("current_humidity")]
+		[System.Text.Json.Serialization.JsonPropertyName ("current_humidity")]
 		public int? CurrentHumidity { get; set; }
 
-		[JsonProperty ("current_humidity_exception")]
-		[JsonConverter (typeof (NullableFlexibleInt32Converter))]
+		[System.Text.Json.Serialization.JsonPropertyName ("current_humidity_exception")]
+		[System.Text.Json.Serialization.JsonConverter (typeof (FlexibleNullableInt32Converter))]
 		public int? CurrentHumidityException { get; set; }
 
-		[JsonProperty ("temp_unit")]
+		[System.Text.Json.Serialization.JsonPropertyName ("temp_unit")]
 		public string? TemperatureUnit { get; set; }
 
-		[JsonProperty ("report_interval")]
+		[System.Text.Json.Serialization.JsonPropertyName ("report_interval")]
 		public int? ReportInterval { get; set; }
 
-		[JsonProperty ("detected")]
+		[System.Text.Json.Serialization.JsonPropertyName ("detected")]
 		public bool? Detected { get; set; }
 
-		[JsonProperty ("open")]
+		[System.Text.Json.Serialization.JsonPropertyName ("open")]
 		public bool? Open { get; set; }
 
-		[JsonProperty ("in_alarm")]
+		[System.Text.Json.Serialization.JsonPropertyName ("in_alarm")]
 		public bool? InAlarm { get; set; }
 
-		[JsonProperty ("water_leak_status")]
+		[System.Text.Json.Serialization.JsonPropertyName ("water_leak_status")]
 		public string? WaterLeakStatus { get; set; }
 
-		[JsonProperty ("trigger_timestamp")]
+		[System.Text.Json.Serialization.JsonPropertyName ("trigger_timestamp")]
 		public long? TriggerTimestamp { get; set; }
 
-		[JsonProperty ("double_click_info")]
+		[System.Text.Json.Serialization.JsonPropertyName ("double_click_info")]
 		public SmartDoubleClickInfoDto? DoubleClickInfo { get; set; }
 
-		[JsonProperty ("trigger_logs")]
+		[System.Text.Json.Serialization.JsonPropertyName ("trigger_logs")]
 		public SmartTriggerLogListDto? TriggerLogs { get; set; }
 
-		[JsonProperty ("comfort_temp_config")]
+		[System.Text.Json.Serialization.JsonPropertyName ("comfort_temp_config")]
 		public SmartComfortValueConfigDto? ComfortTemperatureConfig { get; set; }
 
-		[JsonProperty ("comfort_humidity_config")]
+		[System.Text.Json.Serialization.JsonPropertyName ("comfort_humidity_config")]
 		public SmartComfortValueConfigDto? ComfortHumidityConfig { get; set; }
 
-		[JsonProperty ("frost_protection")]
+		[System.Text.Json.Serialization.JsonPropertyName ("frost_protection")]
 		public SmartFrostProtectionDto? FrostProtection { get; set; }
 
-		[JsonProperty ("frost_protection_on")]
+		[System.Text.Json.Serialization.JsonPropertyName ("frost_protection_on")]
 		public bool? FrostProtectionOn { get; set; }
 
-		[JsonProperty ("target_temp")]
+		[System.Text.Json.Serialization.JsonPropertyName ("target_temp")]
 		public double? TargetTemperature { get; set; }
 
-		[JsonProperty ("min_control_temp")]
+		[System.Text.Json.Serialization.JsonPropertyName ("min_control_temp")]
 		public int? MinimumControlTemperature { get; set; }
 
-		[JsonProperty ("max_control_temp")]
+		[System.Text.Json.Serialization.JsonPropertyName ("max_control_temp")]
 		public int? MaximumControlTemperature { get; set; }
 
-		[JsonProperty ("temp_offset")]
+		[System.Text.Json.Serialization.JsonPropertyName ("temp_offset")]
 		public int? TemperatureOffset { get; set; }
 
-		[JsonProperty ("child_protection")]
+		[System.Text.Json.Serialization.JsonPropertyName ("child_protection")]
 		public bool? ChildProtection { get; set; }
 
-		[JsonProperty ("trv_states")]
+		[System.Text.Json.Serialization.JsonPropertyName ("trv_states")]
 		public List<string>? TrvStates { get; set; }
 
-		[JsonProperty ("device_on")]
+		[System.Text.Json.Serialization.JsonPropertyName ("device_on")]
 		public bool? DeviceOn { get; set; }
+		[System.Text.Json.Serialization.JsonPropertyName ("responses")]
+		public List<SmartMethodResponseDto>? Responses { get; set; }
+
+		internal SmartChildDeviceDto Overlay (SmartChildDeviceDto update)
+			{
+			var merged = (SmartChildDeviceDto)MemberwiseClone ();
+			merged.DeviceId = update.DeviceId ?? DeviceId;
+			merged.Nickname = update.Nickname ?? Nickname;
+			merged.Model = update.Model ?? Model;
+			merged.Category = update.Category ?? Category;
+			merged.Type = update.Type ?? Type;
+			merged.FirmwareVersion = update.FirmwareVersion ?? FirmwareVersion;
+			merged.SignalLevel = update.SignalLevel ?? SignalLevel;
+			merged.Rssi = update.Rssi ?? Rssi;
+			merged.Status = update.Status ?? Status;
+			merged.BatteryPercentage = update.BatteryPercentage ?? BatteryPercentage;
+			merged.AtLowBattery = update.AtLowBattery ?? AtLowBattery;
+			merged.IsLowBattery = update.IsLowBattery ?? IsLowBattery;
+			merged.CurrentTemperature = update.CurrentTemperature ?? CurrentTemperature;
+			merged.CurrentTemperatureException = update.CurrentTemperatureException ?? CurrentTemperatureException;
+			merged.CurrentHumidity = update.CurrentHumidity ?? CurrentHumidity;
+			merged.CurrentHumidityException = update.CurrentHumidityException ?? CurrentHumidityException;
+			merged.TemperatureUnit = update.TemperatureUnit ?? TemperatureUnit;
+			merged.ReportInterval = update.ReportInterval ?? ReportInterval;
+			merged.Detected = update.Detected ?? Detected;
+			merged.Open = update.Open ?? Open;
+			merged.InAlarm = update.InAlarm ?? InAlarm;
+			merged.WaterLeakStatus = update.WaterLeakStatus ?? WaterLeakStatus;
+			merged.TriggerTimestamp = update.TriggerTimestamp ?? TriggerTimestamp;
+			merged.DoubleClickInfo = update.DoubleClickInfo ?? DoubleClickInfo;
+			merged.TriggerLogs = update.TriggerLogs ?? TriggerLogs;
+			merged.ComfortTemperatureConfig = update.ComfortTemperatureConfig ?? ComfortTemperatureConfig;
+			merged.ComfortHumidityConfig = update.ComfortHumidityConfig ?? ComfortHumidityConfig;
+			merged.FrostProtection = update.FrostProtection ?? FrostProtection;
+			merged.FrostProtectionOn = update.FrostProtectionOn ?? FrostProtectionOn;
+			merged.TargetTemperature = update.TargetTemperature ?? TargetTemperature;
+			merged.MinimumControlTemperature = update.MinimumControlTemperature ?? MinimumControlTemperature;
+			merged.MaximumControlTemperature = update.MaximumControlTemperature ?? MaximumControlTemperature;
+			merged.TemperatureOffset = update.TemperatureOffset ?? TemperatureOffset;
+			merged.ChildProtection = update.ChildProtection ?? ChildProtection;
+			merged.TrvStates = update.TrvStates ?? TrvStates;
+			merged.DeviceOn = update.DeviceOn ?? DeviceOn;
+			return merged;
+			}
 		}
 
 	internal sealed class SmartChildComponentDto
 		{
-		[JsonProperty ("device_id")]
+		[System.Text.Json.Serialization.JsonPropertyName ("device_id")]
 		public string? DeviceId { get; set; }
 
-		[JsonProperty ("component_list")]
+		[System.Text.Json.Serialization.JsonPropertyName ("component_list")]
 		public List<SmartComponentDto>? ComponentList { get; set; }
 		}
 
 	internal sealed class SmartChildSetupCategoryDto
 		{
-		[JsonProperty ("category")]
+		[System.Text.Json.Serialization.JsonPropertyName ("category")]
 		public string? Category { get; set; }
 		}
 
 	internal sealed class SmartScannedChildDeviceListDto
 		{
-		[JsonProperty ("child_device_list")]
+		[System.Text.Json.Serialization.JsonPropertyName ("child_device_list")]
 		public List<SmartScannedChildDeviceDto>? ChildDeviceList { get; set; }
 		}
 
 	internal sealed class SmartScannedChildDeviceDto
 		{
-		[JsonProperty ("device_id")]
+		[System.Text.Json.Serialization.JsonPropertyName ("device_id")]
 		public string? DeviceId { get; set; }
 
-		[JsonProperty ("device_model")]
+		[System.Text.Json.Serialization.JsonPropertyName ("device_model")]
 		public string? DeviceModel { get; set; }
 
-		[JsonProperty ("category")]
+		[System.Text.Json.Serialization.JsonPropertyName ("category")]
 		public string? Category { get; set; }
 		}
 
 	internal sealed class SmartDoubleClickInfoDto
 		{
-		[JsonProperty ("enable")]
+		[System.Text.Json.Serialization.JsonPropertyName ("enable")]
 		public bool? Enable { get; set; }
 		}
 
 	internal sealed class SmartTriggerLogListDto
 		{
-		[JsonProperty ("logs")]
+		[System.Text.Json.Serialization.JsonPropertyName ("logs")]
 		public List<SmartTriggerLogDto>? Logs { get; set; }
 		}
 
 	internal sealed class SmartTriggerLogDto
 		{
-		[JsonProperty ("id")]
+		[System.Text.Json.Serialization.JsonPropertyName ("id")]
 		public int? Id { get; set; }
 
-		[JsonProperty ("event")]
+		[System.Text.Json.Serialization.JsonPropertyName ("event")]
 		public string? Event { get; set; }
 
-		[JsonProperty ("eventId")]
+		[System.Text.Json.Serialization.JsonPropertyName ("eventId")]
 		public string? EventId { get; set; }
 
-		[JsonProperty ("timestamp")]
+		[System.Text.Json.Serialization.JsonPropertyName ("timestamp")]
 		public long? Timestamp { get; set; }
 		}
 
 	internal sealed class SmartComfortValueConfigDto
 		{
-		[JsonProperty ("min_value")]
+		[System.Text.Json.Serialization.JsonPropertyName ("min_value")]
 		public double? MinValue { get; set; }
 
-		[JsonProperty ("max_value")]
+		[System.Text.Json.Serialization.JsonPropertyName ("max_value")]
 		public double? MaxValue { get; set; }
 		}
 
 	internal sealed class SmartFrostProtectionDto
 		{
-		[JsonProperty ("min_temp")]
+		[System.Text.Json.Serialization.JsonPropertyName ("min_temp")]
 		public int? MinimumTemperature { get; set; }
 
-		[JsonProperty ("temp_unit")]
+		[System.Text.Json.Serialization.JsonPropertyName ("temp_unit")]
 		public string? TemperatureUnit { get; set; }
 		}
 
 	internal sealed class SmartCloudConnectStateDto
 		{
-		[JsonProperty ("status")]
+		[System.Text.Json.Serialization.JsonPropertyName ("status")]
 		public int? Status { get; set; }
 		}
 
 	internal sealed class SmartAutoUpdateInfoDto
 		{
-		[JsonProperty ("enable")]
+		[System.Text.Json.Serialization.JsonPropertyName ("enable")]
 		public bool? Enable { get; set; }
 		}
 
 	internal sealed class SmartLatestFirmwareDto
 		{
-		[JsonProperty ("type")]
+		[System.Text.Json.Serialization.JsonPropertyName ("type")]
 		public int? Type { get; set; }
 
-		[JsonProperty ("fw_ver")]
+		[System.Text.Json.Serialization.JsonPropertyName ("fw_ver")]
 		public string? FirmwareVersion { get; set; }
 		}
 
 	internal sealed class SmartAutoOffConfigDto
 		{
-		[JsonProperty ("enable")]
+		[System.Text.Json.Serialization.JsonPropertyName ("enable")]
 		public bool? Enable { get; set; }
 
-		[JsonProperty ("delay_min")]
+		[System.Text.Json.Serialization.JsonPropertyName ("delay_min")]
 		public int? DelayMinutes { get; set; }
 		}
 
 	internal sealed class SmartEnergyUsageDto
 		{
-		[JsonProperty ("current_power")]
+		[System.Text.Json.Serialization.JsonPropertyName ("current_power")]
 		public double? CurrentPower { get; set; }
 
-		[JsonProperty ("today_energy")]
+		[System.Text.Json.Serialization.JsonPropertyName ("today_energy")]
 		public double? TodayEnergyWattHours { get; set; }
 
-		[JsonProperty ("month_energy")]
+		[System.Text.Json.Serialization.JsonPropertyName ("month_energy")]
 		public double? MonthEnergyWattHours { get; set; }
 		}
 
 	internal sealed class SmartCurrentPowerDto
 		{
-		[JsonProperty ("current_power")]
+		[System.Text.Json.Serialization.JsonPropertyName ("current_power")]
 		public double? CurrentPowerWatts { get; set; }
 		}
 
 	internal sealed class SmartEmeterDataDto
 		{
-		[JsonProperty ("power_mw")]
+		[System.Text.Json.Serialization.JsonPropertyName ("power_mw")]
 		public double? PowerMilliwatts { get; set; }
 
-		[JsonProperty ("voltage_mv")]
+		[System.Text.Json.Serialization.JsonPropertyName ("voltage_mv")]
 		public double? VoltageMillivolts { get; set; }
 
-		[JsonProperty ("current_ma")]
+		[System.Text.Json.Serialization.JsonPropertyName ("current_ma")]
 		public double? CurrentMilliamps { get; set; }
 		}
 
 	internal sealed class SmartLedInfoDto
 		{
-		[JsonProperty ("led_rule")]
+		[System.Text.Json.Serialization.JsonPropertyName ("led_rule")]
 		public string? LedRule { get; set; }
 
-		[JsonProperty ("start_time")]
+		[System.Text.Json.Serialization.JsonPropertyName ("start_time")]
 		public int? StartTime { get; set; }
 
-		[JsonProperty ("end_time")]
+		[System.Text.Json.Serialization.JsonPropertyName ("end_time")]
 		public int? EndTime { get; set; }
 
-		[JsonProperty ("night_mode_type")]
+		[System.Text.Json.Serialization.JsonPropertyName ("night_mode_type")]
 		public string? NightModeType { get; set; }
 
-		[JsonProperty ("sunrise_offset")]
+		[System.Text.Json.Serialization.JsonPropertyName ("sunrise_offset")]
 		public int? SunriseOffset { get; set; }
 
-		[JsonProperty ("sunset_offset")]
+		[System.Text.Json.Serialization.JsonPropertyName ("sunset_offset")]
 		public int? SunsetOffset { get; set; }
 		}
 
 	internal sealed class SmartDeviceTimeDto
 		{
-		[JsonProperty ("timestamp")]
+		[System.Text.Json.Serialization.JsonPropertyName ("timestamp")]
 		public long? Timestamp { get; set; }
 
-		[JsonProperty ("time_diff")]
+		[System.Text.Json.Serialization.JsonPropertyName ("time_diff")]
 		public int? TimeDifferenceMinutes { get; set; }
 
-		[JsonProperty ("region")]
+		[System.Text.Json.Serialization.JsonPropertyName ("region")]
 		public string? Region { get; set; }
 		}
 
 	internal sealed class SmartMatterSetupDto
 		{
-		[JsonProperty ("setup_code")]
+		[System.Text.Json.Serialization.JsonPropertyName ("setup_code")]
 		public string? SetupCode { get; set; }
 
-		[JsonProperty ("setup_payload")]
+		[System.Text.Json.Serialization.JsonPropertyName ("setup_payload")]
 		public string? SetupPayload { get; set; }
 		}
 
 	internal sealed class SmartHomeKitInfoDto
 		{
-		[JsonProperty ("mfi_setup_code")]
+		[System.Text.Json.Serialization.JsonPropertyName ("mfi_setup_code")]
 		public string? SetupCode { get; set; }
 		}
 
 	internal sealed class SmartChildLockInfoDto
 		{
-		[JsonProperty ("child_lock_status")]
+		[System.Text.Json.Serialization.JsonPropertyName ("child_lock_status")]
 		public bool? ChildLockStatus { get; set; }
 		}
 
 	internal sealed class SmartAlarmInfoDto
 		{
-		[JsonProperty ("in_alarm")]
+		[System.Text.Json.Serialization.JsonPropertyName ("in_alarm")]
 		public bool? InAlarm { get; set; }
 
-		[JsonProperty ("alarm")]
+		[System.Text.Json.Serialization.JsonPropertyName ("alarm")]
 		public bool? Alarm { get; set; }
 
-		[JsonProperty ("guard_on")]
+		[System.Text.Json.Serialization.JsonPropertyName ("guard_on")]
 		public bool? GuardOn { get; set; }
 
-		[JsonProperty ("alarm_source")]
+		[System.Text.Json.Serialization.JsonPropertyName ("alarm_source")]
 		public string? AlarmSource { get; set; }
 
-		[JsonProperty ("guard_mode")]
+		[System.Text.Json.Serialization.JsonPropertyName ("guard_mode")]
 		public string? GuardMode { get; set; }
 
-		[JsonProperty ("alarm_type")]
+		[System.Text.Json.Serialization.JsonPropertyName ("alarm_type")]
 		public string? AlarmType { get; set; }
 
-		[JsonProperty ("alarm_sound")]
+		[System.Text.Json.Serialization.JsonPropertyName ("alarm_sound")]
 		public string? AlarmSound { get; set; }
 
-		[JsonProperty ("type")]
+		[System.Text.Json.Serialization.JsonPropertyName ("type")]
 		public string? Type { get; set; }
 
-		[JsonProperty ("alarm_volume")]
+		[System.Text.Json.Serialization.JsonPropertyName ("alarm_volume")]
 		public string? AlarmVolume { get; set; }
 
-		[JsonProperty ("volume")]
+		[System.Text.Json.Serialization.JsonPropertyName ("volume")]
 		public string? Volume { get; set; }
 
-		[JsonProperty ("alarm_volume_level")]
+		[System.Text.Json.Serialization.JsonPropertyName ("alarm_volume_level")]
 		public int? AlarmVolumeLevel { get; set; }
 
-		[JsonProperty ("alarm_duration")]
+		[System.Text.Json.Serialization.JsonPropertyName ("alarm_duration")]
 		public int? AlarmDuration { get; set; }
 
-		[JsonProperty ("duration")]
+		[System.Text.Json.Serialization.JsonPropertyName ("duration")]
 		public int? Duration { get; set; }
 		}
 
 	internal sealed class SmartPresetRulesDto
 		{
-		[JsonProperty ("states")]
+		[System.Text.Json.Serialization.JsonPropertyName ("states")]
 		public List<LegacyLightPresetDto>? States { get; set; }
 
-		[JsonProperty ("brightness")]
+		[System.Text.Json.Serialization.JsonPropertyName ("brightness")]
 		public List<int>? BrightnessLevels { get; set; }
 		}
 
 	internal sealed class SmartOnOffGraduallyInfoDto
 		{
-		[JsonProperty ("enable")]
+		[System.Text.Json.Serialization.JsonPropertyName ("enable")]
 		public bool? Enable { get; set; }
 
-		[JsonProperty ("on_state")]
+		[System.Text.Json.Serialization.JsonPropertyName ("on_state")]
 		public SmartOnOffGraduallyStateDto? OnState { get; set; }
 
-		[JsonProperty ("off_state")]
+		[System.Text.Json.Serialization.JsonPropertyName ("off_state")]
 		public SmartOnOffGraduallyStateDto? OffState { get; set; }
 		}
 
 	internal sealed class SmartOnOffGraduallyStateDto
 		{
-		[JsonProperty ("duration")]
+		[System.Text.Json.Serialization.JsonPropertyName ("duration")]
 		public int? Duration { get; set; }
 
-		[JsonProperty ("enable")]
+		[System.Text.Json.Serialization.JsonPropertyName ("enable")]
 		public bool? Enable { get; set; }
 
-		[JsonProperty ("max_duration")]
+		[System.Text.Json.Serialization.JsonPropertyName ("max_duration")]
 		public int? MaximumDuration { get; set; }
 		}
 
 	internal sealed class SmartDynamicLightEffectRulesDto
 		{
-		[JsonProperty ("rule_list")]
+		[System.Text.Json.Serialization.JsonPropertyName ("rule_list")]
 		public List<SmartDynamicLightEffectRuleDto>? RuleList { get; set; }
 
-		[JsonProperty ("enable")]
+		[System.Text.Json.Serialization.JsonPropertyName ("enable")]
 		public bool? Enable { get; set; }
 
-		[JsonProperty ("current_rule_id")]
+		[System.Text.Json.Serialization.JsonPropertyName ("current_rule_id")]
 		public string? CurrentRuleId { get; set; }
 		}
 
 	internal sealed class SmartDynamicLightEffectRuleDto
 		{
-		[JsonProperty ("id")]
+		[System.Text.Json.Serialization.JsonPropertyName ("id")]
 		public string? Id { get; set; }
 
-		[JsonProperty ("scene_name")]
+		[System.Text.Json.Serialization.JsonPropertyName ("scene_name")]
 		public string? SceneName { get; set; }
 
-		[JsonProperty ("color_status_list")]
+		[System.Text.Json.Serialization.JsonPropertyName ("color_status_list")]
 		public List<List<int>>? ColorStatusList { get; set; }
 		}
 
 	internal sealed class LegacyResponseDto
 		{
-		[JsonProperty ("system")]
+		[System.Text.Json.Serialization.JsonPropertyName ("system")]
 		public LegacySystemModuleDto? System
 			{
 			get; set;
 			}
 
-		[JsonProperty ("emeter")]
+		[System.Text.Json.Serialization.JsonPropertyName ("emeter")]
 		public LegacyEmeterModuleDto? Emeter
 			{
 			get; set;
 			}
 
-		[JsonProperty ("smartlife.iot.common.emeter")]
+		[System.Text.Json.Serialization.JsonPropertyName ("smartlife.iot.common.emeter")]
 		public LegacyEmeterModuleDto? SmartEmeter
 			{
 			get; set;
 			}
 
-		[JsonProperty ("count_down")]
+		[System.Text.Json.Serialization.JsonPropertyName ("count_down")]
 		public LegacyRuleModuleDto? CountDown
 			{
 			get; set;
 			}
 
-		[JsonProperty ("countdown")]
+		[System.Text.Json.Serialization.JsonPropertyName ("countdown")]
 		public LegacyRuleModuleDto? BulbCountDown
 			{
 			get; set;
 			}
 
-		[JsonProperty ("schedule")]
+		[System.Text.Json.Serialization.JsonPropertyName ("schedule")]
 		public LegacyRuleModuleDto? Schedule
 			{
 			get; set;
 			}
 
-		[JsonProperty ("smartlife.iot.common.schedule")]
+		[System.Text.Json.Serialization.JsonPropertyName ("smartlife.iot.common.schedule")]
 		public LegacyRuleModuleDto? SmartSchedule
 			{
 			get; set;
 			}
 
-		[JsonProperty ("anti_theft")]
+		[System.Text.Json.Serialization.JsonPropertyName ("anti_theft")]
 		public LegacyRuleModuleDto? AntiTheft
 			{
 			get; set;
 			}
 
-		[JsonProperty ("smartlife.iot.common.anti_theft")]
+		[System.Text.Json.Serialization.JsonPropertyName ("smartlife.iot.common.anti_theft")]
 		public LegacyRuleModuleDto? SmartAntiTheft
 			{
 			get; set;
 			}
 
-		[JsonProperty ("time")]
+		[System.Text.Json.Serialization.JsonPropertyName ("time")]
 		public LegacyTimeModuleDto? Time
 			{
 			get; set;
 			}
 
-		[JsonProperty ("smartlife.iot.common.timesetting")]
+		[System.Text.Json.Serialization.JsonPropertyName ("smartlife.iot.common.timesetting")]
 		public LegacyTimeModuleDto? SmartTime
 			{
 			get; set;
 			}
 
-		[JsonProperty ("cnCloud")]
+		[System.Text.Json.Serialization.JsonPropertyName ("cnCloud")]
 		public LegacyCloudModuleDto? Cloud
 			{
 			get; set;
 			}
 
-		[JsonProperty ("smartlife.iot.common.cloud")]
+		[System.Text.Json.Serialization.JsonPropertyName ("smartlife.iot.common.cloud")]
 		public LegacyCloudModuleDto? SmartCloud
 			{
 			get; set;
 			}
 
-		[JsonProperty ("smartlife.iot.homekit")]
+		[System.Text.Json.Serialization.JsonPropertyName ("smartlife.iot.homekit")]
 		public LegacyHomeKitModuleDto? HomeKit
 			{
 			get; set;
+			}
+
+		internal void Merge (LegacyResponseDto update)
+			{
+			if (System is not null && update.System is not null) System.Merge (update.System);
+			else System = update.System ?? System;
+			if (Emeter is not null && update.Emeter is not null) Emeter.Merge (update.Emeter);
+			else Emeter = update.Emeter ?? Emeter;
+			if (SmartEmeter is not null && update.SmartEmeter is not null) SmartEmeter.Merge (update.SmartEmeter);
+			else SmartEmeter = update.SmartEmeter ?? SmartEmeter;
+			if (CountDown is not null && update.CountDown is not null) CountDown.Merge (update.CountDown);
+			else CountDown = update.CountDown ?? CountDown;
+			if (BulbCountDown is not null && update.BulbCountDown is not null) BulbCountDown.Merge (update.BulbCountDown);
+			else BulbCountDown = update.BulbCountDown ?? BulbCountDown;
+			if (Schedule is not null && update.Schedule is not null) Schedule.Merge (update.Schedule);
+			else Schedule = update.Schedule ?? Schedule;
+			if (SmartSchedule is not null && update.SmartSchedule is not null) SmartSchedule.Merge (update.SmartSchedule);
+			else SmartSchedule = update.SmartSchedule ?? SmartSchedule;
+			if (AntiTheft is not null && update.AntiTheft is not null) AntiTheft.Merge (update.AntiTheft);
+			else AntiTheft = update.AntiTheft ?? AntiTheft;
+			if (SmartAntiTheft is not null && update.SmartAntiTheft is not null) SmartAntiTheft.Merge (update.SmartAntiTheft);
+			else SmartAntiTheft = update.SmartAntiTheft ?? SmartAntiTheft;
+			if (Time is not null && update.Time is not null) Time.Merge (update.Time);
+			else Time = update.Time ?? Time;
+			if (SmartTime is not null && update.SmartTime is not null) SmartTime.Merge (update.SmartTime);
+			else SmartTime = update.SmartTime ?? SmartTime;
+			if (Cloud is not null && update.Cloud is not null) Cloud.Merge (update.Cloud);
+			else Cloud = update.Cloud ?? Cloud;
+			if (SmartCloud is not null && update.SmartCloud is not null) SmartCloud.Merge (update.SmartCloud);
+			else SmartCloud = update.SmartCloud ?? SmartCloud;
+			if (HomeKit is not null && update.HomeKit is not null) HomeKit.Merge (update.HomeKit);
+			else HomeKit = update.HomeKit ?? HomeKit;
 			}
 		}
 
 	internal sealed class LegacyTimeModuleDto
 		{
-		[JsonProperty ("get_time")]
+		[System.Text.Json.Serialization.JsonPropertyName ("get_time")]
 		public LegacyTimeInfoDto? GetTime { get; set; }
 
-		[JsonProperty ("get_timezone")]
+		[System.Text.Json.Serialization.JsonPropertyName ("get_timezone")]
 		public LegacyTimezoneInfoDto? GetTimezone { get; set; }
+
+		internal void Merge (LegacyTimeModuleDto update)
+			{
+			if (GetTime is not null && update.GetTime is not null) GetTime.Merge (update.GetTime);
+			else GetTime = update.GetTime ?? GetTime;
+			if (GetTimezone is not null && update.GetTimezone is not null) GetTimezone.Merge (update.GetTimezone);
+			else GetTimezone = update.GetTimezone ?? GetTimezone;
+			}
 		}
 
 	internal sealed class LegacyTimeInfoDto
 		{
-		[JsonProperty ("year")]
+		[System.Text.Json.Serialization.JsonPropertyName ("year")]
 		public int? Year { get; set; }
 
-		[JsonProperty ("month")]
+		[System.Text.Json.Serialization.JsonPropertyName ("month")]
 		public int? Month { get; set; }
 
-		[JsonProperty ("mday")]
+		[System.Text.Json.Serialization.JsonPropertyName ("mday")]
 		public int? Day { get; set; }
 
-		[JsonProperty ("hour")]
+		[System.Text.Json.Serialization.JsonPropertyName ("hour")]
 		public int? Hour { get; set; }
 
-		[JsonProperty ("min")]
+		[System.Text.Json.Serialization.JsonPropertyName ("min")]
 		public int? Minute { get; set; }
 
-		[JsonProperty ("sec")]
+		[System.Text.Json.Serialization.JsonPropertyName ("sec")]
 		public int? Second { get; set; }
+
+		internal void Merge (LegacyTimeInfoDto update)
+			{
+			Year = update.Year ?? Year;
+			Month = update.Month ?? Month;
+			Day = update.Day ?? Day;
+			Hour = update.Hour ?? Hour;
+			Minute = update.Minute ?? Minute;
+			Second = update.Second ?? Second;
+			}
 		}
 
 	internal sealed class LegacyTimezoneInfoDto
 		{
-		[JsonProperty ("index")]
+		[System.Text.Json.Serialization.JsonPropertyName ("index")]
 		public int? Index { get; set; }
+
+		internal void Merge (LegacyTimezoneInfoDto update)
+			{
+			Index = update.Index ?? Index;
+			}
 		}
 
 	internal sealed class LegacyCloudModuleDto
 		{
-		[JsonProperty ("get_info")]
+		[System.Text.Json.Serialization.JsonPropertyName ("get_info")]
 		public LegacyCloudInfoDto? GetInfo { get; set; }
+
+		internal void Merge (LegacyCloudModuleDto update)
+			{
+			if (GetInfo is not null && update.GetInfo is not null) GetInfo.Merge (update.GetInfo);
+			else GetInfo = update.GetInfo ?? GetInfo;
+			}
 		}
 
 	internal sealed class LegacyCloudInfoDto
 		{
-		[JsonProperty ("binded")]
+		[System.Text.Json.Serialization.JsonPropertyName ("binded")]
 		public int? Binded { get; set; }
 
-		[JsonProperty ("cld_connection")]
+		[System.Text.Json.Serialization.JsonPropertyName ("cld_connection")]
 		public int? CloudConnection { get; set; }
 
-		[JsonProperty ("server")]
+		[System.Text.Json.Serialization.JsonPropertyName ("server")]
 		public string? Server { get; set; }
 
-		[JsonProperty ("username")]
+		[System.Text.Json.Serialization.JsonPropertyName ("username")]
 		public string? UserName { get; set; }
+
+		internal void Merge (LegacyCloudInfoDto update)
+			{
+			Binded = update.Binded ?? Binded;
+			CloudConnection = update.CloudConnection ?? CloudConnection;
+			Server = update.Server ?? Server;
+			UserName = update.UserName ?? UserName;
+			}
 		}
 
 	internal sealed class LegacyHomeKitModuleDto
 		{
-		[JsonProperty ("setup_info_get")]
+		[System.Text.Json.Serialization.JsonPropertyName ("setup_info_get")]
 		public LegacyHomeKitInfoDto? SetupInfoGet { get; set; }
+
+		internal void Merge (LegacyHomeKitModuleDto update)
+			{
+			if (SetupInfoGet is not null && update.SetupInfoGet is not null) SetupInfoGet.Merge (update.SetupInfoGet);
+			else SetupInfoGet = update.SetupInfoGet ?? SetupInfoGet;
+			}
 		}
 
 	internal sealed class LegacyHomeKitInfoDto
 		{
-		[JsonProperty ("setup_code")]
+		[System.Text.Json.Serialization.JsonPropertyName ("setup_code")]
 		public string? SetupCode { get; set; }
 
-		[JsonProperty ("setup_payload")]
+		[System.Text.Json.Serialization.JsonPropertyName ("setup_payload")]
 		public string? SetupPayload { get; set; }
+
+		internal void Merge (LegacyHomeKitInfoDto update)
+			{
+			SetupCode = update.SetupCode ?? SetupCode;
+			SetupPayload = update.SetupPayload ?? SetupPayload;
+			}
 		}
 
 	internal sealed class LegacyRuleModuleDto
 		{
-		[JsonProperty ("get_rules")]
+		[System.Text.Json.Serialization.JsonPropertyName ("get_rules")]
 		public LegacyRuleListDto? GetRules
 			{
 			get; set;
+			}
+
+		internal void Merge (LegacyRuleModuleDto update)
+			{
+			if (GetRules is not null && update.GetRules is not null) GetRules.Merge (update.GetRules);
+			else GetRules = update.GetRules ?? GetRules;
 			}
 		}
 
 	internal sealed class LegacyRuleListDto
 		{
-		[JsonProperty ("enable")]
+		[System.Text.Json.Serialization.JsonPropertyName ("enable")]
 		public int? Enable
 			{
 			get; set;
 			}
 
-		[JsonProperty ("rule_list")]
+		[System.Text.Json.Serialization.JsonPropertyName ("rule_list")]
 		public List<LegacyRuleDto>? RuleList
 			{
 			get; set;
+			}
+
+		internal void Merge (LegacyRuleListDto update)
+			{
+			Enable = update.Enable ?? Enable;
+			RuleList = update.RuleList ?? RuleList;
 			}
 		}
 
 	internal sealed class LegacyRuleDto
 		{
-		[JsonProperty ("id")]
+		[System.Text.Json.Serialization.JsonPropertyName ("id")]
 		public string? Id
 			{
 			get; set;
 			}
 
-		[JsonProperty ("name")]
+		[System.Text.Json.Serialization.JsonPropertyName ("name")]
 		public string? Name
 			{
 			get; set;
 			}
 
-		[JsonProperty ("enable")]
+		[System.Text.Json.Serialization.JsonPropertyName ("enable")]
 		public int? Enable
 			{
 			get; set;
 			}
 
-		[JsonProperty ("wday")]
+		[System.Text.Json.Serialization.JsonPropertyName ("wday")]
 		public List<int>? WeekDays
 			{
 			get; set;
 			}
 
-		[JsonProperty ("smin")]
+		[System.Text.Json.Serialization.JsonPropertyName ("smin")]
 		public int? StartMinute
 			{
 			get; set;
 			}
 
-		[JsonProperty ("emin")]
+		[System.Text.Json.Serialization.JsonPropertyName ("emin")]
 		public int? EndMinute
 			{
 			get; set;
 			}
 
-		[JsonProperty ("delay")]
+		[System.Text.Json.Serialization.JsonPropertyName ("delay")]
 		public int? DelaySeconds
 			{
 			get; set;
 			}
 
-		[JsonProperty ("act")]
+		[System.Text.Json.Serialization.JsonPropertyName ("act")]
 		public int? Action
 			{
 			get; set;
 			}
 
-		[JsonProperty ("remain")]
+		[System.Text.Json.Serialization.JsonPropertyName ("remain")]
 		public int? RemainingSeconds
 			{
 			get; set;
 			}
 
-		[JsonProperty ("latitude")]
+		[System.Text.Json.Serialization.JsonPropertyName ("latitude")]
 		public int? Latitude
 			{
 			get; set;
 			}
 
-		[JsonProperty ("longitude")]
+		[System.Text.Json.Serialization.JsonPropertyName ("longitude")]
 		public int? Longitude
 			{
 			get; set;
+			}
+
+		internal void Merge (LegacyRuleDto update)
+			{
+			Id = update.Id ?? Id;
+			Name = update.Name ?? Name;
+			Enable = update.Enable ?? Enable;
+			WeekDays = update.WeekDays ?? WeekDays;
+			StartMinute = update.StartMinute ?? StartMinute;
+			EndMinute = update.EndMinute ?? EndMinute;
+			DelaySeconds = update.DelaySeconds ?? DelaySeconds;
+			Action = update.Action ?? Action;
+			RemainingSeconds = update.RemainingSeconds ?? RemainingSeconds;
+			Latitude = update.Latitude ?? Latitude;
+			Longitude = update.Longitude ?? Longitude;
 			}
 		}
 
 	internal sealed class LegacySystemModuleDto
 		{
-		[JsonProperty ("get_sysinfo")]
+		[System.Text.Json.Serialization.JsonPropertyName ("get_sysinfo")]
 		public LegacySystemInfoDto? GetSystemInfo
 			{
 			get; set;
+			}
+
+		internal void Merge (LegacySystemModuleDto update)
+			{
+			if (GetSystemInfo is not null && update.GetSystemInfo is not null) GetSystemInfo.Merge (update.GetSystemInfo);
+			else GetSystemInfo = update.GetSystemInfo ?? GetSystemInfo;
 			}
 		}
 
 	internal sealed class LegacyEmeterModuleDto
 		{
-		[JsonProperty ("get_realtime")]
+		[System.Text.Json.Serialization.JsonPropertyName ("get_realtime")]
 		public LegacyEmeterRealtimeDto? GetRealtime
 			{
 			get; set;
 			}
 
-		[JsonProperty ("get_daystat")]
+		[System.Text.Json.Serialization.JsonPropertyName ("get_daystat")]
 		public LegacyEmeterDailyStatDto? GetDayStat
 			{
 			get; set;
 			}
 
-		[JsonProperty ("get_monthstat")]
+		[System.Text.Json.Serialization.JsonPropertyName ("get_monthstat")]
 		public LegacyEmeterMonthlyStatDto? GetMonthStat
 			{
 			get; set;
+			}
+
+		internal void Merge (LegacyEmeterModuleDto update)
+			{
+			if (GetRealtime is not null && update.GetRealtime is not null) GetRealtime.Merge (update.GetRealtime);
+			else GetRealtime = update.GetRealtime ?? GetRealtime;
+			if (GetDayStat is not null && update.GetDayStat is not null) GetDayStat.Merge (update.GetDayStat);
+			else GetDayStat = update.GetDayStat ?? GetDayStat;
+			if (GetMonthStat is not null && update.GetMonthStat is not null) GetMonthStat.Merge (update.GetMonthStat);
+			else GetMonthStat = update.GetMonthStat ?? GetMonthStat;
 			}
 		}
 
 	internal sealed class LegacySystemInfoDto
 		{
-		[JsonProperty ("alias")]
+		[System.Text.Json.Serialization.JsonPropertyName ("alias")]
 		public string? Alias
 			{
 			get; set;
 			}
 
-		[JsonProperty ("nickname")]
+		[System.Text.Json.Serialization.JsonPropertyName ("nickname")]
 		public string? Nickname
 			{
 			get; set;
 			}
 
-		[JsonProperty ("model")]
+		[System.Text.Json.Serialization.JsonPropertyName ("model")]
 		public string? Model
 			{
 			get; set;
 			}
 
-		[JsonProperty ("device_model")]
+		[System.Text.Json.Serialization.JsonPropertyName ("device_model")]
 		public string? DeviceModel
 			{
 			get; set;
 			}
 
-		[JsonProperty ("deviceId")]
+		[System.Text.Json.Serialization.JsonPropertyName ("deviceId")]
 		public string? DeviceId
 			{
 			get; set;
 			}
 
-		[JsonProperty ("device_id")]
+		[System.Text.Json.Serialization.JsonPropertyName ("device_id")]
 		public string? DeviceIdUnderscore
 			{
 			get; set;
 			}
 
-		[JsonProperty ("mac")]
+		[System.Text.Json.Serialization.JsonPropertyName ("mac")]
 		public string? Mac
 			{
 			get; set;
 			}
 
-		[JsonProperty ("mic_mac")]
+		[System.Text.Json.Serialization.JsonPropertyName ("mic_mac")]
 		public string? MicMac
 			{
 			get; set;
 			}
 
-		[JsonProperty ("hw_ver")]
+		[System.Text.Json.Serialization.JsonPropertyName ("hw_ver")]
 		public string? HardwareVersion
 			{
 			get; set;
 			}
 
-		[JsonProperty ("hwVersion")]
+		[System.Text.Json.Serialization.JsonPropertyName ("hwVersion")]
 		public string? HardwareVersionAlt
 			{
 			get; set;
 			}
 
-		[JsonProperty ("sw_ver")]
+		[System.Text.Json.Serialization.JsonPropertyName ("sw_ver")]
 		public string? SoftwareVersion
 			{
 			get; set;
 			}
 
-		[JsonProperty ("swVersion")]
+		[System.Text.Json.Serialization.JsonPropertyName ("swVersion")]
 		public string? SoftwareVersionAlt
 			{
 			get; set;
 			}
 
-		[JsonProperty ("type")]
+		[System.Text.Json.Serialization.JsonPropertyName ("type")]
 		public string? Type
 			{
 			get; set;
 			}
 
-		[JsonProperty ("mic_type")]
+		[System.Text.Json.Serialization.JsonPropertyName ("mic_type")]
 		public string? MicType
 			{
 			get; set;
 			}
 
-		[JsonProperty ("device_type")]
+		[System.Text.Json.Serialization.JsonPropertyName ("device_type")]
 		public string? DeviceType
 			{
 			get; set;
 			}
 
-		[JsonProperty ("relay_state")]
+		[System.Text.Json.Serialization.JsonPropertyName ("relay_state")]
 		public int? RelayState
 			{
 			get; set;
 			}
 
-		[JsonProperty ("device_on")]
+		[System.Text.Json.Serialization.JsonPropertyName ("device_on")]
 		public bool? DeviceOn
 			{
 			get; set;
 			}
 
-		[JsonProperty ("auto_off_status")]
+		[System.Text.Json.Serialization.JsonPropertyName ("auto_off_status")]
 		public string? AutoOffStatus
 			{
 			get; set;
 			}
 
-		[JsonProperty ("auto_off_remain_time")]
+		[System.Text.Json.Serialization.JsonPropertyName ("auto_off_remain_time")]
 		public int? AutoOffRemainTimeSeconds
 			{
 			get; set;
 			}
 
-		[JsonProperty ("led_off")]
+		[System.Text.Json.Serialization.JsonPropertyName ("led_off")]
 		public int? LedOff
 			{
 			get; set;
 			}
 
-		[JsonProperty ("on_time")]
+		[System.Text.Json.Serialization.JsonPropertyName ("on_time")]
 		public int? OnTimeSeconds
 			{
 			get; set;
 			}
 
-		[JsonProperty ("rssi")]
+		[System.Text.Json.Serialization.JsonPropertyName ("rssi")]
 		public int? Rssi
 			{
 			get; set;
 			}
 
-		[JsonProperty ("children")]
+		[System.Text.Json.Serialization.JsonPropertyName ("children")]
 		public List<LegacyChildDeviceDto>? Children
 			{
 			get; set;
 			}
 
-		[JsonProperty ("light_state")]
+		[System.Text.Json.Serialization.JsonPropertyName ("light_state")]
 		public LegacyLightStateDto? LightState
 			{
 			get; set;
 			}
 
-		[JsonProperty ("preferred_state")]
+		[System.Text.Json.Serialization.JsonPropertyName ("preferred_state")]
 		public List<LegacyLightPresetDto>? PreferredState
 			{
 			get; set;
+			}
+
+		internal void Merge (LegacySystemInfoDto update)
+			{
+			Alias = update.Alias ?? Alias;
+			Nickname = update.Nickname ?? Nickname;
+			Model = update.Model ?? Model;
+			DeviceModel = update.DeviceModel ?? DeviceModel;
+			DeviceId = update.DeviceId ?? DeviceId;
+			DeviceIdUnderscore = update.DeviceIdUnderscore ?? DeviceIdUnderscore;
+			Mac = update.Mac ?? Mac;
+			MicMac = update.MicMac ?? MicMac;
+			HardwareVersion = update.HardwareVersion ?? HardwareVersion;
+			HardwareVersionAlt = update.HardwareVersionAlt ?? HardwareVersionAlt;
+			SoftwareVersion = update.SoftwareVersion ?? SoftwareVersion;
+			SoftwareVersionAlt = update.SoftwareVersionAlt ?? SoftwareVersionAlt;
+			Type = update.Type ?? Type;
+			MicType = update.MicType ?? MicType;
+			DeviceType = update.DeviceType ?? DeviceType;
+			RelayState = update.RelayState ?? RelayState;
+			DeviceOn = update.DeviceOn ?? DeviceOn;
+			AutoOffStatus = update.AutoOffStatus ?? AutoOffStatus;
+			AutoOffRemainTimeSeconds = update.AutoOffRemainTimeSeconds ?? AutoOffRemainTimeSeconds;
+			LedOff = update.LedOff ?? LedOff;
+			OnTimeSeconds = update.OnTimeSeconds ?? OnTimeSeconds;
+			Rssi = update.Rssi ?? Rssi;
+			Children = update.Children ?? Children;
+			if (LightState is not null && update.LightState is not null) LightState.Merge (update.LightState);
+			else LightState = update.LightState ?? LightState;
+			PreferredState = update.PreferredState ?? PreferredState;
 			}
 		}
 
 	internal sealed class LegacyChildDeviceDto
 		{
-		[JsonProperty ("id")]
+		[System.Text.Json.Serialization.JsonPropertyName ("id")]
 		public string? Id
 			{
 			get; set;
 			}
 
-		[JsonProperty ("device_id")]
+		[System.Text.Json.Serialization.JsonPropertyName ("device_id")]
 		public string? DeviceId
 			{
 			get; set;
 			}
 
-		[JsonProperty ("alias")]
+		[System.Text.Json.Serialization.JsonPropertyName ("alias")]
 		public string? Alias
 			{
 			get; set;
 			}
 
-		[JsonProperty ("nickname")]
+		[System.Text.Json.Serialization.JsonPropertyName ("nickname")]
 		public string? Nickname
 			{
 			get; set;
 			}
 
-		[JsonProperty ("model")]
+		[System.Text.Json.Serialization.JsonPropertyName ("model")]
 		public string? Model
 			{
 			get; set;
 			}
 
-		[JsonProperty ("device_model")]
+		[System.Text.Json.Serialization.JsonPropertyName ("device_model")]
 		public string? DeviceModel
 			{
 			get; set;
 			}
 
-		[JsonProperty ("relay_state")]
+		[System.Text.Json.Serialization.JsonPropertyName ("relay_state")]
 		public int? RelayState
 			{
 			get; set;
 			}
 
-		[JsonProperty ("state")]
+		[System.Text.Json.Serialization.JsonPropertyName ("state")]
 		public int? State
 			{
 			get; set;
 			}
 
-		[JsonProperty ("device_on")]
+		[System.Text.Json.Serialization.JsonPropertyName ("device_on")]
 		public bool? DeviceOn
 			{
 			get; set;
+			}
+
+		internal void Merge (LegacyChildDeviceDto update)
+			{
+			Id = update.Id ?? Id;
+			DeviceId = update.DeviceId ?? DeviceId;
+			Alias = update.Alias ?? Alias;
+			Nickname = update.Nickname ?? Nickname;
+			Model = update.Model ?? Model;
+			DeviceModel = update.DeviceModel ?? DeviceModel;
+			RelayState = update.RelayState ?? RelayState;
+			State = update.State ?? State;
+			DeviceOn = update.DeviceOn ?? DeviceOn;
 			}
 		}
 
 	internal sealed class LegacyLightStateDto
 		{
-		[JsonProperty ("on_off")]
+		[System.Text.Json.Serialization.JsonPropertyName ("on_off")]
 		public int? OnOff
 			{
 			get; set;
 			}
 
-		[JsonProperty ("transition_period")]
+		[System.Text.Json.Serialization.JsonPropertyName ("transition_period")]
 		public int? TransitionPeriod
 			{
 			get; set;
 			}
 
-		[JsonProperty ("brightness")]
+		[System.Text.Json.Serialization.JsonPropertyName ("brightness")]
 		public int? Brightness
 			{
 			get; set;
 			}
 
-		[JsonProperty ("color_temp")]
+		[System.Text.Json.Serialization.JsonPropertyName ("color_temp")]
 		public int? ColorTemperature
 			{
 			get; set;
 			}
 
-		[JsonProperty ("hue")]
+		[System.Text.Json.Serialization.JsonPropertyName ("hue")]
 		public int? Hue
 			{
 			get; set;
 			}
 
-		[JsonProperty ("saturation")]
+		[System.Text.Json.Serialization.JsonPropertyName ("saturation")]
 		public int? Saturation
 			{
 			get; set;
 			}
 
-		[JsonProperty ("dynamic_light_effect_enable")]
+		[System.Text.Json.Serialization.JsonPropertyName ("dynamic_light_effect_enable")]
 		public int? DynamicLightEffectEnable
 			{
 			get; set;
 			}
 
-		[JsonProperty ("dynamic_light_effect_id")]
+		[System.Text.Json.Serialization.JsonPropertyName ("dynamic_light_effect_id")]
 		public string? DynamicLightEffectId
 			{
 			get; set;
 			}
 
-		[JsonProperty ("dynamic_light_effect_rule_list")]
+		[System.Text.Json.Serialization.JsonPropertyName ("dynamic_light_effect_rule_list")]
 		public List<LegacyDynamicLightEffectRuleDto>? DynamicLightEffectRuleList
 			{
 			get; set;
 			}
 
-		[JsonProperty ("lighting_effect")]
+		[System.Text.Json.Serialization.JsonPropertyName ("lighting_effect")]
 		public LegacyLightingEffectDto? LightingEffect
 			{
 			get; set;
 			}
 
-		[JsonProperty ("dft_on_state")]
+		[System.Text.Json.Serialization.JsonPropertyName ("dft_on_state")]
 		public LegacyLightStateDto? DefaultOnState
 			{
 			get; set;
+			}
+
+		internal void Merge (LegacyLightStateDto update)
+			{
+			OnOff = update.OnOff ?? OnOff;
+			TransitionPeriod = update.TransitionPeriod ?? TransitionPeriod;
+			Brightness = update.Brightness ?? Brightness;
+			ColorTemperature = update.ColorTemperature ?? ColorTemperature;
+			Hue = update.Hue ?? Hue;
+			Saturation = update.Saturation ?? Saturation;
+			DynamicLightEffectEnable = update.DynamicLightEffectEnable ?? DynamicLightEffectEnable;
+			DynamicLightEffectId = update.DynamicLightEffectId ?? DynamicLightEffectId;
+			DynamicLightEffectRuleList = update.DynamicLightEffectRuleList ?? DynamicLightEffectRuleList;
+			if (LightingEffect is not null && update.LightingEffect is not null) LightingEffect.Merge (update.LightingEffect);
+			else LightingEffect = update.LightingEffect ?? LightingEffect;
+			if (DefaultOnState is not null && update.DefaultOnState is not null) DefaultOnState.Merge (update.DefaultOnState);
+			else DefaultOnState = update.DefaultOnState ?? DefaultOnState;
 			}
 		}
 
 	internal sealed class LegacyLightPresetDto
 		{
-		[JsonProperty ("brightness")]
+		[System.Text.Json.Serialization.JsonPropertyName ("brightness")]
 		public int? Brightness
 			{
 			get; set;
 			}
 
-		[JsonProperty ("color_temp")]
+		[System.Text.Json.Serialization.JsonPropertyName ("color_temp")]
 		public int? ColorTemperature
 			{
 			get; set;
 			}
 
-		[JsonProperty ("hue")]
+		[System.Text.Json.Serialization.JsonPropertyName ("hue")]
 		public int? Hue
 			{
 			get; set;
 			}
 
-		[JsonProperty ("saturation")]
+		[System.Text.Json.Serialization.JsonPropertyName ("saturation")]
 		public int? Saturation
 			{
 			get; set;
 			}
 
-		[JsonProperty ("custom")]
+		[System.Text.Json.Serialization.JsonPropertyName ("custom")]
 		public int? Custom
 			{
 			get; set;
 			}
 
-		[JsonProperty ("id")]
+		[System.Text.Json.Serialization.JsonPropertyName ("id")]
 		public string? Id
 			{
 			get; set;
 			}
 
-		[JsonProperty ("mode")]
+		[System.Text.Json.Serialization.JsonPropertyName ("mode")]
 		public int? Mode
 			{
 			get; set;
+			}
+
+		internal void Merge (LegacyLightPresetDto update)
+			{
+			Brightness = update.Brightness ?? Brightness;
+			ColorTemperature = update.ColorTemperature ?? ColorTemperature;
+			Hue = update.Hue ?? Hue;
+			Saturation = update.Saturation ?? Saturation;
+			Custom = update.Custom ?? Custom;
+			Id = update.Id ?? Id;
+			Mode = update.Mode ?? Mode;
 			}
 		}
 
 	internal sealed class LegacyDynamicLightEffectRuleDto
 		{
-		[JsonProperty ("id")]
+		[System.Text.Json.Serialization.JsonPropertyName ("id")]
 		public string? Id
 			{
 			get; set;
 			}
 
-		[JsonProperty ("name")]
+		[System.Text.Json.Serialization.JsonPropertyName ("name")]
 		public string? Name
 			{
 			get; set;
+			}
+
+		internal void Merge (LegacyDynamicLightEffectRuleDto update)
+			{
+			Id = update.Id ?? Id;
+			Name = update.Name ?? Name;
 			}
 		}
 
 	internal sealed class LegacyLightingEffectDto
 		{
-		[JsonProperty ("enable")]
+		[System.Text.Json.Serialization.JsonPropertyName ("enable")]
 		public int? Enable
 			{
 			get; set;
 			}
 
-		[JsonProperty ("id")]
+		[System.Text.Json.Serialization.JsonPropertyName ("id")]
 		public string? Id
 			{
 			get; set;
 			}
 
-		[JsonProperty ("name")]
+		[System.Text.Json.Serialization.JsonPropertyName ("name")]
 		public string? Name
 			{
 			get; set;
 			}
 
-		[JsonProperty ("brightness")]
+		[System.Text.Json.Serialization.JsonPropertyName ("brightness")]
 		public int? Brightness
 			{
 			get; set;
+			}
+
+		internal void Merge (LegacyLightingEffectDto update)
+			{
+			Enable = update.Enable ?? Enable;
+			Id = update.Id ?? Id;
+			Name = update.Name ?? Name;
+			Brightness = update.Brightness ?? Brightness;
 			}
 		}
 
 	internal sealed class LegacyEmeterRealtimeDto
 		{
-		[JsonProperty ("power")]
+		[System.Text.Json.Serialization.JsonPropertyName ("power")]
 		public double? Power
 			{
 			get; set;
 			}
 
-		[JsonProperty ("power_mw")]
+		[System.Text.Json.Serialization.JsonPropertyName ("power_mw")]
 		public double? PowerMilliwatts
 			{
 			get; set;
 			}
 
-		[JsonProperty ("voltage")]
+		[System.Text.Json.Serialization.JsonPropertyName ("voltage")]
 		public double? Voltage
 			{
 			get; set;
 			}
 
-		[JsonProperty ("voltage_mv")]
+		[System.Text.Json.Serialization.JsonPropertyName ("voltage_mv")]
 		public double? VoltageMillivolts
 			{
 			get; set;
 			}
 
-		[JsonProperty ("current")]
+		[System.Text.Json.Serialization.JsonPropertyName ("current")]
 		public double? Current
 			{
 			get; set;
 			}
 
-		[JsonProperty ("current_ma")]
+		[System.Text.Json.Serialization.JsonPropertyName ("current_ma")]
 		public double? CurrentMilliamps
 			{
 			get; set;
 			}
 
-		[JsonProperty ("total")]
+		[System.Text.Json.Serialization.JsonPropertyName ("total")]
 		public double? Total
 			{
 			get; set;
 			}
 
-		[JsonProperty ("total_wh")]
+		[System.Text.Json.Serialization.JsonPropertyName ("total_wh")]
 		public double? TotalWattHours
 			{
 			get; set;
 			}
 
-		[JsonProperty ("energy")]
+		[System.Text.Json.Serialization.JsonPropertyName ("energy")]
 		public double? Energy
 			{
 			get; set;
 			}
 
-		[JsonProperty ("energy_wh")]
+		[System.Text.Json.Serialization.JsonPropertyName ("energy_wh")]
 		public double? EnergyWattHours
 			{
 			get; set;
+			}
+
+		internal void Merge (LegacyEmeterRealtimeDto update)
+			{
+			Power = update.Power ?? Power;
+			PowerMilliwatts = update.PowerMilliwatts ?? PowerMilliwatts;
+			Voltage = update.Voltage ?? Voltage;
+			VoltageMillivolts = update.VoltageMillivolts ?? VoltageMillivolts;
+			Current = update.Current ?? Current;
+			CurrentMilliamps = update.CurrentMilliamps ?? CurrentMilliamps;
+			Total = update.Total ?? Total;
+			TotalWattHours = update.TotalWattHours ?? TotalWattHours;
+			Energy = update.Energy ?? Energy;
+			EnergyWattHours = update.EnergyWattHours ?? EnergyWattHours;
 			}
 		}
 
 	internal sealed class LegacyEmeterDailyStatDto
 		{
-		[JsonProperty ("day_list")]
+		[System.Text.Json.Serialization.JsonPropertyName ("day_list")]
 		public List<LegacyEmeterDayStatEntryDto>? DayList { get; set; }
+
+		internal void Merge (LegacyEmeterDailyStatDto update)
+			{
+			DayList = update.DayList ?? DayList;
+			}
 		}
 
 	internal sealed class LegacyEmeterMonthlyStatDto
 		{
-		[JsonProperty ("month_list")]
+		[System.Text.Json.Serialization.JsonPropertyName ("month_list")]
 		public List<LegacyEmeterMonthStatEntryDto>? MonthList { get; set; }
+
+		internal void Merge (LegacyEmeterMonthlyStatDto update)
+			{
+			MonthList = update.MonthList ?? MonthList;
+			}
 		}
 
 	internal sealed class LegacyEmeterDayStatEntryDto
 		{
-		[JsonProperty ("day")]
+		[System.Text.Json.Serialization.JsonPropertyName ("day")]
 		public int? Day { get; set; }
 
-		[JsonProperty ("energy")]
+		[System.Text.Json.Serialization.JsonPropertyName ("energy")]
 		public double? EnergyKilowattHours { get; set; }
 
-		[JsonProperty ("energy_wh")]
+		[System.Text.Json.Serialization.JsonPropertyName ("energy_wh")]
 		public double? EnergyWattHours { get; set; }
+
+		internal void Merge (LegacyEmeterDayStatEntryDto update)
+			{
+			Day = update.Day ?? Day;
+			EnergyKilowattHours = update.EnergyKilowattHours ?? EnergyKilowattHours;
+			EnergyWattHours = update.EnergyWattHours ?? EnergyWattHours;
+			}
 		}
 
 	internal sealed class LegacyEmeterMonthStatEntryDto
 		{
-		[JsonProperty ("month")]
+		[System.Text.Json.Serialization.JsonPropertyName ("month")]
 		public int? Month { get; set; }
 
-		[JsonProperty ("energy")]
+		[System.Text.Json.Serialization.JsonPropertyName ("energy")]
 		public double? EnergyKilowattHours { get; set; }
 
-		[JsonProperty ("energy_wh")]
+		[System.Text.Json.Serialization.JsonPropertyName ("energy_wh")]
 		public double? EnergyWattHours { get; set; }
+
+		internal void Merge (LegacyEmeterMonthStatEntryDto update)
+			{
+			Month = update.Month ?? Month;
+			EnergyKilowattHours = update.EnergyKilowattHours ?? EnergyKilowattHours;
+			EnergyWattHours = update.EnergyWattHours ?? EnergyWattHours;
+			}
 		}
 
 	}

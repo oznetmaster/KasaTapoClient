@@ -12,8 +12,6 @@ using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -160,14 +158,14 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			throw new ArgumentException ("At least one command payload is required.", nameof (commandJsonPayloads));
 			}
 
-		var merged = new JObject ();
+		var merged = new KasaResponseParser.LegacyResponseDto ();
 		foreach (string payload in commandJsonPayloads)
 			{
 			string responseJson = await SendAsync (payload, cancellationToken).ConfigureAwait (false);
-			JsonSupport.MergeObjects (merged, JsonSupport.ParseObject (responseJson));
+			merged.Merge (WireJson.Read<KasaResponseParser.LegacyResponseDto> (responseJson));
 			}
 
-		return merged.ToJsonString (JsonSupport.COMPACT_JSON);
+		return WireJson.Serialize (merged);
 		}
 
 	public void Dispose ()
@@ -222,7 +220,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			if (LooksLikeJson (body))
 				{
 				string jsonResponse = Encoding.UTF8.GetString (body);
-				JObject root = JsonSupport.ParseObject (jsonResponse);
+				AuthenticationResponseDto root = WireJson.Read<AuthenticationResponseDto> (jsonResponse);
 				HandleResponseErrorCode (root, "request");
 				RecordActivity ();
 				return jsonResponse;
@@ -230,7 +228,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 
 			byte[] decrypted = DecryptPayloadEnvelope (cipherId, key, baseNonce, body, sequence);
 			string responseJson = Encoding.UTF8.GetString (decrypted);
-			JsonSupport.ParseObject (responseJson);
+			WireJson.Read<ResponseHeader> (responseJson);
 			RecordActivity ();
 			return responseJson;
 			}
@@ -289,30 +287,30 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 
 	private async Task DiscoverAsync (CancellationToken cancellationToken)
 		{
-		var body = new JObject
+		var body = new WireRequest<TpapLoginParametersDto>
 			{
-			["method"] = "login",
-			["params"] = new JObject
+			Method = "login",
+			Parameters = new TpapLoginParametersDto
 				{
-				["sub_method"] = "discover",
+				SubMethod = "discover",
 				},
 			};
 		Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' discover: posting login/discover to '{_appUri}'.");
-		JObject response = await PostLoginAsync (body, "discover", cancellationToken).ConfigureAwait (false);
+		AuthenticationResponseDto response = await PostLoginAsync (body, "discover", cancellationToken).ConfigureAwait (false);
 		Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' discover: login/discover responded.");
-		JObject result = RequireResultObject (response);
-		if (result["tpap"] is not JObject tpap)
+		AuthenticationResultDto result = RequireResultObject (response);
+		if (result.Tpap is not TpapDiscoveryDto tpap)
 			{
 			throw new InvalidDataException ("The TPAP discover response did not contain a tpap object.");
 			}
 
-		_deviceMac = result["mac"]?.GetValue<string?> () ?? string.Empty;
-		_tpapTls = GetOptionalInt (tpap["tls"]);
-		_tpapPort = GetOptionalInt (tpap["port"]);
-		int? dacValue = GetOptionalInt (tpap["dac"]);
+		_deviceMac = result.Mac ?? string.Empty;
+		_tpapTls = tpap.Tls;
+		_tpapPort = tpap.Port;
+		int? dacValue = tpap.Dac;
 		_tpapDac = dacValue == 1;
-		_tpapPake = ReadIntArray (tpap["pake"]);
-		_tpapUserHashType = GetOptionalInt (tpap["user_hash_type"]);
+		_tpapPake = tpap.Pake?.Where (value => value.HasValue).Select (value => value!.Value).ToList () ?? new List<int> ();
+		_tpapUserHashType = tpap.UserHashType;
 
 		_knownDeviceMac = _deviceMac;
 		_knownTpapTls = _tpapTls;
@@ -347,34 +345,34 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 				_dacNonceBase64 = null;
 				_userRandom = Convert.ToBase64String (CreateRandomBytes (32));
 
-				var registerParams = new JObject
+				var registerParams = new TpapRegisterParametersDto
 					{
-					["sub_method"] = "pake_register",
-					["username"] = registerUserName,
-					["user_random"] = _userRandom,
-					["cipher_suites"] = new JArray (1),
-					["encryption"] = new JArray ("aes_128_ccm"),
-					["passcode_type"] = resolvedPasscodeType,
-					["stok"] = null,
+					SubMethod = "pake_register",
+					Username = registerUserName,
+					UserRandom = _userRandom,
+					CipherSuites = new[] { 1 },
+					Encryption = new[] { "aes_128_ccm" },
+					PasscodeType = resolvedPasscodeType,
+					Stok = null,
 					};
 
 				try
 					{
 					Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' handshake: calling pake_register.");
-					JObject registerResult = await LoginAsync (registerParams, "pake_register", cancellationToken).ConfigureAwait (false);
+					AuthenticationResultDto registerResult = await LoginAsync (registerParams, "pake_register", cancellationToken).ConfigureAwait (false);
 					Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' handshake: pake_register responded; resolving credentials.");
 					string credentialsString = ResolveCredentialsString (registerResult, candidateSecret, resolvedPasscodeType);
 					Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' handshake: credentials resolved; building share params (PBKDF2/EC math).");
-					JObject shareParams = BuildShareParamsFromRegister (registerResult, credentialsString);
+					TpapLoginParametersDto shareParams = BuildShareParamsFromRegister (registerResult, credentialsString);
 					Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' handshake: share params built.");
 					if (UseDacCertification ())
 						{
 						_dacNonceBase64 = Convert.ToBase64String (CreateRandomBytes (16));
-						shareParams["dac_nonce"] = _dacNonceBase64;
+						shareParams.DacNonce = _dacNonceBase64;
 						}
 
 					Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' handshake: calling pake_share.");
-					JObject shareResult = await LoginAsync (shareParams, "pake_share", cancellationToken).ConfigureAwait (false);
+					AuthenticationResultDto shareResult = await LoginAsync (shareParams, "pake_share", cancellationToken).ConfigureAwait (false);
 					Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' handshake: pake_share responded; establishing session.");
 					EstablishSessionFromShareResult (shareResult);
 					Debug.WriteLine ($"[KasaTapoClient.Tpap] '{_configuration.Host}' handshake: session established.");
@@ -390,24 +388,24 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 		throw lastError ?? new InvalidOperationException ("TPAP handshake did not produce a session.");
 		}
 
-	private async Task<JObject> LoginAsync (JObject parameters, string stepName, CancellationToken cancellationToken)
+	private async Task<AuthenticationResultDto> LoginAsync (TpapLoginParametersDto parameters, string stepName, CancellationToken cancellationToken)
 		{
-		var body = new JObject
+		var body = new WireRequest<TpapLoginParametersDto>
 			{
-			["method"] = "login",
-			["params"] = parameters,
+			Method = "login",
+			Parameters = parameters,
 			};
-		JObject response = await PostLoginAsync (body, stepName, cancellationToken).ConfigureAwait (false);
+		AuthenticationResponseDto response = await PostLoginAsync (body, stepName, cancellationToken).ConfigureAwait (false);
 		return RequireResultObject (response);
 		}
 
-	private async Task<JObject> PostLoginAsync (JObject body, string stepName, CancellationToken cancellationToken)
+	private async Task<AuthenticationResponseDto> PostLoginAsync (WireRequest<TpapLoginParametersDto> body, string stepName, CancellationToken cancellationToken)
 		{
 		using CancellationTokenSource? timeoutSource = CreateOperationTimeoutSource (_configuration.Timeout, cancellationToken);
 		CancellationToken operationCancellationToken = timeoutSource?.Token ?? cancellationToken;
 		using var request = new HttpRequestMessage (HttpMethod.Post, new Uri (_appUri, "/"))
 			{
-			Content = new StringContent (body.ToJsonString (JsonSupport.COMPACT_JSON), Encoding.UTF8, "application/json"),
+			Content = new StringContent (WireJson.Serialize (body), Encoding.UTF8, "application/json"),
 			};
 		string responseText;
 		try
@@ -424,34 +422,34 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			throw ToCancellationException (ex, operationCancellationToken);
 			}
 
-		JObject root = JsonSupport.ParseObject (responseText);
+		AuthenticationResponseDto root = WireJson.Read<AuthenticationResponseDto> (responseText);
 		HandleResponseErrorCode (root, stepName);
 		return root;
 		}
 
-	private JObject BuildShareParamsFromRegister (JObject registerResult, string credentialsString)
+	private TpapLoginParametersDto BuildShareParamsFromRegister (AuthenticationResultDto registerResult, string credentialsString)
 		{
 		if (string.IsNullOrWhiteSpace (_userRandom))
 			{
 			throw new InvalidOperationException ("TPAP user random was not initialized.");
 			}
 
-		string devRandom = registerResult["dev_random"]?.GetValue<string?> () ?? string.Empty;
-		string devSalt = registerResult["dev_salt"]?.GetValue<string?> () ?? string.Empty;
-		string devShare = registerResult["dev_share"]?.GetValue<string?> () ?? string.Empty;
+		string devRandom = registerResult.DeviceRandom ?? string.Empty;
+		string devSalt = registerResult.DeviceSalt ?? string.Empty;
+		string devShare = registerResult.DeviceShare ?? string.Empty;
 		if (string.IsNullOrWhiteSpace (devRandom) || string.IsNullOrWhiteSpace (devSalt) || string.IsNullOrWhiteSpace (devShare))
 			{
 			throw new InvalidDataException ("The TPAP register response was missing required SPAKE2+ fields.");
 			}
 
-		int suiteType = GetRequiredInt (registerResult, "cipher_suites");
-		int iterations = GetRequiredInt (registerResult, "iterations");
+		int suiteType = (registerResult.CipherSuite ?? throw new InvalidDataException ("The TPAP response field cipher_suites was missing or invalid."));
+		int iterations = (registerResult.Iterations ?? throw new InvalidDataException ("The TPAP response field iterations was missing or invalid."));
 		if (iterations <= 0)
 			{
 			throw new InvalidDataException ("The TPAP register response reported an invalid iteration count.");
 			}
 
-		string encryption = registerResult["encryption"]?.GetValue<string?> () ?? string.Empty;
+		string encryption = registerResult.Encryption ?? string.Empty;
 		if (string.IsNullOrWhiteSpace (encryption))
 			{
 			throw new InvalidDataException ("The TPAP register response did not include a session cipher.");
@@ -510,17 +508,17 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			: ComputeHmac (_hkdfHash, keyConfirmB, lEncoded);
 		_expectedDevConfirm = Convert.ToBase64String (expectedDeviceConfirm);
 
-		return new JObject
+		return new TpapLoginParametersDto
 			{
-			["sub_method"] = "pake_share",
-			["user_share"] = Convert.ToBase64String (lEncoded),
-			["user_confirm"] = Convert.ToBase64String (userConfirm),
+			SubMethod = "pake_share",
+			UserShare = Convert.ToBase64String (lEncoded),
+			UserConfirm = Convert.ToBase64String (userConfirm),
 			};
 		}
 
-	private void EstablishSessionFromShareResult (JObject shareResult)
+	private void EstablishSessionFromShareResult (AuthenticationResultDto shareResult)
 		{
-		string devConfirm = shareResult["dev_confirm"]?.GetValue<string?> () ?? string.Empty;
+		string devConfirm = shareResult.DeviceConfirm ?? string.Empty;
 		if (string.IsNullOrWhiteSpace (devConfirm))
 			{
 			throw new InvalidDataException ("The TPAP share response did not include dev_confirm.");
@@ -531,8 +529,8 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			throw new InvalidDataException ("The TPAP confirmation value did not match the expected device confirm.");
 			}
 
-		string sessionId = shareResult["sessionId"]?.GetValue<string?> ()
-			?? shareResult["stok"]?.GetValue<string?> ()
+		string sessionId = shareResult.SessionId
+			?? shareResult.Stok
 			?? string.Empty;
 		if (string.IsNullOrWhiteSpace (sessionId))
 			{
@@ -544,7 +542,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			throw new InvalidOperationException ("The TPAP shared key was not derived.");
 			}
 
-		int startSequence = GetRequiredInt (shareResult, "start_seq");
+		int startSequence = (shareResult.StartSequence ?? throw new InvalidDataException ("The TPAP response field start_seq was missing or invalid."));
 		(CipherParameters cipherParameters, byte[] key, byte[] baseNonce) = DeriveSessionKeyMaterial (_sharedKey, _cipherId, _hkdfHash);
 		_sessionId = sessionId;
 		_sequence = startSequence;
@@ -813,8 +811,8 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 
 		try
 			{
-				JObject root = JsonSupport.ParseObject (commandJson);
-				string? method = root["method"]?.GetValue<string?> ();
+				WireRequest<LightCommandParametersDto> root = WireJson.Read<WireRequest<LightCommandParametersDto>> (commandJson);
+				string? method = root.Method;
 				return string.Equals (method, "set_lighting_effect", StringComparison.Ordinal);
 			}
 		catch (Exception)
@@ -832,23 +830,23 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 
 		try
 			{
-				JObject root = JsonSupport.ParseObject (commandJson);
-				string? method = root["method"]?.GetValue<string?> ();
+				WireRequest<LightCommandParametersDto> root = WireJson.Read<WireRequest<LightCommandParametersDto>> (commandJson);
+				string? method = root.Method;
 				if (!string.Equals (method, "set_device_info", StringComparison.Ordinal))
 					{
 					return false;
 					}
 
-				JObject? parameters = root["params"] as JObject;
+				LightCommandParametersDto? parameters = root.Parameters;
 				if (parameters is null)
 					{
 					return false;
 					}
 
-				return parameters.ContainsKey ("color_temp")
-					|| parameters.ContainsKey ("brightness")
-					|| parameters.ContainsKey ("hue")
-					|| parameters.ContainsKey ("saturation");
+				return parameters.ColorTemperature is not null
+					|| parameters.Brightness is not null
+					|| parameters.Hue is not null
+					|| parameters.Saturation is not null;
 			}
 		catch (Exception)
 			{
@@ -1019,13 +1017,13 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 
 			if (LooksLikeJson (body))
 				{
-				JObject root = JsonSupport.ParseObject (Encoding.UTF8.GetString (body));
+				AuthenticationResponseDto root = WireJson.Read<AuthenticationResponseDto> (Encoding.UTF8.GetString (body));
 				HandleResponseErrorCode (root, "keepalive");
 				}
 			else
 				{
 				string responseJson = Encoding.UTF8.GetString (DecryptPayloadEnvelope (cipherId, key, baseNonce, body, sequence));
-				JsonSupport.ParseObject (responseJson);
+				WireJson.Read<ResponseHeader> (responseJson);
 				}
 
 			RecordActivity ();
@@ -1082,9 +1080,9 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 		}
 	#pragma warning restore CA2249
 
-	private void HandleResponseErrorCode (JObject response, string action)
+	private void HandleResponseErrorCode (AuthenticationResponseDto response, string action)
 		{
-		int errorCode = GetOptionalInt (response["error_code"]) ?? ERROR_CODE_UNKNOWN;
+		int errorCode = response.ErrorCode ?? ERROR_CODE_UNKNOWN;
 		if (errorCode == ERROR_CODE_SUCCESS)
 			{
 			return;
@@ -1102,11 +1100,11 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 
 		// Devices report a lockout budget alongside failed PAKE attempts. Surfacing it turns an
 		// opaque numeric failure into an actionable message and warns before the device locks out.
-		if (response["error_info"] is JObject errorInfo)
+		if (response.ErrorInfo is AuthenticationErrorDto errorInfo)
 			{
-			int? failedAttempts = GetOptionalInt (errorInfo["failedAttempts"]);
-			int? remainAttempts = GetOptionalInt (errorInfo["remainAttempts"]);
-			int? lockedMinute = GetOptionalInt (errorInfo["lockedMinute"]);
+			int? failedAttempts = errorInfo.FailedAttempts;
+			int? remainAttempts = errorInfo.RemainingAttempts;
+			int? lockedMinute = errorInfo.LockedMinutes;
 			var details = new List<string> ();
 			if (failedAttempts is int failed)
 				{
@@ -1138,9 +1136,9 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 		throw new TpapProtocolException (message, errorCode, retryable, authentication);
 		}
 
-	private static JObject RequireResultObject (JObject response)
+	private static AuthenticationResultDto RequireResultObject (AuthenticationResponseDto response)
 		{
-		if (response["result"] is not JObject result)
+		if (response.Result is not AuthenticationResultDto result)
 			{
 			throw new InvalidDataException ("The TPAP response did not contain a result object.");
 			}
@@ -1222,14 +1220,14 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 		return new DeviceCredentials (string.Empty, string.Empty);
 		}
 
-	private string ResolveCredentialsString (JObject registerResult, string candidateSecret, string passcodeType)
+	private string ResolveCredentialsString (AuthenticationResultDto registerResult, string candidateSecret, string passcodeType)
 		{
 		if (string.Equals (passcodeType, "default_userpw", StringComparison.Ordinal))
 			{
 			return candidateSecret;
 			}
 
-		JObject? extraCrypt = registerResult["extra_crypt"] as JObject;
+		ExtraCryptDto? extraCrypt = registerResult.ExtraCrypt;
 		if (UsesCameraAuth () && extraCrypt is null)
 			{
 			return candidateSecret;
@@ -1249,18 +1247,18 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 
 	private bool UseDacCertification () => _tpapTls == 0 && _tpapDac;
 
-	private static string BuildCredentials (JObject? extraCrypt, string userName, string passcode, string macNoColon)
+	private static string BuildCredentials (ExtraCryptDto? extraCrypt, string userName, string passcode, string macNoColon)
 		{
 		if (extraCrypt is null)
 			{
 			return string.IsNullOrWhiteSpace (userName) ? passcode : userName + "/" + passcode;
 			}
 
-		string cryptType = extraCrypt["type"]?.GetValue<string?> ()?.ToLowerInvariant () ?? string.Empty;
-		JObject paramsObject = extraCrypt["params"] as JObject ?? new JObject ();
+		string cryptType = extraCrypt.Type?.ToLowerInvariant () ?? string.Empty;
+		ExtraCryptParametersDto paramsObject = extraCrypt.Parameters ?? new ExtraCryptParametersDto ();
 		if (cryptType == "password_shadow")
 			{
-			int passwdId = GetOptionalInt (paramsObject["passwd_id"]) ?? 0;
+			int passwdId = paramsObject.PasswordId ?? 0;
 			if (passwdId == 2)
 				{
 				return ComputeSha1Hex (passcode);
@@ -1276,8 +1274,8 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 
 		if (cryptType == "password_authkey")
 			{
-			string tmpKey = paramsObject["authkey_tmpkey"]?.GetValue<string?> () ?? string.Empty;
-			string dictionary = paramsObject["authkey_dictionary"]?.GetValue<string?> () ?? string.Empty;
+			string tmpKey = paramsObject.AuthKeyTemporaryKey ?? string.Empty;
+			string dictionary = paramsObject.AuthKeyDictionary ?? string.Empty;
 			return !string.IsNullOrWhiteSpace (tmpKey) && !string.IsNullOrWhiteSpace (dictionary)
 				? ApplyAuthKeyMask (passcode, tmpKey, dictionary)
 				: passcode;
@@ -1285,8 +1283,8 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 
 		if (cryptType == "password_sha_with_salt")
 			{
-			int? shaName = GetOptionalInt (paramsObject["sha_name"]);
-			string shaSaltBase64 = paramsObject["sha_salt"]?.GetValue<string?> () ?? string.Empty;
+			int? shaName = paramsObject.ShaName;
+			string shaSaltBase64 = paramsObject.ShaSalt ?? string.Empty;
 			if (shaName is null || string.IsNullOrWhiteSpace (shaSaltBase64))
 				{
 				return passcode;
@@ -1648,53 +1646,6 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 		var bytes = new byte[length];
 		RANDOM.NextBytes (bytes);
 		return bytes;
-		}
-
-	private static int? GetOptionalInt (JToken? node)
-		{
-		if (node is null)
-			{
-			return null;
-			}
-
-		if (node is JValue jsonValue)
-			{
-			if (jsonValue.Type == JTokenType.Integer || jsonValue.Type == JTokenType.Float)
-				{
-				return jsonValue.ToObject<int> ();
-				}
-
-			if (jsonValue.Type == JTokenType.String
-				&& int.TryParse ((string?)jsonValue.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed))
-				{
-				return parsed;
-				}
-			}
-
-		return null;
-		}
-
-	private static int GetRequiredInt (JObject source, string propertyName) => GetOptionalInt (source[propertyName])
-		?? throw new InvalidDataException ($"The TPAP response field '{propertyName}' was missing or invalid.");
-
-	private static List<int> ReadIntArray (JToken? node)
-		{
-		if (node is not JArray array)
-			{
-			return new List<int> ();
-			}
-
-		var values = new List<int> (array.Count);
-		foreach (JToken? item in array)
-			{
-			int? value = GetOptionalInt (item);
-			if (value is not null)
-				{
-				values.Add (value.Value);
-				}
-			}
-
-		return values;
 		}
 
 	#pragma warning disable CA5351

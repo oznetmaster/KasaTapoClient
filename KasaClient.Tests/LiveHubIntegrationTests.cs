@@ -41,7 +41,7 @@ public sealed class LiveHubIntegrationTests
 		Assert.That (child, Is.Not.Null, $"Hub child '{childDeviceId}' was not found after refresh.");
 		Assert.That (child.Id, Is.EqualTo (childDeviceId), "Hub child id should match the configured child id.");
 		Assert.That (string.IsNullOrWhiteSpace (child.Model), Is.False, "Hub child should report a model.");
-		Assert.That (string.IsNullOrWhiteSpace (child.RawJson), Is.False, "Hub child should expose raw state payload data.");
+		Assert.That (child.Id, Is.Not.Empty, "Hub child should expose its typed device identity.");
 		Assert.That (child.Features.Count > 0, Is.True, "Hub child should expose at least one reported feature.");
 		}
 	[Test]

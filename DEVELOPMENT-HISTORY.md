@@ -11,6 +11,13 @@ See the [product changelog](CHANGELOG.md) for shipped changes. This document pre
 
 <!-- development-history -->
 
+## 2.0.0 validation - 2026-09-22
+
+- Validate the typed System.Text.Json wire contracts with 123 offline tests on each of net472 and net10.0, including payload ordering, escaped identifiers, flexible sensor numbers, authentication, child overlays, response merging, cancellation and public API boundaries.
+- Pass all seven live fixtures on each desktop target and all 123 offline plus seven live tests in the separate processor test package. Remove the temporary processor instance and package after validation.
+- Update Microsoft.NET.Test.Sdk to 18.10.1 and NUnit.Analyzers to 4.15.0. Document NUnit 4.6.1, NUnit3TestAdapter 6.3.0, coverlet.collector 10.0.1 and explicit live-test opt-in in the linked test README.
+- Build Debug and Release solutions and inspect the 2.0.0 NuGet package for both framework assets, documentation and absence of private test settings. NuGet reports no vulnerable dependencies. The benchmark tooling retains its transitive, deprecated System.Security.AccessControl 5.0.0 dependency on net472; this is not a library dependency. No preview packages are introduced.
+
 ## Offline release workflow option - 2026-09-15 (no package release)
 
 - Allow an explicit manual release when local hardware or the self-hosted runner is unavailable, with the reason and exact source recorded in the workflow summary.

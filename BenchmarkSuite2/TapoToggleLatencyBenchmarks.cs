@@ -5,8 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
+
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using KasaTapoClient;
@@ -37,7 +37,7 @@ public class TapoToggleLatencyBenchmarks
 
         if (_originalState)
         {
-            await _warmDevice.ExecuteCommandAsync(CreateSmartCommandPayload(false)).ConfigureAwait(false);
+            await _warmDevice.TurnOffAsync().ConfigureAwait(false);
             await _warmDevice.UpdateAsync().ConfigureAwait(false);
         }
     }
@@ -49,7 +49,7 @@ public class TapoToggleLatencyBenchmarks
         {
             if (_hasOriginalState)
             {
-                await _warmDevice.ExecuteCommandAsync(CreateSmartCommandPayload(_originalState)).ConfigureAwait(false);
+                await (_originalState ? _warmDevice.TurnOnAsync() : _warmDevice.TurnOffAsync()).ConfigureAwait(false);
                 await _warmDevice.UpdateAsync().ConfigureAwait(false);
             }
 
@@ -60,8 +60,8 @@ public class TapoToggleLatencyBenchmarks
     [Benchmark]
     public async Task WarmDirectOnThenOffSequenceAsync()
     {
-        await _warmDevice.ExecuteCommandAsync(CreateSmartCommandPayload(true)).ConfigureAwait(false);
-        await _warmDevice.ExecuteCommandAsync(CreateSmartCommandPayload(false)).ConfigureAwait(false);
+        await _warmDevice.TurnOnAsync().ConfigureAwait(false);
+        await _warmDevice.TurnOffAsync().ConfigureAwait(false);
     }
 
     [Benchmark]
@@ -125,20 +125,7 @@ public class TapoToggleLatencyBenchmarks
         return value is null ? default! : (T)value;
     }
 
-    private static string CreateSmartCommandPayload(bool isOn)
-    {
-        var request = new JObject
-        {
-            ["method"] = "set_device_info",
-            ["request_time_milis"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-            ["terminal_uuid"] = Convert.ToBase64String(Guid.NewGuid().ToByteArray()),
-            ["params"] = new JObject
-            {
-                ["device_on"] = isOn,
-            },
-        };
-        return request.ToString(Formatting.None);
-    }
+
 
     private static BenchmarkConnectionProfile? LoadImplicitProfile()
     {
@@ -148,7 +135,7 @@ public class TapoToggleLatencyBenchmarks
             return null;
         }
 
-        return JsonConvert.DeserializeObject<BenchmarkConnectionProfile>(File.ReadAllText(path));
+        return JsonSerializer.Deserialize<BenchmarkConnectionProfile>(File.ReadAllText(path));
     }
 
     private static string? LoadRecentHost()
@@ -176,7 +163,7 @@ public class TapoToggleLatencyBenchmarks
             return null;
         }
 
-        Dictionary<string, BenchmarkConnectionProfile>? profiles = JsonConvert.DeserializeObject<Dictionary<string, BenchmarkConnectionProfile>>(File.ReadAllText(path));
+        Dictionary<string, BenchmarkConnectionProfile>? profiles = JsonSerializer.Deserialize<Dictionary<string, BenchmarkConnectionProfile>>(File.ReadAllText(path));
         if (profiles is null)
         {
             return null;

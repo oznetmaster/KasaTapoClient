@@ -1818,7 +1818,7 @@ public sealed class KasaDeviceTests
 		var device = new KasaDevice (configuration, transport);
 
 		await device.UpdateAsync ().ConfigureAwait (false);
-		ChildSetupScanResult scanResult = new (["subg.trigger.button"], [new DetectedChildDevice ("scan-1", "S200B", "subg.trigger.button", "{}")]);
+		ChildSetupScanResult scanResult = new (["subg.trigger.button"], [new DetectedChildDevice ("scan-1", "S200B", "subg.trigger.button")]);
 		IReadOnlyList<DetectedChildDevice> added = await device.PairScannedChildDevicesAsync (scanResult.DetectedDevices).ConfigureAwait (false);
 		await device.UnpairChildDeviceAsync ("scan-1").ConfigureAwait (false);
 
@@ -2167,7 +2167,7 @@ public sealed class KasaDeviceTests
 
 		string response = await device.ExecuteSmartCommandAsync (
 			"set_device_info",
-			new Newtonsoft.Json.Linq.JObject { ["device_on"] = true },
+			new KasaTapoClient.Internal.SmartDeviceSettingsDto { DeviceOn = true },
 			DeviceStateUpdateMode.UpdateAfterCommand).ConfigureAwait (false);
 
 		Assert.That (response, Is.EqualTo ("{\"result\":{\"error_code\":0}}"));

@@ -83,5 +83,5 @@ public sealed class LiveDeviceTargetTests
 		}
 
 	private static DiscoveryResult Device (string host, string deviceId, string alias, bool preferred = false) =>
-		 new (host, DeviceType.Bulb, alias, "Synthetic", deviceId, "{}", DeviceTransportKind.LegacyXor, false, 9999, null, tpapPreferred: preferred);
+		 new (host, DeviceType.Bulb, alias, "Synthetic", deviceId, DeviceTransportKind.LegacyXor, false, 9999, null, tpapPreferred: preferred);
 	}

@@ -6,7 +6,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using Newtonsoft.Json.Linq;
 
 namespace KasaTapoClient.Internal;
 
@@ -73,346 +72,91 @@ internal static class KasaCommands
 	public const string SMART_GET_DYNAMIC_LIGHT_EFFECT_RULES_METHOD = "get_dynamic_light_effect_rules";
 	public const string SMART_GET_ALARM_CONFIG_METHOD = "get_alarm_configure";
 
-	public static string CreateSetRelayStateCommand (bool isOn)
-		{
-		int relayState = isOn ? 1 : 0;
-		return $"{{\"system\":{{\"set_relay_state\":{{\"state\":{relayState}}}}}}}";
-		}
+	public static string CreateSetRelayStateCommand (bool isOn) => CreateLegacyRequest ("system", "set_relay_state", new LegacyRequestParametersDto { State = isOn ? 1 : 0 });
 
 	public static string CreateSetChildRelayStateCommand (string childDeviceId, bool isOn)
 		{
-		if (string.IsNullOrWhiteSpace (childDeviceId))
-			{
-			throw new ArgumentException ("A child device identifier is required.", nameof (childDeviceId));
-			}
+		if (string.IsNullOrWhiteSpace (childDeviceId)) throw new ArgumentException ("A child device identifier is required.", nameof (childDeviceId));
+		return CreateLegacyRequest ("system", "set_relay_state", new LegacyRequestParametersDto { State = isOn ? 1 : 0 }, childDeviceId);
+		}
 
-		int relayState = isOn ? 1 : 0;
-		var command = new JObject
+	public static string CreateGetEmeterDayStatCommand (int year, int month) => CreateLegacyRequest ("emeter", "get_daystat", new LegacyRequestParametersDto { Year = year, Month = month });
+	public static string CreateGetBulbEmeterDayStatCommand (int year, int month) => CreateLegacyRequest ("smartlife.iot.common.emeter", "get_daystat", new LegacyRequestParametersDto { Year = year, Month = month });
+	public static string CreateGetEmeterMonthStatCommand (int year) => CreateLegacyRequest ("emeter", "get_monthstat", new LegacyRequestParametersDto { Year = year });
+	public static string CreateGetBulbEmeterMonthStatCommand (int year) => CreateLegacyRequest ("smartlife.iot.common.emeter", "get_monthstat", new LegacyRequestParametersDto { Year = year });
+
+	public static string CreateSetLightStateCommand (DeviceType deviceType, bool? isOn = null, int? brightness = null, int? colorTemperature = null, int? hue = null, int? saturation = null, int? transitionMilliseconds = null)
+		{
+		if (isOn is null && brightness is null && colorTemperature is null && hue is null && saturation is null) throw new ArgumentException ("At least one light-state value is required.");
+		string service = LightService (deviceType);
+		var parameters = new LegacyRequestParametersDto
 			{
-			["context"] = new JObject
-				{
-				["child_ids"] = new JArray (childDeviceId),
-				},
-			["system"] = new JObject
-				{
-				["set_relay_state"] = new JObject
-					{
-					["state"] = relayState,
-					},
-				},
+			OnOff = isOn is bool on ? (on ? 1 : 0) : null,
+			Brightness = brightness, ColorTemperature = hue is not null || saturation is not null ? 0 : colorTemperature,
+			Hue = hue, Saturation = saturation,
+			IgnoreDefault = deviceType == DeviceType.Bulb ? 1 : null,
+			TransitionPeriod = deviceType == DeviceType.Bulb ? transitionMilliseconds ?? 0 : null,
 			};
-
-		return command.ToJsonString (JsonSupport.COMPACT_JSON);
-		}
-
-	public static string CreateGetEmeterDayStatCommand (int year, int month)
-		{
-		return GET_EMETER_DAYSTAT
-			.Replace ("%YEAR%", year.ToString (CultureInfo.InvariantCulture))
-			.Replace ("%MONTH%", month.ToString (CultureInfo.InvariantCulture));
-		}
-
-	public static string CreateGetBulbEmeterDayStatCommand (int year, int month)
-		{
-		return GET_BULB_EMETER_DAYSTAT
-			.Replace ("%YEAR%", year.ToString (CultureInfo.InvariantCulture))
-			.Replace ("%MONTH%", month.ToString (CultureInfo.InvariantCulture));
-		}
-
-	public static string CreateGetEmeterMonthStatCommand (int year)
-		{
-		return GET_EMETER_MONTHSTAT.Replace ("%YEAR%", year.ToString (CultureInfo.InvariantCulture));
-		}
-
-	public static string CreateGetBulbEmeterMonthStatCommand (int year)
-		{
-		return GET_BULB_EMETER_MONTHSTAT.Replace ("%YEAR%", year.ToString (CultureInfo.InvariantCulture));
-		}
-
-	public static string CreateSetLightStateCommand (
-		DeviceType deviceType,
-		bool? isOn = null,
-		int? brightness = null,
-		int? colorTemperature = null,
-		int? hue = null,
-		int? saturation = null,
-		int? transitionMilliseconds = null)
-		{
-		string service = deviceType switch
-			{
-				DeviceType.Bulb => "smartlife.iot.smartbulb.lightingservice",
-				DeviceType.LightStrip => "smartlife.iot.lightStrip",
-				_ => throw new InvalidOperationException ($"Device type '{deviceType}' does not support light-state control."),
-			};
-		string method = deviceType switch
-			{
-				DeviceType.Bulb => "transition_light_state",
-				DeviceType.LightStrip => "set_light_state",
-				_ => throw new InvalidOperationException ($"Device type '{deviceType}' does not support light-state control."),
-			};
-
-		var lightState = new JObject ();
-		if (isOn is bool powerState)
-			{
-			lightState["on_off"] = powerState ? 1 : 0;
-			}
-
-		if (brightness is int brightnessValue)
-			{
-			lightState["brightness"] = brightnessValue;
-			}
-
-		if (colorTemperature is int colorTemperatureValue)
-			{
-			lightState["color_temp"] = colorTemperatureValue;
-			}
-
-		if (hue is int hueValue)
-			{
-			lightState["hue"] = hueValue;
-			}
-
-		if (saturation is int saturationValue)
-			{
-			lightState["saturation"] = saturationValue;
-			}
-
-		if (hue is int || saturation is int)
-			{
-			lightState["color_temp"] = 0;
-			}
-
-		if (lightState.Count == 0)
-			{
-			throw new ArgumentException ("At least one light-state value is required.");
-			}
-
-		if (deviceType == DeviceType.Bulb)
-			{
-			lightState["ignore_default"] = 1;
-			lightState["transition_period"] = transitionMilliseconds ?? 0;
-			}
-
-		var command = new JObject
-			{
-			[service] = new JObject
-				{
-				[method] = lightState,
-				},
-			};
-
-		return command.ToJsonString (JsonSupport.COMPACT_JSON);
+		return CreateLegacyRequest (service, deviceType == DeviceType.Bulb ? "transition_light_state" : "set_light_state", parameters);
 		}
 
 	public static string CreateSetLightEffectCommand (DeviceType deviceType, string? effect)
 		{
-		string service = deviceType switch
-			{
-				DeviceType.Bulb => "smartlife.iot.smartbulb.lightingservice",
-				DeviceType.LightStrip => "smartlife.iot.lightStrip",
-				_ => throw new InvalidOperationException ($"Device type '{deviceType}' does not support light-effect control."),
-			};
-
-		string method = deviceType switch
-			{
-				DeviceType.Bulb => "set_dynamic_light_effect_rule_enable",
-				DeviceType.LightStrip => "set_lighting_effect",
-				_ => throw new InvalidOperationException ($"Device type '{deviceType}' does not support light-effect control."),
-			};
-
-		JObject payload = deviceType switch
-			{
-				DeviceType.Bulb => new JObject
-					{
-					["enable"] = string.IsNullOrWhiteSpace (effect) ? 0 : 1,
-					["id"] = string.IsNullOrWhiteSpace (effect) ? null : effect,
-					},
-				DeviceType.LightStrip => KasaResponseParser.CreateSmartLightStripEffectPayload (effect),
-				_ => throw new InvalidOperationException ($"Device type '{deviceType}' does not support light-effect control."),
-			};
-
-		var command = new JObject
-			{
-			[service] = new JObject
-				{
-				[method] = payload,
-				},
-			};
-
-		return command.ToJsonString (JsonSupport.COMPACT_JSON);
+		string service = LightService (deviceType);
+		object parameters = deviceType == DeviceType.Bulb
+			? new LegacyRequestParametersDto { Enable = string.IsNullOrWhiteSpace (effect) ? 0 : 1, Id = string.IsNullOrWhiteSpace (effect) ? null : effect }
+			: KasaResponseParser.CreateSmartLightStripEffectPayload (effect);
+		return CreateLegacyRequest (service, deviceType == DeviceType.Bulb ? "set_dynamic_light_effect_rule_enable" : "set_lighting_effect", parameters);
 		}
 
-	public static string CreateSmartRequest (string method, JObject? parameters = null)
+	private static string LightService (DeviceType deviceType) => deviceType switch
 		{
-		if (string.IsNullOrWhiteSpace (method))
-			{
-			throw new ArgumentException ("A smart method name is required.", nameof (method));
-			}
+		DeviceType.Bulb => "smartlife.iot.smartbulb.lightingservice",
+		DeviceType.LightStrip => "smartlife.iot.lightStrip",
+		_ => throw new InvalidOperationException ($"Device type '{deviceType}' does not support light control."),
+		};
 
-		var request = new JObject
-			{
-			["method"] = method,
-			["request_time_milis"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds (),
-			["terminal_uuid"] = Convert.ToBase64String (Guid.NewGuid ().ToByteArray ()),
-			};
-		if (parameters is not null)
-			{
-			request["params"] = parameters;
-			}
-
-		return request.ToJsonString (JsonSupport.COMPACT_JSON);
-		}
-
-	public static string CreateSetSmartLightTransitionEnabledCommand (bool enabled)
+	// Legacy services and methods are protocol-defined dynamic keys; parameter values are typed contracts.
+	private static string CreateLegacyRequest (string service, string method, object parameters, string? childDeviceId = null)
 		{
-		return CreateSmartRequest (
-			SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD,
-			new JObject
-				{
-				["enable"] = enabled,
-				});
+		var request = new Dictionary<string, object> { [service] = new Dictionary<string, object> { [method] = parameters } };
+		if (childDeviceId is not null) request["context"] = new ChildContextDto { ChildIds = new[] { childDeviceId } };
+		return WireJson.Serialize (request);
 		}
 
-	public static string CreateSetSmartLightTransitionEnabledCommand (bool enabled, int onDurationSeconds, int offDurationSeconds)
+	public static string CreateSmartRequest (string method, object? parameters = null)
 		{
-		return CreateSmartRequest (
-			SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD,
-			new JObject
-				{
-				["on_state"] = new JObject
-					{
-					["enable"] = enabled,
-					["duration"] = onDurationSeconds,
-					},
-				["off_state"] = new JObject
-					{
-					["enable"] = enabled,
-					["duration"] = offDurationSeconds,
-					},
-				});
+		if (string.IsNullOrWhiteSpace (method)) throw new ArgumentException ("A smart method name is required.", nameof (method));
+		return WireJson.Serialize (new WireRequest<object>
+			{
+			Method = method, Parameters = parameters,
+			RequestTimeMilliseconds = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds (),
+			TerminalUuid = Convert.ToBase64String (Guid.NewGuid ().ToByteArray ()),
+			});
 		}
 
-	public static string CreateSetSmartLightTransitionOnCommand (bool enabled, int durationSeconds)
+	public static string CreateSetSmartLightTransitionEnabledCommand (bool enabled) => CreateSmartRequest (SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD, new TransitionParametersDto { Enable = enabled });
+	public static string CreateSetSmartLightTransitionEnabledCommand (bool enabled, int onDurationSeconds, int offDurationSeconds) =>
+		CreateSmartRequest (SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD, new TransitionParametersDto { OnState = new TransitionParametersDto { Enable = enabled, Duration = onDurationSeconds }, OffState = new TransitionParametersDto { Enable = enabled, Duration = offDurationSeconds } });
+	public static string CreateSetSmartLightTransitionOnCommand (bool enabled, int durationSeconds) =>
+		CreateSmartRequest (SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD, new TransitionParametersDto { OnState = new TransitionParametersDto { Enable = enabled, Duration = durationSeconds } });
+	public static string CreateSetSmartLightTransitionOffCommand (bool enabled, int durationSeconds) =>
+		CreateSmartRequest (SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD, new TransitionParametersDto { OffState = new TransitionParametersDto { Enable = enabled, Duration = durationSeconds } });
+
+	private static MultipleRequestParametersDto CreateMultipleParameters (IReadOnlyDictionary<string, object?> requests)
 		{
-		return CreateSmartRequest (
-			SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD,
-			new JObject
-				{
-				["on_state"] = new JObject
-					{
-					["enable"] = enabled,
-					["duration"] = durationSeconds,
-					},
-				});
+		if (requests.Count == 0) throw new ArgumentException ("At least one smart request is required.", nameof (requests));
+		var items = new List<WireRequest<object>> (requests.Count);
+		foreach (KeyValuePair<string, object?> request in requests) items.Add (new WireRequest<object> { Method = request.Key, Parameters = request.Value });
+		return new MultipleRequestParametersDto { Requests = items };
 		}
 
-	public static string CreateSetSmartLightTransitionOffCommand (bool enabled, int durationSeconds)
+	public static string CreateSmartMultipleRequest (IReadOnlyDictionary<string, object?> requests) => CreateSmartRequest ("multipleRequest", CreateMultipleParameters (requests));
+	public static string CreateSmartChildRequest (string childDeviceId, string method, object? parameters = null)
 		{
-		return CreateSmartRequest (
-			SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD,
-			new JObject
-				{
-				["off_state"] = new JObject
-					{
-					["enable"] = enabled,
-					["duration"] = durationSeconds,
-					},
-				});
+		if (string.IsNullOrWhiteSpace (childDeviceId)) throw new ArgumentException ("A child device identifier is required.", nameof (childDeviceId));
+		if (string.IsNullOrWhiteSpace (method)) throw new ArgumentException ("A smart method name is required.", nameof (method));
+		return CreateSmartRequest ("control_child", new ChildRequestParametersDto { DeviceId = childDeviceId, RequestData = new WireRequest<object> { Method = method, Parameters = parameters } });
 		}
-
-	public static string CreateSmartMultipleRequest (IReadOnlyDictionary<string, JObject?> requests)
-		{
-		if (requests.Count == 0)
-			{
-			throw new ArgumentException ("At least one smart request is required.", nameof (requests));
-			}
-
-		var requestItems = new JArray ();
-		foreach (KeyValuePair<string, JObject?> request in requests)
-			{
-			var item = new JObject
-				{
-				["method"] = request.Key,
-				};
-			if (request.Value is not null)
-				{
-				item["params"] = request.Value;
-				}
-
-			requestItems.Add (item);
-			}
-
-		return CreateSmartRequest (
-			"multipleRequest",
-			new JObject
-				{
-				["requests"] = requestItems,
-				});
-		}
-
-	public static string CreateSmartChildRequest (string childDeviceId, string method, JObject? parameters = null)
-		{
-		if (string.IsNullOrWhiteSpace (childDeviceId))
-			{
-			throw new ArgumentException ("A child device identifier is required.", nameof (childDeviceId));
-			}
-
-		if (string.IsNullOrWhiteSpace (method))
-			{
-			throw new ArgumentException ("A smart method name is required.", nameof (method));
-			}
-
-		var requestData = new JObject
-			{
-			["method"] = method,
-			};
-		if (parameters is not null)
-			{
-			requestData["params"] = parameters;
-			}
-
-		return CreateSmartRequest (
-			"control_child",
-			new JObject
-				{
-				["device_id"] = childDeviceId,
-				["requestData"] = requestData,
-				});
-		}
-
-	public static string CreateSmartChildMultipleRequest (string childDeviceId, IReadOnlyDictionary<string, JObject?> requests)
-		{
-		if (string.IsNullOrWhiteSpace (childDeviceId))
-			{
-			throw new ArgumentException ("A child device identifier is required.", nameof (childDeviceId));
-			}
-
-		if (requests.Count == 0)
-			{
-			throw new ArgumentException ("At least one smart request is required.", nameof (requests));
-			}
-
-		var requestItems = new JArray ();
-		foreach (KeyValuePair<string, JObject?> request in requests)
-			{
-			var item = new JObject
-				{
-				["method"] = request.Key,
-				};
-			if (request.Value is not null)
-				{
-				item["params"] = request.Value;
-				}
-
-			requestItems.Add (item);
-			}
-
-		return CreateSmartChildRequest (
-			childDeviceId,
-			"multipleRequest",
-			new JObject
-				{
-				["requests"] = requestItems,
-				});
-		}
+	public static string CreateSmartChildMultipleRequest (string childDeviceId, IReadOnlyDictionary<string, object?> requests) => CreateSmartChildRequest (childDeviceId, "multipleRequest", CreateMultipleParameters (requests));
 	}

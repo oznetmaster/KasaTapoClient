@@ -5,8 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
+
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using KasaTapoClient;
@@ -19,6 +19,7 @@ public class TapoCommandLatencyBenchmarks
    private DeviceConfiguration _explicitConfiguration = null!;
    private DeviceConfiguration _autoConfiguration = null!;
    private KasaDevice _warmDevice = null!;
+   private bool? _originalPower;
 
    [GlobalSetup]
    public async Task GlobalSetupAsync()
@@ -27,12 +28,18 @@ public class TapoCommandLatencyBenchmarks
       _explicitConfiguration = await CreateResolvedConfigurationAsync(_profile).ConfigureAwait(false);
       _autoConfiguration = CreateAutoConfiguration(_profile);
       _warmDevice = await Discover.ConnectAsync(_explicitConfiguration).ConfigureAwait(false);
+      _originalPower = _warmDevice.IsOn;
    }
 
    [GlobalCleanup]
-   public void GlobalCleanup()
+   public async Task GlobalCleanupAsync()
    {
-      _warmDevice?.Dispose();
+      if (_warmDevice is null) return;
+      try
+      {
+         if (_originalPower is bool original) await (original ? _warmDevice.TurnOnAsync() : _warmDevice.TurnOffAsync()).ConfigureAwait(false);
+      }
+      finally { _warmDevice.Dispose(); }
    }
 
    [Benchmark]
@@ -54,7 +61,7 @@ public class TapoCommandLatencyBenchmarks
    }
 
    [Benchmark]
-   public Task WarmCommandRoundTripAsync() => _warmDevice.ExecuteCommandAsync(CreateSmartCommandPayload(true));
+   public Task WarmTurnOnAndRefreshAsync() => _warmDevice.TurnOnAsync();
 
    [Benchmark]
    public Task WarmSingleUpdateAsync() => _warmDevice.UpdateAsync();
@@ -151,21 +158,7 @@ public class TapoCommandLatencyBenchmarks
       return new DeviceConfiguration(profile.Host, 9999, credentials, connectionOptions);
    }
 
-   private static string CreateSmartCommandPayload(bool isOn)
-   {
-      var request = new JObject
-      {
-         ["method"] = "set_device_info",
-         ["request_time_milis"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-         ["terminal_uuid"] = Convert.ToBase64String(Guid.NewGuid().ToByteArray()),
-         ["params"] = new JObject
-         {
-            ["device_on"] = isOn,
-         },
-      };
 
-      return request.ToString(Formatting.None);
-   }
 
    private static BenchmarkConnectionProfile? LoadImplicitProfile()
    {
@@ -175,7 +168,7 @@ public class TapoCommandLatencyBenchmarks
          return null;
       }
 
-      return JsonConvert.DeserializeObject<BenchmarkConnectionProfile>(File.ReadAllText(path));
+      return JsonSerializer.Deserialize<BenchmarkConnectionProfile>(File.ReadAllText(path));
    }
 
    private static string? LoadRecentHost()
@@ -203,7 +196,7 @@ public class TapoCommandLatencyBenchmarks
          return null;
       }
 
-      Dictionary<string, BenchmarkConnectionProfile>? profiles = JsonConvert.DeserializeObject<Dictionary<string, BenchmarkConnectionProfile>>(File.ReadAllText(path));
+      Dictionary<string, BenchmarkConnectionProfile>? profiles = JsonSerializer.Deserialize<Dictionary<string, BenchmarkConnectionProfile>>(File.ReadAllText(path));
       if (profiles is null)
       {
          return null;

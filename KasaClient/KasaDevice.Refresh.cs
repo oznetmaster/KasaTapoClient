@@ -5,7 +5,6 @@
 
 using System;
 using System.Collections.Generic;
-using Newtonsoft.Json.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -73,7 +72,7 @@ public sealed partial class KasaDevice
 			|| connectionParameters?.DeviceFamily == DeviceFamilyKind.SmartTapoHub
 			|| connectionParameters?.DeviceFamily == DeviceFamilyKind.SmartKasaHub;
 
-		var coreRequests = new Dictionary<string, JObject?>
+		var coreRequests = new Dictionary<string, object?>
 			{
 			[KasaCommands.SMART_GET_DEVICE_INFO_METHOD] = null,
 			[KasaCommands.SMART_COMPONENT_NEGO_METHOD] = null,
@@ -97,6 +96,7 @@ public sealed partial class KasaDevice
 		parsedResponse = await EnrichSmartChildResponseAsync (parsedResponse, cancellationToken).ConfigureAwait (false);
 		_smartComponentVersions = parsedResponse.ComponentVersions;
 		ApplyParsedState (KasaResponseParser.ParseSmartDeviceState (parsedResponse));
+		_smartResponse = parsedResponse;
 		}
 
 	private async Task<KasaResponseParser.SmartParsedResponse> EnsureFullChildDeviceListAsync (
@@ -118,7 +118,7 @@ public sealed partial class KasaDevice
 			string pageResponseJson = await _transport.SendAsync (
 				KasaCommands.CreateSmartRequest (
 					KasaCommands.SMART_GET_CHILD_DEVICE_LIST_METHOD,
-					new JObject { ["start_index"] = startIndex }),
+					new PageParametersDto { StartIndex = startIndex }),
 				cancellationToken).ConfigureAwait (false);
 			KasaResponseParser.SmartChildDeviceListDto? page = KasaResponseParser.ParseSmartChildDeviceListPage (pageResponseJson);
 			if (page is null || page.ChildDevices.Count == 0)
@@ -131,7 +131,6 @@ public sealed partial class KasaDevice
 
 		var mergedChildDeviceList = new KasaResponseParser.SmartChildDeviceListDto (mergedChildren, sum, 0);
 		return new KasaResponseParser.SmartParsedResponse (
-			parsedResponse.RawJson,
 			parsedResponse.DeviceInfo,
 			parsedResponse.ComponentIds,
 			parsedResponse.ComponentVersions,
@@ -171,7 +170,7 @@ public sealed partial class KasaDevice
 		KasaResponseParser.SmartParsedResponse parsedResponse,
 		CancellationToken cancellationToken)
 		{
-		Dictionary<string, JObject?> parentRequests = CreateSmartParentRefreshRequests (parsedResponse.ComponentVersions);
+		Dictionary<string, object?> parentRequests = CreateSmartParentRefreshRequests (parsedResponse.ComponentVersions);
 		if (parentRequests.Count == 0)
 			{
 			return parsedResponse;
@@ -180,24 +179,23 @@ public sealed partial class KasaDevice
 		try
 			{
 			string moduleResponseJson = await _transport.SendAsync (KasaCommands.CreateSmartMultipleRequest (parentRequests), cancellationToken).ConfigureAwait (false);
-			IReadOnlyDictionary<string, JObject> moduleResults = KasaResponseParser.ParseSmartModuleResults (moduleResponseJson);
+			IReadOnlyDictionary<string, object> moduleResults = KasaResponseParser.ParseSmartModuleResults (moduleResponseJson);
 			if (moduleResults.Count == 0)
 				{
 				return parsedResponse;
 				}
 
-			var mergedModuleResults = new Dictionary<string, JObject> (0, StringComparer.Ordinal);
-			foreach (KeyValuePair<string, JObject> item in parsedResponse.ModuleResults)
+			var mergedModuleResults = new Dictionary<string, object> (0, StringComparer.Ordinal);
+			foreach (KeyValuePair<string, object> item in parsedResponse.ModuleResults)
 				{
 				mergedModuleResults[item.Key] = item.Value;
 				}
-			foreach (KeyValuePair<string, JObject> item in moduleResults)
+			foreach (KeyValuePair<string, object> item in moduleResults)
 				{
 				mergedModuleResults[item.Key] = item.Value;
 				}
 
 			return new KasaResponseParser.SmartParsedResponse (
-				parsedResponse.RawJson,
 				parsedResponse.DeviceInfo,
 				parsedResponse.ComponentIds,
 				parsedResponse.ComponentVersions,
@@ -206,15 +204,19 @@ public sealed partial class KasaDevice
 				parsedResponse.ChildOverrides,
 				mergedModuleResults);
 			}
+		catch (OperationCanceledException)
+			{
+			throw;
+			}
 		catch
 			{
 			return parsedResponse;
 			}
 		}
 
-	private static Dictionary<string, JObject?> CreateSmartParentRefreshRequests (IReadOnlyDictionary<string, int> componentVersions)
+	private static Dictionary<string, object?> CreateSmartParentRefreshRequests (IReadOnlyDictionary<string, int> componentVersions)
 		{
-		var requests = new Dictionary<string, JObject?> (StringComparer.Ordinal);
+		var requests = new Dictionary<string, object?> (StringComparer.Ordinal);
 		foreach (SmartRefreshContribution contribution in SMART_PARENT_REFRESH_DEFINITIONS)
 			{
 			if (!TryGetSmartComponentVersion (componentVersions, contribution.RequiredComponent, out int supportedVersion))

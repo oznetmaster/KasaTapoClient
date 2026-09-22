@@ -11,7 +11,6 @@ using System.Net.Http;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using Newtonsoft.Json.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -59,14 +58,14 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 			}
 
 		await EnsureAuthenticatedAsync (cancellationToken).ConfigureAwait (false);
-		var mergedResponse = new JObject ();
+		var mergedResponse = new KasaResponseParser.LegacyResponseDto ();
 		foreach (string payload in commandJsonPayloads)
 			{
 			string responseJson = await SendAuthenticatedAsync (payload, cancellationToken).ConfigureAwait (false);
-			JsonSupport.MergeObjects (mergedResponse, JsonSupport.ParseObject (responseJson));
+			mergedResponse.Merge (WireJson.Read<KasaResponseParser.LegacyResponseDto> (responseJson));
 			}
 
-		return mergedResponse.ToJsonString (JsonSupport.COMPACT_JSON);
+		return WireJson.Serialize (mergedResponse);
 		}
 
 	private async Task EnsureAuthenticatedAsync (CancellationToken cancellationToken)
@@ -126,9 +125,9 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 			requestJson,
 			cancellationToken,
 			AES_HANDSHAKE_CONTENT_LENGTH).ConfigureAwait (false);
-		JObject root = JsonSupport.ParseObject (handshakeResponse);
+		AuthenticationResponseDto root = WireJson.Read<AuthenticationResponseDto> (handshakeResponse);
 		EnsureSuccess (root, $"Unable to complete handshake for '{_configuration.Host}'");
-		string handshakeKey = root["result"]?["key"]?.GetValue<string?> ()
+		string handshakeKey = root.Result?.Key
 			?? throw new InvalidDataException ($"The handshake response for '{_configuration.Host}' did not include a key.");
 		CaptureAesSessionCookies ();
 		_aesSession = AesEncryptionSession.CreateFromHandshakeKey (handshakeKey, keyPair);
@@ -157,11 +156,11 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 		_authState = AesAuthState.Established;
 		}
 
-	private async Task<LoginAttemptResult> TryAesLoginAsync (JObject loginRequest, CancellationToken cancellationToken)
+	private async Task<LoginAttemptResult> TryAesLoginAsync (WireRequest<HttpAuthParametersDto> loginRequest, CancellationToken cancellationToken)
 		{
-		string requestJson = loginRequest.ToJsonString (JsonSupport.COMPACT_JSON);
+		string requestJson = WireJson.Serialize (loginRequest);
 		string responseJson = await SendEncryptedPassthroughAsync (requestJson, cancellationToken).ConfigureAwait (false);
-		JObject root = JsonSupport.ParseObject (responseJson);
+		AuthenticationResponseDto root = WireJson.Read<AuthenticationResponseDto> (responseJson);
 		return new LoginAttemptResult (ExtractToken (root), GetErrorCode (root), responseJson);
 		}
 
@@ -171,20 +170,15 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 		return await TryAesLoginAsync (CreateAesLoginRequest (defaultCredentials), cancellationToken).ConfigureAwait (false);
 		}
 
-	private JObject CreateAesLoginRequest (DeviceCredentials credentials)
+	private WireRequest<HttpAuthParametersDto> CreateAesLoginRequest (DeviceCredentials credentials)
 		{
 		bool loginVersion2 = _connectionParameters?.LoginVersion == 2;
 		(string userName, string password) = HashAesCredentials (credentials, loginVersion2);
-		string passwordFieldName = loginVersion2 ? "password2" : "password";
-		return new JObject
+		return new WireRequest<HttpAuthParametersDto>
 			{
-			["method"] = "login_device",
-			["params"] = new JObject
-				{
-				["username"] = userName,
-				[passwordFieldName] = password,
-				},
-			["request_time_milis"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds (),
+			Method = "login_device",
+			Parameters = new HttpAuthParametersDto { Username = userName, Password = loginVersion2 ? null : password, Password2 = loginVersion2 ? password : null },
+			RequestTimeMilliseconds = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds (),
 			};
 		}
 
@@ -219,54 +213,22 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 
 	private static string CreateHandshakeRequest (string publicKeyPem)
 		{
-		return new JObject
-			{
-			["method"] = HANDSHAKE_METHOD,
-			["params"] = new JObject
-				{
-				["key"] = publicKeyPem,
-				},
-			}.ToJsonString (JsonSupport.COMPACT_JSON);
+		return WireJson.Serialize (new WireRequest<HttpAuthParametersDto> { Method = HANDSHAKE_METHOD, Parameters = new HttpAuthParametersDto { Key = publicKeyPem } });
 		}
 
-	private static JObject CreateLoginRequest (DeviceCredentials credentials)
+	private static WireRequest<HttpAuthParametersDto> CreateLoginRequest (DeviceCredentials credentials)
 		{
-		return new JObject
-			{
-			["method"] = "login",
-			["params"] = new JObject
-				{
-				["username"] = credentials.UserName,
-				["password"] = credentials.Password,
-				},
-			};
+		return new WireRequest<HttpAuthParametersDto> { Method = "login", Parameters = new HttpAuthParametersDto { Username = credentials.UserName, Password = credentials.Password } };
 		}
 
-	private static JObject CreateLoginDeviceRequest (DeviceCredentials credentials)
+	private static WireRequest<HttpAuthParametersDto> CreateLoginDeviceRequest (DeviceCredentials credentials)
 		{
-		return new JObject
-			{
-			["method"] = "login_device",
-			["params"] = new JObject
-				{
-				["username"] = credentials.UserName,
-				["password"] = credentials.Password,
-				},
-			["request_time_milis"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds (),
-			};
+		return new WireRequest<HttpAuthParametersDto> { Method = "login_device", Parameters = new HttpAuthParametersDto { Username = credentials.UserName, Password = credentials.Password }, RequestTimeMilliseconds = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds () };
 		}
 
-	private static JObject CreateSecurePassthroughLoginRequest (JObject loginDeviceRequest)
+	private static WireRequest<HttpAuthParametersDto> CreateSecurePassthroughLoginRequest (WireRequest<HttpAuthParametersDto> loginDeviceRequest)
 		{
-		string loginRequestJson = loginDeviceRequest.ToJsonString (JsonSupport.COMPACT_JSON);
-		return new JObject
-			{
-			["method"] = PASSTHROUGH_METHOD,
-			["params"] = new JObject
-				{
-				["request"] = loginRequestJson,
-				},
-			};
+		return new WireRequest<HttpAuthParametersDto> { Method = PASSTHROUGH_METHOD, Parameters = new HttpAuthParametersDto { Request = WireJson.Serialize (loginDeviceRequest) } };
 		}
 
 	private Uri CreateAuthenticatedUri ()
@@ -380,14 +342,7 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 			return commandJson;
 			}
 
-		return new JObject
-			{
-			["method"] = PASSTHROUGH_METHOD,
-			["params"] = new JObject
-				{
-				["request"] = commandJson,
-				},
-			}.ToJsonString (JsonSupport.COMPACT_JSON);
+		return WireJson.Serialize (new WireRequest<HttpAuthParametersDto> { Method = PASSTHROUGH_METHOD, Parameters = new HttpAuthParametersDto { Request = commandJson } });
 		}
 
 	private string UnwrapCommandResponse (string responseJson)
@@ -397,54 +352,54 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 			return responseJson;
 			}
 
-		JObject root = JsonSupport.ParseObject (responseJson);
+		AuthenticationResponseDto root = WireJson.Read<AuthenticationResponseDto> (responseJson);
 		if (GetErrorCode (root) != 0)
 			{
 			return responseJson;
 			}
 
-		if (root["result"] is not JObject result)
+		if (root.Result is not AuthenticationResultDto result)
 			{
 			return responseJson;
 			}
 
-		string? response = result["response"]?.GetValue<string?> (); 
+		string? response = result.Response;
 		return string.IsNullOrWhiteSpace (response) ? responseJson : response ?? responseJson;
 		}
 
-	private static JObject ParseLoginResponse (string responseJson)
+	private static AuthenticationResponseDto ParseLoginResponse (string responseJson)
 		{
-		JObject root = JsonSupport.ParseObject (responseJson);
-		if (root["result"] is not JObject result)
+		AuthenticationResponseDto root = WireJson.Read<AuthenticationResponseDto> (responseJson);
+		if (root.Result is not AuthenticationResultDto result)
 			{
 			return root;
 			}
 
-		string? nestedResponse = result["response"]?.GetValue<string?> ();
+		string? nestedResponse = result.Response;
 		if (string.IsNullOrWhiteSpace (nestedResponse))
 			{
 			return root;
 			}
 
-		return JsonSupport.ParseObject (nestedResponse!);
+		return WireJson.Read<AuthenticationResponseDto> (nestedResponse!);
 		}
 
-	private static string? ExtractToken (JObject response)
+	private static string? ExtractToken (AuthenticationResponseDto response)
 		{
-		if (response["result"] is not JObject result)
+		if (response.Result is not AuthenticationResultDto result)
 			{
-			return response["token"]?.GetValue<string?> () ?? response["stok"]?.GetValue<string?> ();
+			return response.Token ?? response.Stok;
 			}
 
-		return result["token"]?.GetValue<string?> ()
-			?? result["stok"]?.GetValue<string?> ()
-			?? result["stok_token"]?.GetValue<string?> ()
-			?? result["session_token"]?.GetValue<string?> ();
+		return result.Token
+			?? result.Stok
+			?? result.StokToken
+			?? result.SessionToken;
 		}
 
 	private static bool RequiresReauthentication (string responseJson)
 		{
-		JObject response = JsonSupport.ParseObject (responseJson);
+		AuthenticationResponseDto response = WireJson.Read<AuthenticationResponseDto> (responseJson);
 		return GetErrorCode (response) == AUTHENTICATION_ERROR_CODE;
 		}
 
@@ -456,18 +411,11 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 			}
 
 		string encryptedRequest = _aesSession.Encrypt (requestJson);
-		string payload = new JObject
-			{
-			["method"] = PASSTHROUGH_METHOD,
-			["params"] = new JObject
-				{
-				["request"] = encryptedRequest,
-				},
-			}.ToJsonString (JsonSupport.COMPACT_JSON);
+		string payload = WireJson.Serialize (new WireRequest<HttpAuthParametersDto> { Method = PASSTHROUGH_METHOD, Parameters = new HttpAuthParametersDto { Request = encryptedRequest } });
 		string responseJson = await PostJsonAsync (ResolveAesRequestUri (), payload, cancellationToken).ConfigureAwait (false);
-		JObject root = JsonSupport.ParseObject (responseJson);
+		AuthenticationResponseDto root = WireJson.Read<AuthenticationResponseDto> (responseJson);
 		EnsureSuccess (root, $"Error sending secure_passthrough message to '{_configuration.Host}'");
-		string? rawResponse = root["result"]?["response"]?.GetValue<string?> ();
+		string? rawResponse = root.Result?.Response;
 		if (string.IsNullOrWhiteSpace (rawResponse))
 			{
 			return responseJson;
@@ -569,9 +517,9 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 	private static string TrimResponse (string response) => response.Length <= 240 ? response : response.Substring (0, 240) + "...";
 #pragma warning restore CA1845
 
-	private static int GetErrorCode (JObject response) =>
-		response["error_code"]?.GetValue<int?> ()
-		?? response["errorCode"]?.GetValue<int?> ()
+	private static int GetErrorCode (AuthenticationResponseDto response) =>
+		response.ErrorCode
+		?? response.LegacyErrorCode
 		?? 0;
 
 	private sealed class LoginAttemptResult
@@ -795,7 +743,7 @@ internal sealed class HttpTokenTransport : IDeviceTransport
 		return combined;
 		}
 
-	private static void EnsureSuccess (JObject response, string message)
+	private static void EnsureSuccess (AuthenticationResponseDto response, string message)
 		{
 		int errorCode = GetErrorCode (response);
 		if (errorCode != 0)

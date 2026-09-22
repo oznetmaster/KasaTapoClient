@@ -7,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
-using Newtonsoft.Json.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -175,13 +174,17 @@ internal sealed class LegacyTransport : IDisposableDeviceTransport
 			throw new ArgumentException ("At least one command payload is required.", nameof (commandJsonPayloads));
 			}
 
-		var merged = new JObject ();
+		var merged = new Dictionary<string, Dictionary<string, LegacyRequestParametersDto>> ();
 		foreach (string payload in commandJsonPayloads)
 			{
-			JsonSupport.MergeObjects (merged, JsonSupport.ParseObject (payload));
+			foreach (KeyValuePair<string, Dictionary<string, LegacyRequestParametersDto>> service in WireJson.Read<Dictionary<string, Dictionary<string, LegacyRequestParametersDto>>> (payload))
+				{
+				if (!merged.TryGetValue (service.Key, out Dictionary<string, LegacyRequestParametersDto>? methods)) merged[service.Key] = methods = new Dictionary<string, LegacyRequestParametersDto> ();
+				foreach (KeyValuePair<string, LegacyRequestParametersDto> method in service.Value) methods[method.Key] = method.Value;
+				}
 			}
 
-		return SendAsync (merged.ToJsonString (JsonSupport.COMPACT_JSON), cancellationToken);
+		return SendAsync (WireJson.Serialize (merged), cancellationToken);
 		}
 
 	private async Task ConnectAsync (TcpClient client, string host, int port, CancellationToken cancellationToken)

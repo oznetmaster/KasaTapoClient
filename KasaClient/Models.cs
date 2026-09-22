@@ -605,7 +605,6 @@ public sealed class DiscoveryResult
 		string? alias,
 		string? model,
 		string? deviceId,
-		string rawJson,
 		DeviceTransportKind transportKind,
 		bool supportsHttps,
 		int? port,
@@ -619,7 +618,6 @@ public sealed class DiscoveryResult
 		Alias = alias;
 		Model = model;
 		DeviceId = deviceId;
-		RawJson = rawJson;
 		TransportKind = transportKind;
 		SupportsHttps = supportsHttps;
 		Port = port;
@@ -665,14 +663,6 @@ public sealed class DiscoveryResult
 	/// Gets the device identifier, when available.
 	/// </summary>
 	public string? DeviceId
-		{
-		get;
-		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
 		{
 		get;
 		}
@@ -950,8 +940,7 @@ public sealed class EnergyUsage
 		double? currentAmps,
 		double? totalKilowattHours,
 		double? todayKilowattHours,
-		double? monthKilowattHours,
-		string rawJson)
+		double? monthKilowattHours)
 		{
 		CurrentPowerWatts = currentPowerWatts;
 		VoltageVolts = voltageVolts;
@@ -959,7 +948,6 @@ public sealed class EnergyUsage
 		TotalKilowattHours = totalKilowattHours;
 		TodayKilowattHours = todayKilowattHours;
 		MonthKilowattHours = monthKilowattHours;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
@@ -1009,14 +997,6 @@ public sealed class EnergyUsage
 		{
 		get;
 		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
-		{
-		get;
-		}
 	}
 
 /// <summary>
@@ -1030,7 +1010,6 @@ public sealed class ChildDeviceInfo
 		string? model,
 		DeviceType deviceType,
 		bool? isOn,
-		string rawJson,
 		string? category = null,
 		IReadOnlyList<string>? componentIds = null,
 		IReadOnlyList<DeviceFeature>? features = null)
@@ -1040,7 +1019,6 @@ public sealed class ChildDeviceInfo
 		Model = model;
 		DeviceType = deviceType;
 		IsOn = isOn;
-		RawJson = rawJson;
 		Category = category;
 		ComponentIds = componentIds ?? Array.Empty<string> ();
 		Features = features ?? Array.Empty<DeviceFeature> ();
@@ -1106,14 +1084,6 @@ public sealed class ChildDeviceInfo
 	/// Gets the normalized child features derived from the latest payload.
 	/// </summary>
 	public IReadOnlyList<DeviceFeature> Features
-		{
-		get;
-		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
 		{
 		get;
 		}
@@ -1416,12 +1386,11 @@ public sealed record ChildDoubleClickState
 /// </summary>
 public sealed class DetectedChildDevice
 	{
-	internal DetectedChildDevice (string deviceId, string? model, string? category, string? rawJson)
+	internal DetectedChildDevice (string deviceId, string? model, string? category)
 		{
 		DeviceId = deviceId;
 		Model = model;
 		Category = category;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
@@ -1444,14 +1413,6 @@ public sealed class DetectedChildDevice
 	/// Gets the detected device category.
 	/// </summary>
 	public string? Category
-		{
-		get;
-		}
-
-	/// <summary>
-	/// Gets the raw JSON for the detected device.
-	/// </summary>
-	public string? RawJson
 		{
 		get;
 		}
@@ -1676,13 +1637,11 @@ public sealed record RuleModuleState
 	internal RuleModuleState (
 		CountdownRuleState? countdown,
 		IReadOnlyList<ScheduledRule> schedules,
-		IReadOnlyList<ScheduledRule> antitheftRules,
-		string rawJson)
+		IReadOnlyList<ScheduledRule> antitheftRules)
 		{
 		Countdown = countdown;
 		Schedules = schedules;
 		AntitheftRules = antitheftRules;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
@@ -1708,14 +1667,6 @@ public sealed record RuleModuleState
 		{
 		get;
 		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
-		{
-		get;
-		}
 	}
 
 /// <summary>
@@ -1723,13 +1674,12 @@ public sealed record RuleModuleState
 /// </summary>
 public sealed record CountdownRuleState
 	{
-	internal CountdownRuleState (bool? isEnabled, bool? isActive, int? delaySeconds, bool? actionTurnsOn, string rawJson)
+	internal CountdownRuleState (bool? isEnabled, bool? isActive, int? delaySeconds, bool? actionTurnsOn)
 		{
 		IsEnabled = isEnabled;
 		IsActive = isActive;
 		DelaySeconds = delaySeconds;
 		ActionTurnsOn = actionTurnsOn;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
@@ -1763,14 +1713,6 @@ public sealed record CountdownRuleState
 		{
 		get;
 		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
-		{
-		get;
-		}
 	}
 
 /// <summary>
@@ -1778,7 +1720,7 @@ public sealed record CountdownRuleState
 /// </summary>
 public sealed class ScheduledRule
 	{
-	internal ScheduledRule (string id, string? name, bool? isEnabled, bool? actionTurnsOn, int? startMinute, int? endMinute, string rawJson)
+	internal ScheduledRule (string id, string? name, bool? isEnabled, bool? actionTurnsOn, int? startMinute, int? endMinute)
 		{
 		Id = id;
 		Name = name;
@@ -1786,7 +1728,6 @@ public sealed class ScheduledRule
 		ActionTurnsOn = actionTurnsOn;
 		StartMinute = startMinute;
 		EndMinute = endMinute;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
@@ -1836,14 +1777,6 @@ public sealed class ScheduledRule
 		{
 		get;
 		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
-		{
-		get;
-		}
 	}
 
 /// <summary>
@@ -1856,15 +1789,13 @@ public sealed record FirmwareState
 		string? currentHardwareVersion,
 		bool? autoUpdateEnabled,
 		string? availableFirmwareVersion,
-		bool? updateAvailable,
-		string rawJson)
+		bool? updateAvailable)
 		{
 		CurrentFirmwareVersion = currentFirmwareVersion;
 		CurrentHardwareVersion = currentHardwareVersion;
 		AutoUpdateEnabled = autoUpdateEnabled;
 		AvailableFirmwareVersion = availableFirmwareVersion;
 		UpdateAvailable = updateAvailable;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
@@ -1906,14 +1837,6 @@ public sealed record FirmwareState
 		{
 		get;
 		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
-		{
-		get;
-		}
 	}
 
 /// <summary>
@@ -1921,13 +1844,12 @@ public sealed record FirmwareState
 /// </summary>
 public sealed record CloudConnectionState
 	{
-	internal CloudConnectionState (bool? isConnected, bool? isProvisioned, string? server, string? userName, string rawJson)
+	internal CloudConnectionState (bool? isConnected, bool? isProvisioned, string? server, string? userName)
 		{
 		IsConnected = isConnected;
 		IsProvisioned = isProvisioned;
 		Server = server;
 		UserName = userName;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
@@ -1961,14 +1883,6 @@ public sealed record CloudConnectionState
 		{
 		get;
 		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
-		{
-		get;
-		}
 	}
 
 /// <summary>
@@ -1976,12 +1890,11 @@ public sealed record CloudConnectionState
 /// </summary>
 public sealed record DeviceTimeState
 	{
-	internal DeviceTimeState (DateTime? localTime, string? region, int? timeDifferenceMinutes, string rawJson)
+	internal DeviceTimeState (DateTime? localTime, string? region, int? timeDifferenceMinutes)
 		{
 		LocalTime = localTime;
 		Region = region;
 		TimeDifferenceMinutes = timeDifferenceMinutes;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
@@ -2007,14 +1920,6 @@ public sealed record DeviceTimeState
 		{
 		get;
 		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
-		{
-		get;
-		}
 	}
 
 /// <summary>
@@ -2022,11 +1927,10 @@ public sealed record DeviceTimeState
 /// </summary>
 public sealed class MatterSetupInfo
 	{
-	internal MatterSetupInfo (string? setupCode, string? setupPayload, string rawJson)
+	internal MatterSetupInfo (string? setupCode, string? setupPayload)
 		{
 		SetupCode = setupCode;
 		SetupPayload = setupPayload;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
@@ -2044,14 +1948,6 @@ public sealed class MatterSetupInfo
 		{
 		get;
 		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
-		{
-		get;
-		}
 	}
 
 /// <summary>
@@ -2059,11 +1955,10 @@ public sealed class MatterSetupInfo
 /// </summary>
 public sealed class HomeKitSetupInfo
 	{
-	internal HomeKitSetupInfo (string? setupCode, string? setupPayload, string rawJson)
+	internal HomeKitSetupInfo (string? setupCode, string? setupPayload)
 		{
 		SetupCode = setupCode;
 		SetupPayload = setupPayload;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
@@ -2081,14 +1976,6 @@ public sealed class HomeKitSetupInfo
 		{
 		get;
 		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
-		{
-		get;
-		}
 	}
 
 /// <summary>
@@ -2096,13 +1983,12 @@ public sealed class HomeKitSetupInfo
 /// </summary>
 public sealed record AutoOffState
 	{
-	internal AutoOffState (bool? enabled, int? delayMinutes, bool? timerActive, DateTime? autoOffAt, string rawJson)
+	internal AutoOffState (bool? enabled, int? delayMinutes, bool? timerActive, DateTime? autoOffAt)
 		{
 		Enabled = enabled;
 		DelayMinutes = delayMinutes;
 		TimerActive = timerActive;
 		AutoOffAt = autoOffAt;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
@@ -2133,14 +2019,6 @@ public sealed record AutoOffState
 	/// Gets the local time when the device is expected to turn off automatically, when known.
 	/// </summary>
 	public DateTime? AutoOffAt
-		{
-		get;
-		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
 		{
 		get;
 		}
@@ -2206,12 +2084,11 @@ public sealed class LedNightModeSettings
 /// </summary>
 public sealed record LedState
 	{
-	internal LedState (bool? enabled, string? mode, LedNightModeSettings? nightModeSettings, string rawJson)
+	internal LedState (bool? enabled, string? mode, LedNightModeSettings? nightModeSettings)
 		{
 		Enabled = enabled;
 		Mode = mode;
 		NightModeSettings = nightModeSettings;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
@@ -2237,14 +2114,6 @@ public sealed record LedState
 		{
 		get;
 		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
-		{
-		get;
-		}
 	}
 
 /// <summary>
@@ -2252,24 +2121,15 @@ public sealed record LedState
 /// </summary>
 public sealed record ChildLockState
 	{
-	internal ChildLockState (bool? enabled, string rawJson)
+	internal ChildLockState (bool? enabled)
 		{
 		Enabled = enabled;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
 	/// Gets whether child lock is enabled.
 	/// </summary>
 	public bool? Enabled
-		{
-		get;
-		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
 		{
 		get;
 		}
@@ -2280,7 +2140,7 @@ public sealed record ChildLockState
 /// </summary>
 public sealed record AlarmState
 	{
-	internal AlarmState (bool? isActive, string? source, string? sound, string? volume, int? volumeLevel, int? durationSeconds, string rawJson)
+	internal AlarmState (bool? isActive, string? source, string? sound, string? volume, int? volumeLevel, int? durationSeconds)
 		{
 		IsActive = isActive;
 		Source = source;
@@ -2288,7 +2148,6 @@ public sealed record AlarmState
 		Volume = volume;
 		VolumeLevel = volumeLevel;
 		DurationSeconds = durationSeconds;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
@@ -2338,14 +2197,6 @@ public sealed record AlarmState
 		{
 		get;
 		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
-		{
-		get;
-		}
 	}
 
 /// <summary>
@@ -2353,24 +2204,15 @@ public sealed record AlarmState
 /// </summary>
 public sealed record OverheatProtectionState
 	{
-	internal OverheatProtectionState (bool? overheated, string rawJson)
+	internal OverheatProtectionState (bool? overheated)
 		{
 		Overheated = overheated;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
 	/// Gets whether the device reports an overheat condition.
 	/// </summary>
 	public bool? Overheated
-		{
-		get;
-		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
 		{
 		get;
 		}
@@ -2381,24 +2223,15 @@ public sealed record OverheatProtectionState
 /// </summary>
 public sealed record PowerProtectionState
 	{
-	internal PowerProtectionState (bool? protectionActive, string rawJson)
+	internal PowerProtectionState (bool? protectionActive)
 		{
 		ProtectionActive = protectionActive;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
 	/// Gets whether power protection is active.
 	/// </summary>
 	public bool? ProtectionActive
-		{
-		get;
-		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
 		{
 		get;
 		}
@@ -2409,24 +2242,15 @@ public sealed record PowerProtectionState
 /// </summary>
 public sealed record FanState
 	{
-	internal FanState (bool? isOn, string rawJson)
+	internal FanState (bool? isOn)
 		{
 		IsOn = isOn;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
 	/// Gets whether the fan is on.
 	/// </summary>
 	public bool? IsOn
-		{
-		get;
-		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
 		{
 		get;
 		}
@@ -2437,24 +2261,15 @@ public sealed record FanState
 /// </summary>
 public sealed record SpeakerState
 	{
-	internal SpeakerState (bool? isAvailable, string rawJson)
+	internal SpeakerState (bool? isAvailable)
 		{
 		IsAvailable = isAvailable;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
 	/// Gets whether speaker capability is available.
 	/// </summary>
 	public bool? IsAvailable
-		{
-		get;
-		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
 		{
 		get;
 		}
@@ -2475,8 +2290,7 @@ public sealed record LightState
 		LightEffectState? effect,
 		HsvColor? hsv,
 		IReadOnlyList<LightPresetDefinition> availablePresets,
-		string? activePreset,
-		string rawJson)
+		string? activePreset)
 		{
 		IsOn = isOn;
 		Brightness = brightness;
@@ -2488,7 +2302,6 @@ public sealed record LightState
 		Hsv = hsv;
 		AvailablePresets = availablePresets;
 		ActivePreset = activePreset;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
@@ -2570,14 +2383,6 @@ public sealed record LightState
 		{
 		get;
 		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
-		{
-		get;
-		}
 	}
 
 /// <summary>
@@ -2622,14 +2427,13 @@ public sealed class HsvColor
 /// </summary>
 public sealed record LightEffectState
 	{
-	internal LightEffectState (string? identifier, string? name, bool? isEnabled, int? brightness, IReadOnlyList<LightEffectDefinition> availableEffects, string rawJson)
+	internal LightEffectState (string? identifier, string? name, bool? isEnabled, int? brightness, IReadOnlyList<LightEffectDefinition> availableEffects)
 		{
 		Identifier = identifier;
 		Name = name;
 		IsEnabled = isEnabled;
 		Brightness = brightness;
 		AvailableEffects = availableEffects;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
@@ -2671,14 +2475,6 @@ public sealed record LightEffectState
 		{
 		get;
 		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device for the effect state.
-	/// </summary>
-	public string RawJson
-		{
-		get;
-		}
 	}
 
 /// <summary>
@@ -2714,14 +2510,13 @@ public sealed class LightEffectDefinition
 /// </summary>
 public sealed class LightPresetDefinition
 	{
-	internal LightPresetDefinition (string name, int? brightness, int? colorTemperature, int? hue, int? saturation, string rawJson)
+	internal LightPresetDefinition (string name, int? brightness, int? colorTemperature, int? hue, int? saturation)
 		{
 		Name = name;
 		Brightness = brightness;
 		ColorTemperature = colorTemperature;
 		Hue = hue;
 		Saturation = saturation;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
@@ -2760,14 +2555,6 @@ public sealed class LightPresetDefinition
 	/// Gets the preset saturation component.
 	/// </summary>
 	public int? Saturation
-		{
-		get;
-		}
-
-	/// <summary>
-	/// Gets the raw preset payload returned by the device.
-	/// </summary>
-	public string RawJson
 		{
 		get;
 		}
@@ -2813,8 +2600,7 @@ public sealed record LightTransitionState
 		int? transitionOnMaximumDurationSeconds,
 		bool? isTransitionOffEnabled,
 		int? transitionOffDurationSeconds,
-		int? transitionOffMaximumDurationSeconds,
-		string rawJson)
+		int? transitionOffMaximumDurationSeconds)
 		{
 		IsEnabled = isEnabled;
 		IsTransitionOnEnabled = isTransitionOnEnabled;
@@ -2823,7 +2609,6 @@ public sealed record LightTransitionState
 		IsTransitionOffEnabled = isTransitionOffEnabled;
 		TransitionOffDurationSeconds = transitionOffDurationSeconds;
 		TransitionOffMaximumDurationSeconds = transitionOffMaximumDurationSeconds;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
@@ -2891,14 +2676,6 @@ public sealed record LightTransitionState
 		{
 		get;
 		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
-		{
-		get;
-		}
 	}
 
 /// <summary>
@@ -2947,8 +2724,7 @@ public sealed class DeviceSystemInfo
 		DeviceType deviceType,
 		bool? isOn,
 		TimeSpan? onTime,
-		IReadOnlyList<ChildDeviceInfo> children,
-		string rawJson)
+		IReadOnlyList<ChildDeviceInfo> children)
 		{
 		Alias = alias;
 		Model = model;
@@ -2963,7 +2739,6 @@ public sealed class DeviceSystemInfo
 		IsOn = isOn;
 		OnTime = onTime;
 		Children = children;
-		RawJson = rawJson;
 		}
 
 	/// <summary>
@@ -3066,14 +2841,6 @@ public sealed class DeviceSystemInfo
 	/// Gets the child devices reported by the device.
 	/// </summary>
 	public IReadOnlyList<ChildDeviceInfo> Children
-		{
-		get;
-		}
-
-	/// <summary>
-	/// Gets the raw JSON payload returned by the device.
-	/// </summary>
-	public string RawJson
 		{
 		get;
 		}

@@ -10,7 +10,7 @@
 		<TargetFrameworks>net472;net10.0</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<PackageId>KasaTapoClient</PackageId>
-		<Version>1.8.1</Version>
+		<Version>2.0.0</Version>
 		<Authors>Neil Colvin</Authors>
 		<Company>Neil Colvin</Company>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -21,7 +21,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>Patch release: aligns the Microsoft.Bcl.Memory package reference to 10.0.12 across all projects to resolve a NuGet package-downgrade restore error (NU1605) affecting consumers with net10.0 dependency chains. No public API or behavior changes.</PackageReleaseNotes>
+		<PackageReleaseNotes>Major release: typed System.Text.Json wire contracts replace manual JSON traversal; public RawJson properties and raw command methods are removed. Removes Newtonsoft.Json and log4net dependencies. Existing typed discovery, state and control operations remain available. See MIGRATION-2.0.md for upgrade guidance.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>
@@ -61,12 +61,13 @@
 
 	<ItemGroup>
 		<PackageReference Include="BouncyCastle.Cryptography" Version="2.7.0" />
-		<PackageReference Include="log4net" Version="3.4.0" />
-		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+		<PackageReference Include="System.Text.Json" Version="10.0.12" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<None Include="..\README.md" Pack="true" PackagePath="" />
+		<None Include="..\MIGRATION-2.0.md" Pack="true" PackagePath="" />
+		<None Include="..\KasaClient.Tests\README.md" Pack="true" PackagePath="KasaClient.Tests/" />
 		<None Include="..\LICENSE" Pack="true" PackagePath="" />
 		<None Include="..\ATTRIBUTIONS.md" Pack="true" PackagePath="" />
 	</ItemGroup>

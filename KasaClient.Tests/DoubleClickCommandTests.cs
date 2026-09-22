@@ -5,7 +5,7 @@ using KasaTapoClient.Internal;
 
 using NUnit.Framework;
 
-using Newtonsoft.Json.Linq;
+using System.Text.Json.Nodes;
 
 namespace KasaClient.Tests;
 
@@ -20,9 +20,9 @@ public sealed class DoubleClickCommandTests
 		string request = KasaCommands.CreateSmartChildRequest (
 			CHILD_DEVICE_ID,
 			KasaCommands.SMART_SET_DOUBLE_CLICK_INFO_METHOD,
-			new JObject { ["enable"] = true });
+			new EnabledParametersDto { Enable = true });
 
-		var parsed = JObject.Parse (request);
+		var parsed = JsonNode.Parse (request)!;
 
 		Assert.That ((string?)parsed["method"], Is.EqualTo ("control_child"));
 		Assert.That ((string?)parsed["params"]?["device_id"], Is.EqualTo (CHILD_DEVICE_ID));
@@ -36,9 +36,9 @@ public sealed class DoubleClickCommandTests
 		string request = KasaCommands.CreateSmartChildRequest (
 			CHILD_DEVICE_ID,
 			KasaCommands.SMART_SET_DOUBLE_CLICK_INFO_METHOD,
-			new JObject { ["enable"] = false });
+			new EnabledParametersDto { Enable = false });
 
-		var parsed = JObject.Parse (request);
+		var parsed = JsonNode.Parse (request)!;
 
 		Assert.That ((bool?)parsed["params"]?["requestData"]?["params"]?["enable"], Is.EqualTo (false));
 		}
@@ -50,7 +50,7 @@ public sealed class DoubleClickCommandTests
 			CHILD_DEVICE_ID,
 			KasaCommands.SMART_GET_DOUBLE_CLICK_INFO_METHOD);
 
-		var parsed = JObject.Parse (request);
+		var parsed = JsonNode.Parse (request)!;
 
 		Assert.That ((string?)parsed["params"]?["requestData"]?["method"], Is.EqualTo ("get_double_click_info"));
 		Assert.That (parsed["params"]?["requestData"]?["params"], Is.Null);

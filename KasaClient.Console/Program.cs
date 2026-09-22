@@ -11,8 +11,9 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -21,7 +22,7 @@ using KasaTapoClient;
 const string PROFILE_SAVE_OPTION = "--save";
 const string PROFILE_USE_OPTION = "--profile";
 const string PROFILE_CLEAR_OPTION = "--clear-profile";
-const string RAW_UPDATE_OPTION = "--update";
+
 const string LIGHT_TRANSITION_OPTION = "--transition";
 const string DEFAULT_PROFILE_NAME = "default";
 const string IMPLICIT_PROFILE_NAME = "__implicit__";
@@ -115,7 +116,7 @@ static byte[] CreateRawSmartDiscoveryQuery ()
 		EncodeRawSequence (EncodeRawObjectIdentifier (new byte[] { 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x01 }), new byte[] { 0x05, 0x00 }),
 		EncodeRawBitString (EncodeRawSequence (EncodeRawInteger (parameters.Modulus!), EncodeRawInteger (parameters.Exponent!))));
 	string pem = "-----BEGIN PUBLIC KEY-----\n" + Convert.ToBase64String (publicKeyInfo, Base64FormattingOptions.InsertLineBreaks) + "\n-----END PUBLIC KEY-----\n";
-	byte[] payload = Encoding.UTF8.GetBytes (new JObject { ["params"] = new JObject { ["rsa_key"] = pem } }.ToString (Formatting.None));
+	byte[] payload = Encoding.UTF8.GetBytes (JsonSerializer.Serialize (new DiscoveryQuery { Parameters = new DiscoveryQueryParameters { RsaKey = pem } }));
 	var query = new byte[16 + payload.Length];
 	query[0] = 2; query[3] = 1; query[4] = (byte)(payload.Length >> 8); query[5] = (byte)payload.Length; query[6] = 17;
 	secret.AsSpan ().CopyTo (query.AsSpan (8));
@@ -445,12 +446,12 @@ static async Task<int> RunHostAsync (IReadOnlyList<string> arguments)
 
 	if (hostCommand == "raw")
 		{
-		return await RunRawExecuteAsync (host!, hostWasExplicit, arguments, commandIndex).ConfigureAwait (false);
+		return Fail ("Raw JSON commands were removed. Use the typed host, light, or child commands.");
 		}
 
 	if (hostCommand == "smart")
 		{
-		return await RunSmartExecuteAsync (host!, hostWasExplicit, arguments, commandIndex).ConfigureAwait (false);
+		return Fail ("Raw JSON commands were removed. Use the typed host, light, or child commands.");
 		}
 
 	if (hostCommand == "serialize")
@@ -486,75 +487,6 @@ static async Task<int> RunHostAsync (IReadOnlyList<string> arguments)
 	return 0;
 	}
 
-static async Task<int> RunRawExecuteAsync (string host, bool hostWasExplicit, IReadOnlyList<string> arguments, int commandIndex)
-	{
-	if (arguments.Count <= commandIndex + 1)
-		{
-		return Fail ("The 'raw' command requires a JSON command payload.");
-		}
-
-	string commandJson = arguments[commandIndex + 1];
-	bool updateState = arguments.Skip (commandIndex + 2).Any (static argument => string.Equals (argument, RAW_UPDATE_OPTION, StringComparison.OrdinalIgnoreCase));
-	DeviceConfiguration configuration = CreateHostConfiguration (host, hostWasExplicit, "raw", arguments, commandIndex + 2);
-	KasaDevice device = await Discover.ConnectAsync (configuration, updateState: false).ConfigureAwait (false);
-	ConsoleRecentHostStore.Save (device.Host);
-	ConsoleImplicitProfileStore.Save (CreateImplicitProfile (device));
-
-	string response = updateState
-		? await device.ExecuteCommandAsync (commandJson, DeviceStateUpdateMode.UpdateAfterCommand).ConfigureAwait (false)
-		: await device.ExecuteCommandAsync (commandJson).ConfigureAwait (false);
-
-	Console.WriteLine ("Response:");
-	PrintJsonOrRaw (response);
-	if (updateState)
-		{
-		Console.WriteLine ();
-		Console.WriteLine ("Updated state:");
-		PrintDiscoveredDeviceVerbose (device);
-		}
-
-	return 0;
-	}
-
-static async Task<int> RunSmartExecuteAsync (string host, bool hostWasExplicit, IReadOnlyList<string> arguments, int commandIndex)
-	{
-	if (arguments.Count <= commandIndex + 1)
-		{
-		return Fail ("The 'smart' command requires a smart method name.");
-		}
-
-	string method = arguments[commandIndex + 1];
-	JObject? parameters = null;
-	int optionStartIndex = commandIndex + 2;
-	if (arguments.Count > optionStartIndex && !arguments[optionStartIndex].StartsWith ("--", StringComparison.Ordinal))
-		{
-		parameters = JToken.Parse (arguments[optionStartIndex]) as JObject
-			?? throw new ArgumentException ("The smart command parameters must be a JSON object.");
-		optionStartIndex++;
-		}
-
-	bool updateState = arguments.Skip (optionStartIndex).Any (static argument => string.Equals (argument, RAW_UPDATE_OPTION, StringComparison.OrdinalIgnoreCase));
-	DeviceConfiguration configuration = CreateHostConfiguration (host, hostWasExplicit, "smart", arguments, optionStartIndex);
-	KasaDevice device = await Discover.ConnectAsync (configuration, updateState: false).ConfigureAwait (false);
-	ConsoleRecentHostStore.Save (device.Host);
-	ConsoleImplicitProfileStore.Save (CreateImplicitProfile (device));
-
-	string response = updateState
-		? await device.ExecuteSmartCommandAsync (method, parameters, DeviceStateUpdateMode.UpdateAfterCommand).ConfigureAwait (false)
-		: await device.ExecuteSmartCommandAsync (method, parameters).ConfigureAwait (false);
-
-	Console.WriteLine ("Response:");
-	PrintJsonOrRaw (response);
-	if (updateState)
-		{
-		Console.WriteLine ();
-		Console.WriteLine ("Updated state:");
-		PrintDiscoveredDeviceVerbose (device);
-		}
-
-	return 0;
-	}
-
 static async Task<int> RunSerializationExerciseAsync (string host, bool hostWasExplicit, IReadOnlyList<string> arguments, int commandIndex)
 	{
 	int operationCount = 4;
@@ -586,19 +518,6 @@ static async Task<int> RunSerializationExerciseAsync (string host, bool hostWasE
 	Console.WriteLine ($"Completed {operationCount} operations in {stopwatch.Elapsed.TotalSeconds:F2}s.");
 	PrintDiscoveredDeviceVerbose (device);
 	return 0;
-	}
-
-static void PrintJsonOrRaw (string text)
-	{
-	try
-		{
-		JToken token = JToken.Parse (text);
-		Console.WriteLine (token.ToString (Formatting.Indented));
-		}
-	catch (JsonException)
-		{
-		Console.WriteLine (text);
-		}
 	}
 
 static void PrintDeviceModuleState (KasaDevice device)
@@ -1051,7 +970,7 @@ static async Task<int> RunChildWatchAsync (string host, string childSelector, IR
 	PrintChildSummary (device, child, initialChildInfo);
 	Console.WriteLine ("Watching child events. Press Esc to stop.");
 	ChildDeviceInfo currentChildInfo = initialChildInfo;
-	string? previousSignature = BuildChildWatchSignature (currentChildInfo);
+	string? previousSignature = BuildChildWatchSignature (child);
 	HashSet<string> seenTriggerKeys = GetTriggerLogKeys (child);
 	while (true)
 		{
@@ -1068,7 +987,7 @@ static async Task<int> RunChildWatchAsync (string host, string childSelector, IR
 				}
 
 			currentChildInfo = updatedChildInfo;
-			string? signature = BuildChildWatchSignature (currentChildInfo);
+			string? signature = BuildChildWatchSignature (child);
 			if (string.Equals (signature, previousSignature, StringComparison.Ordinal))
 				{
 				continue;
@@ -1370,17 +1289,8 @@ static HashSet<string> GetTriggerLogKeys (ChildDevice child) =>
 		.Where (static entry => !string.IsNullOrWhiteSpace (entry.Key))
 		.Select (static entry => entry.Key), StringComparer.OrdinalIgnoreCase);
 
-static string? BuildChildWatchSignature (ChildDeviceInfo childInfo)
-	{
-	JToken root = JToken.Parse (childInfo.RawJson);
-	string triggerLogs = root["trigger_logs"] is JObject triggerLogsElement
-		? triggerLogsElement.ToString (Formatting.None)
-		: string.Empty;
-	string triggerTimestamp = root["trigger_timestamp"] is JToken timestampElement
-		? timestampElement.ToString ()
-		: string.Empty;
-	return triggerTimestamp + "|" + triggerLogs;
-	}
+static string? BuildChildWatchSignature (ChildDevice child) =>
+	string.Join ("|", GetTriggerLogKeys (child).OrderBy (key => key, StringComparer.Ordinal)) + "|" + child.WaterLeak.State?.AlertTimestamp?.ToString (CultureInfo.InvariantCulture);
 
 static async Task<int> RunLightAsync (string host, IReadOnlyList<string> arguments, int commandIndex)
 	{
@@ -2004,8 +1914,6 @@ static DeviceConfiguration CreateHostConfiguration (string host, bool hostWasExp
 			case PROFILE_CLEAR_OPTION:
 				clearProfileName = GetOptionalNamedValue (arguments, ref i, option);
 				break;
-			case RAW_UPDATE_OPTION:
-				break;
 			default:
 				if (IsMatchingLongOption (option, LIGHT_TRANSITION_OPTION))
 					{
@@ -2143,8 +2051,6 @@ static DeviceConfiguration CreateHostConfiguration (string host, bool hostWasExp
 					{
 					i++;
 					}
-				break;
-			case RAW_UPDATE_OPTION:
 				break;
 			default:
 				if (IsMatchingLongOption (option, LIGHT_TRANSITION_OPTION))
@@ -2631,8 +2537,6 @@ static void PrintHostUsage ()
 	Console.WriteLine ("ho[st] <address> c[hild] <childId|index> [s[tate]|on|of[f]|l[ogs]|w[atch]] [options]");
 	Console.WriteLine ("ho[st] <address> l[ight] [s[tate]|on [--t[ransition] <ms>]|of[f] [--t[ransition] <ms>]|b[rightness] <0-100> [--t[ransition] <ms>]|tr|transition <on|off>|tr-on|transition-on <seconds>|tr-off|transition-off <seconds>|t[emp] <kelvin>|h[sv] <h> <s> <v>|c[olor] <hex>|e[ffect] <name>] [options]");
 	Console.WriteLine ("ho[st] <address> se[tup] [s[can] [seconds]|d[etected]|p[air]|u[npair] <childId|index>] [options]");
-	Console.WriteLine ("  raw        Execute a raw JSON command. Add --update to refresh cached state under the same device lock.");
-	Console.WriteLine ("  smart      Execute a smart-protocol method and build the required request envelope. Add --update to refresh cached state.");
 	Console.WriteLine ("  serialize  Start concurrent UpdateAsync calls against one KasaDevice to exercise operation serialization. Default count: 4.");
 	Console.WriteLine ("ho[st] <address> p[rofiles] [l[ist]|r[emove] <name>] [options]");
 	PrintCommonOptions ();
@@ -2706,9 +2610,6 @@ static void PrintLightUsage ()
 	{
 	Console.WriteLine ("ho[st] <address> l[ight] [s[tate]|on [--t[ransition] <ms>]|of[f] [--t[ransition] <ms>]|b[rightness] <0-100> [--t[ransition] <ms>]|tr|transition <on|off>|tr-on|transition-on <seconds>|tr-off|transition-off <seconds>|t[emp] <kelvin>|h[sv] <hue> <saturation> <value>|c[olor] <name>|c[olor] <hue> <saturation> <value>|e[ffect] [name|off|list]] [options]");
 	Console.WriteLine ("  --t[ransition] <ms>  Optional transition duration in milliseconds for supported legacy light on/off/brightness commands.");
-	Console.WriteLine ("  tr|transition <on|off>          Enable or disable persistent smart smooth light transitions when supported.");
-	Console.WriteLine ("  tr-on|transition-on <seconds>   Set the persistent smart turn-on transition duration in seconds.");
-	Console.WriteLine ("  tr-off|transition-off <seconds> Set the persistent smart turn-off transition duration in seconds.");
 	Console.WriteLine ("Named colors: red, orange, yellow, green, cyan, blue, purple, violet, magenta, pink, white, warmwhite, softwhite, daylight");
 	Console.WriteLine ("Effects: use a device-specific effect name to enable one, 'effect off' to disable the current effect, or 'effect list' to show reported effects.");
 	PrintCommonOptions ();
@@ -2766,10 +2667,10 @@ static class ConsoleProfileStore
 		Environment.GetFolderPath (Environment.SpecialFolder.ApplicationData),
 		"KasaClient",
 		"console-profiles.json");
-	private static readonly JsonSerializerSettings SERIALIZER_OPTIONS = new ()
+	private static readonly JsonSerializerOptions SERIALIZER_OPTIONS = new ()
 		{
-		Formatting = Formatting.Indented,
-		NullValueHandling = NullValueHandling.Ignore,
+		WriteIndented = true,
+		DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, PropertyNameCaseInsensitive = true,
 		};
 
 	public static void Save (SavedConnectionProfile profile)
@@ -2823,7 +2724,7 @@ static class ConsoleProfileStore
 			}
 
 		string json = File.ReadAllText (path);
-		Dictionary<string, SavedConnectionProfile>? profiles = JsonConvert.DeserializeObject<Dictionary<string, SavedConnectionProfile>> (json);
+		Dictionary<string, SavedConnectionProfile>? profiles = JsonSerializer.Deserialize<Dictionary<string, SavedConnectionProfile>> (json, SERIALIZER_OPTIONS);
 		var migrated = new Dictionary<string, SavedConnectionProfile> (StringComparer.OrdinalIgnoreCase);
 		if (profiles is not null)
 			{
@@ -2844,7 +2745,7 @@ static class ConsoleProfileStore
 			Directory.CreateDirectory (directory);
 			}
 
-		string json = JsonConvert.SerializeObject (profiles, SERIALIZER_OPTIONS);
+		string json = JsonSerializer.Serialize (profiles, SERIALIZER_OPTIONS);
 		File.WriteAllText (PROFILE_PATH, json);
 		}
 
@@ -2904,10 +2805,10 @@ static class ConsoleImplicitProfileStore
 		Environment.GetFolderPath (Environment.SpecialFolder.ApplicationData),
 		"KasaClient",
 		"console-implicit-profile.json");
-	private static readonly JsonSerializerSettings SERIALIZER_OPTIONS = new ()
+	private static readonly JsonSerializerOptions SERIALIZER_OPTIONS = new ()
 		{
-		Formatting = Formatting.Indented,
-		NullValueHandling = NullValueHandling.Ignore,
+		WriteIndented = true,
+		DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, PropertyNameCaseInsensitive = true,
 		};
 
 	public static SavedConnectionProfile? Load (string? preferredHost = null)
@@ -2946,7 +2847,7 @@ static class ConsoleImplicitProfileStore
 			Directory.CreateDirectory (directory);
 			}
 
-		string json = JsonConvert.SerializeObject (profile, SERIALIZER_OPTIONS);
+		string json = JsonSerializer.Serialize (profile, SERIALIZER_OPTIONS);
 		File.WriteAllText (IMPLICIT_PROFILE_PATH, json);
 		}
 
@@ -2958,7 +2859,7 @@ static class ConsoleImplicitProfileStore
 			}
 
 		string json = File.ReadAllText (path);
-		return JsonConvert.DeserializeObject<SavedConnectionProfile> (json)?.Migrate ();
+		return JsonSerializer.Deserialize<SavedConnectionProfile> (json, SERIALIZER_OPTIONS)?.Migrate ();
 		}
 	}
 
@@ -3178,4 +3079,15 @@ readonly struct TriggerLogEntry
 		{
 		get;
 		}
+	}
+
+internal sealed class DiscoveryQuery
+	{
+	[System.Text.Json.Serialization.JsonPropertyName ("params")]
+	public DiscoveryQueryParameters? Parameters { get; set; }
+	}
+internal sealed class DiscoveryQueryParameters
+	{
+	[System.Text.Json.Serialization.JsonPropertyName ("rsa_key")]
+	public string? RsaKey { get; set; }
 	}

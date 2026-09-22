@@ -7,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using Newtonsoft.Json;
 
 namespace KasaTapoClient.Internal;
 
@@ -33,7 +32,7 @@ internal static partial class KasaResponseParser
 		return DeviceFamilyKind.IotSmartPlugSwitch;
 		}
 
-	private static DeviceSystemInfo CreateSystemInfo (LegacySystemInfoDto systemInfo, string responseJson)
+	private static DeviceSystemInfo CreateSystemInfo (LegacySystemInfoDto systemInfo)
 		{
 		string alias = FirstNonEmpty (systemInfo.Alias, systemInfo.Nickname) ?? string.Empty;
 		string? model = FirstNonEmpty (systemInfo.Model, systemInfo.DeviceModel);
@@ -58,8 +57,7 @@ internal static partial class KasaResponseParser
 			deviceType,
 			isOn,
 			systemInfo.OnTimeSeconds is int onTimeSeconds ? TimeSpan.FromSeconds (onTimeSeconds) : null,
-			CreateChildren (systemInfo),
-			responseJson);
+			CreateChildren (systemInfo));
 		}
 
 	private static LightState CreateLightState (LegacySystemInfoDto systemInfo)
@@ -91,8 +89,7 @@ internal static partial class KasaResponseParser
 			effect,
 			hsv,
 			availablePresets,
-			activePreset,
-			JsonConvert.SerializeObject (lightState, JsonSupport.COMPACT_JSON));
+			activePreset);
 		}
 
 	private static LegacyLightStateDto CreateEffectiveLightState (LegacyLightStateDto lightState)
@@ -134,8 +131,7 @@ internal static partial class KasaResponseParser
 				lightingEffect.Name,
 				lightingEffect.Enable is int enabled ? enabled != 0 : null,
 				lightingEffect.Brightness,
-				availableEffects,
-				JsonConvert.SerializeObject (lightingEffect, JsonSupport.COMPACT_JSON));
+				availableEffects);
 			}
 
 		if (lightState.DynamicLightEffectEnable is int || !string.IsNullOrWhiteSpace (lightState.DynamicLightEffectId))
@@ -160,13 +156,7 @@ internal static partial class KasaResponseParser
 				effectName,
 				isEnabled,
 				lightState.Brightness,
-				availableEffects,
-				JsonConvert.SerializeObject (new
-					{
-					lightState.DynamicLightEffectEnable,
-					lightState.DynamicLightEffectId,
-					lightState.DynamicLightEffectRuleList,
-					}, JsonSupport.COMPACT_JSON));
+				availableEffects);
 			}
 
 		return null;
@@ -222,8 +212,7 @@ internal static partial class KasaResponseParser
 				preset.Brightness,
 				preset.ColorTemperature,
 				preset.Hue,
-				preset.Saturation,
-				JsonConvert.SerializeObject (preset, JsonSupport.COMPACT_JSON)));
+				preset.Saturation));
 			}
 
 		return presets;
@@ -239,19 +228,19 @@ internal static partial class KasaResponseParser
 		return new LightPresetState (lightState.AvailablePresets, lightState.ActivePreset);
 		}
 
-	private static LightTransitionState? CreateLegacyLightTransitionState (LegacyLightStateDto? lightState, string rawJson)
+	private static LightTransitionState? CreateLegacyLightTransitionState (LegacyLightStateDto? lightState)
 		{
 		if (lightState?.TransitionPeriod is not int transitionMilliseconds)
 			{
 			return null;
 			}
 
-		return new LightTransitionState (null, null, transitionMilliseconds, null, null, transitionMilliseconds, null, rawJson);
+		return new LightTransitionState (null, null, transitionMilliseconds, null, null, transitionMilliseconds, null);
 		}
 
 	private static DeviceType DetermineLegacyDeviceType (LegacySystemInfoDto systemInfo)
 		{
-		return CreateSystemInfo (systemInfo, string.Empty).DeviceType;
+		return CreateSystemInfo (systemInfo).DeviceType;
 		}
 
 	private static string? ResolveActiveLightPreset (IReadOnlyList<LightPresetDefinition> availablePresets, int? brightness, int? colorTemperature, int? hue, int? saturation)
@@ -302,8 +291,7 @@ internal static partial class KasaResponseParser
 	private static EnergyUsage CreateEnergyUsage (
 		LegacyEmeterRealtimeDto emeterInfo,
 		LegacyEmeterDailyStatDto? dayStat,
-		LegacyEmeterMonthlyStatDto? monthStat,
-		string responseJson)
+		LegacyEmeterMonthlyStatDto? monthStat)
 		{
 		double? currentPowerWatts = ReadScaledDouble (emeterInfo.Power, emeterInfo.PowerMilliwatts, 1000d);
 		double? voltageVolts = ReadScaledDouble (emeterInfo.Voltage, emeterInfo.VoltageMillivolts, 1000d);
@@ -311,7 +299,7 @@ internal static partial class KasaResponseParser
 		double? totalKilowattHours = ReadScaledDouble (emeterInfo.Total, emeterInfo.TotalWattHours, 1000d) ?? ReadScaledDouble (emeterInfo.Energy, emeterInfo.EnergyWattHours, 1000d);
 		double? todayKilowattHours = GetCurrentDayEnergyKilowattHours (dayStat);
 		double? monthKilowattHours = GetCurrentMonthEnergyKilowattHours (monthStat);
-		return new EnergyUsage (currentPowerWatts, voltageVolts, currentAmps, totalKilowattHours, todayKilowattHours, monthKilowattHours, responseJson);
+		return new EnergyUsage (currentPowerWatts, voltageVolts, currentAmps, totalKilowattHours, todayKilowattHours, monthKilowattHours);
 		}
 
 	private static FirmwareState? CreateLegacyFirmwareState (ParsedResponse response)
@@ -324,7 +312,7 @@ internal static partial class KasaResponseParser
 			return null;
 			}
 
-		return new FirmwareState (currentFirmware, currentHardware, autoUpdateEnabled, availableFirmwareVersion: null, updateAvailable: null, response.RawJson);
+		return new FirmwareState (currentFirmware, currentHardware, autoUpdateEnabled, availableFirmwareVersion: null, updateAvailable: null);
 		}
 
 	private static CloudConnectionState? CreateLegacyCloudConnectionState (ParsedResponse response)
@@ -339,8 +327,7 @@ internal static partial class KasaResponseParser
 			cloudInfo.CloudConnection is int cloudConnection ? cloudConnection != 0 : null,
 			cloudInfo.Binded is int provisioned ? provisioned != 0 : null,
 			cloudInfo.Server,
-			cloudInfo.UserName,
-			JsonConvert.SerializeObject (cloudInfo, JsonSupport.COMPACT_JSON));
+			cloudInfo.UserName);
 		}
 
 	private static DeviceTimeState? CreateLegacyDeviceTimeState (ParsedResponse response)
@@ -352,7 +339,7 @@ internal static partial class KasaResponseParser
 			}
 
 		DateTime? localTime = TryCreateLegacyDateTime (time);
-		return new DeviceTimeState (localTime, region: null, timeDifferenceMinutes: null, JsonConvert.SerializeObject (response.Time, JsonSupport.COMPACT_JSON));
+		return new DeviceTimeState (localTime, region: null, timeDifferenceMinutes: null);
 		}
 
 	private static HomeKitSetupInfo? CreateLegacyHomeKitSetupInfo (ParsedResponse response)
@@ -363,7 +350,7 @@ internal static partial class KasaResponseParser
 			return null;
 			}
 
-		return new HomeKitSetupInfo (homeKit.SetupCode, homeKit.SetupPayload, JsonConvert.SerializeObject (homeKit, JsonSupport.COMPACT_JSON));
+		return new HomeKitSetupInfo (homeKit.SetupCode, homeKit.SetupPayload);
 		}
 
 	private static AutoOffState? CreateLegacyAutoOffState (ParsedResponse response)
@@ -379,7 +366,7 @@ internal static partial class KasaResponseParser
 		DateTime? autoOffAt = timerActive == true && response.SystemInfo.AutoOffRemainTimeSeconds is int remainingSeconds
 			? DateTime.Now.AddSeconds (remainingSeconds)
 			: null;
-		return new AutoOffState (enabled: null, delayMinutes: null, timerActive, autoOffAt, response.RawJson);
+		return new AutoOffState (enabled: null, delayMinutes: null, timerActive, autoOffAt);
 		}
 
 	private static LedState? CreateLegacyLedState (ParsedResponse response)
@@ -389,7 +376,7 @@ internal static partial class KasaResponseParser
 			return null;
 			}
 
-		return new LedState (ledOff == 0, ledOff == 0 ? "always" : "never", nightModeSettings: null, response.RawJson);
+		return new LedState (ledOff == 0, ledOff == 0 ? "always" : "never", nightModeSettings: null);
 		}
 
 	private static double? GetCurrentDayEnergyKilowattHours (LegacyEmeterDailyStatDto? dayStat)
@@ -464,7 +451,7 @@ internal static partial class KasaResponseParser
 			return null;
 			}
 
-		return new RuleModuleState (countdown, schedules, antitheftRules, response.RawJson);
+		return new RuleModuleState (countdown, schedules, antitheftRules);
 		}
 
 	private static CountdownRuleState? CreateCountdownRuleState (LegacyRuleListDto? rules)
@@ -478,7 +465,7 @@ internal static partial class KasaResponseParser
 		bool? isEnabled = rules.Enable is int enabled ? enabled != 0 : null;
 		bool? isActive = countdown.RemainingSeconds is int remaining ? remaining > 0 : null;
 		bool? actionTurnsOn = countdown.Action is int action ? action != 0 : null;
-		return new CountdownRuleState (isEnabled, isActive, countdown.DelaySeconds, actionTurnsOn, JsonConvert.SerializeObject (countdown, JsonSupport.COMPACT_JSON));
+		return new CountdownRuleState (isEnabled, isActive, countdown.DelaySeconds, actionTurnsOn);
 		}
 
 	private static IReadOnlyList<ScheduledRule> CreateScheduledRules (LegacyRuleListDto? rules)
@@ -499,7 +486,7 @@ internal static partial class KasaResponseParser
 
 			bool? isEnabled = rule.Enable is int enabled ? enabled != 0 : null;
 			bool? actionTurnsOn = rule.Action is int action ? action != 0 : null;
-			schedules.Add (new ScheduledRule (id!, rule.Name, isEnabled, actionTurnsOn, rule.StartMinute, rule.EndMinute, JsonConvert.SerializeObject (rule, JsonSupport.COMPACT_JSON)));
+			schedules.Add (new ScheduledRule (id!, rule.Name, isEnabled, actionTurnsOn, rule.StartMinute, rule.EndMinute));
 			}
 
 		return schedules;
@@ -550,8 +537,7 @@ internal static partial class KasaResponseParser
 					FirstNonEmpty (child.Alias, child.Nickname),
 					FirstNonEmpty (child.Model, child.DeviceModel),
 					DetermineChildDeviceType (FirstNonEmpty (child.Model, child.DeviceModel)),
-					ReadPowerState (child),
-					JsonConvert.SerializeObject (child, JsonSupport.COMPACT_JSON)));
+					ReadPowerState (child)));
 			}
 
 		return children;
@@ -659,7 +645,7 @@ internal static partial class KasaResponseParser
 
 	private static LegacyResponseDto DeserializeResponse (string responseJson)
 		{
-		LegacyResponseDto? response = JsonConvert.DeserializeObject<LegacyResponseDto> (responseJson, JsonSupport.COMPACT_JSON);
+		LegacyResponseDto? response = WireJson.Deserialize<LegacyResponseDto> (responseJson);
 		return response ?? throw new InvalidDataException ("The device response could not be deserialized.");
 		}
 

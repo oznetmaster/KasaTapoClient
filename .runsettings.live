@@ -5,4 +5,5 @@ Licensed under the MIT License. See LICENSE in the repository root.
 -->
 <RunSettings>
   <RunConfiguration><TestCaseFilter>TestCategory=Live</TestCaseFilter></RunConfiguration>
+  <TestRunParameters><Parameter name="EnableLiveTests" value="true" /></TestRunParameters>
 </RunSettings>

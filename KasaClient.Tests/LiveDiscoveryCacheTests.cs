@@ -79,5 +79,5 @@ public sealed class LiveDiscoveryCacheTests
 
 	private static LiveDeviceTarget Target (string id) => new (id, null, null);
 	private static Task<IReadOnlyList<DiscoveryResult>> Results (params DiscoveryResult[] devices) => Task.FromResult<IReadOnlyList<DiscoveryResult>> (devices);
-	private static DiscoveryResult Device (string id, string host) => new (host, DeviceType.Plug, null, "Synthetic", id, "{}", DeviceTransportKind.LegacyXor, false, 9999, null);
+	private static DiscoveryResult Device (string id, string host) => new (host, DeviceType.Plug, null, "Synthetic", id, DeviceTransportKind.LegacyXor, false, 9999, null);
 	}

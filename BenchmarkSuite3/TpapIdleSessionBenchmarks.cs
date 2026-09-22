@@ -5,8 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
+
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using KasaTapoClient;
@@ -16,7 +16,7 @@ using Microsoft.VSDiagnostics;
 [CPUUsageDiagnoser]
 public class TpapIdleSessionBenchmarks
 {
-    private static readonly string GetDeviceInfoPayload = CreateSmartRequest("get_device_info", null);
+
     private BenchmarkConnectionProfile _profile = null!;
     private DeviceConfiguration _configuration = null!;
     private KasaDevice _device = null!;
@@ -30,25 +30,25 @@ public class TpapIdleSessionBenchmarks
     }
 
     [Benchmark]
-    public Task QueryAfter5SecondsIdleAsync() => _device.ExecuteCommandAsync(GetDeviceInfoPayload);
+    public Task QueryAfter5SecondsIdleAsync() => _device.UpdateAsync();
 
     [IterationSetup(Target = nameof(QueryAfter5SecondsIdleAsync))]
     public void Setup5SecondsIdleAsync() => PrimeAndWaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
 
     [Benchmark]
-    public Task QueryAfter30SecondsIdleAsync() => _device.ExecuteCommandAsync(GetDeviceInfoPayload);
+    public Task QueryAfter30SecondsIdleAsync() => _device.UpdateAsync();
 
     [IterationSetup(Target = nameof(QueryAfter30SecondsIdleAsync))]
     public void Setup30SecondsIdleAsync() => PrimeAndWaitAsync(TimeSpan.FromSeconds(30)).GetAwaiter().GetResult();
 
     [Benchmark]
-    public Task QueryAfter60SecondsIdleAsync() => _device.ExecuteCommandAsync(GetDeviceInfoPayload);
+    public Task QueryAfter60SecondsIdleAsync() => _device.UpdateAsync();
 
     [IterationSetup(Target = nameof(QueryAfter60SecondsIdleAsync))]
     public void Setup60SecondsIdleAsync() => PrimeAndWaitAsync(TimeSpan.FromSeconds(60)).GetAwaiter().GetResult();
 
     [Benchmark]
-    public Task QueryAfter120SecondsIdleAsync() => _device.ExecuteCommandAsync(GetDeviceInfoPayload);
+    public Task QueryAfter120SecondsIdleAsync() => _device.UpdateAsync();
 
     [IterationSetup(Target = nameof(QueryAfter120SecondsIdleAsync))]
     public void Setup120SecondsIdleAsync() => PrimeAndWaitAsync(TimeSpan.FromSeconds(120)).GetAwaiter().GetResult();
@@ -61,7 +61,7 @@ public class TpapIdleSessionBenchmarks
 
     private async Task PrimeAndWaitAsync(TimeSpan idleDuration)
     {
-        await _device.ExecuteCommandAsync(GetDeviceInfoPayload).ConfigureAwait(false);
+        await _device.UpdateAsync().ConfigureAwait(false);
         await Task.Delay(idleDuration).ConfigureAwait(false);
     }
 
@@ -97,7 +97,7 @@ public class TpapIdleSessionBenchmarks
             return null;
         }
 
-        return JsonConvert.DeserializeObject<Dictionary<string, BenchmarkConnectionProfile>>(File.ReadAllText(path));
+        return JsonSerializer.Deserialize<Dictionary<string, BenchmarkConnectionProfile>>(File.ReadAllText(path));
     }
 
     private static BenchmarkConnectionProfile? LoadNamedProfileByHost(string? host)
@@ -132,7 +132,7 @@ public class TpapIdleSessionBenchmarks
             return null!;
         }
 
-        return JsonConvert.DeserializeObject<BenchmarkConnectionProfile>(File.ReadAllText(path))!;
+        return JsonSerializer.Deserialize<BenchmarkConnectionProfile>(File.ReadAllText(path))!;
     }
 
     private static async Task<DeviceConfiguration> CreateResolvedConfigurationAsync(BenchmarkConnectionProfile profile)
@@ -177,21 +177,7 @@ public class TpapIdleSessionBenchmarks
         return value is null ? default! : (T)value;
     }
 
-    private static string CreateSmartRequest(string method, JObject? parameters)
-    {
-        var request = new JObject
-        {
-            ["method"] = method,
-            ["request_time_milis"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-            ["terminal_uuid"] = Convert.ToBase64String(Guid.NewGuid().ToByteArray())
-        };
-        if (parameters is not null)
-        {
-            request["params"] = parameters;
-        }
 
-        return request.ToString(Formatting.None);
-    }
 
     private sealed class BenchmarkConnectionProfile
     {

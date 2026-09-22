@@ -20,7 +20,6 @@ public sealed class DiscoverTpapPreferenceTests
 			alias: "Test Hub",
 			model: "H100",
 			deviceId: "TEST-DEVICE-ID",
-			rawJson: "{}",
 			transportKind: DeviceTransportKind.HttpToken,
 			supportsHttps: false,
 			port: 80,

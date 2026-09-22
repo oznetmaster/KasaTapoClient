@@ -35,7 +35,7 @@ See [CHANGELOG.md](CHANGELOG.md) for a summary of all release history, or the [G
 - Automatic de-duplication of concurrent `Discover.ConnectAsync` calls for the same device, so only one physical connection is ever dialed at a time per host/port
 - Value-equality device and child state models (e.g. `LightState`, `FanState`, sensor/button states), so consumers can compare state snapshots directly to detect changes
 - Optional, explicit shared-connection reuse via `Discover.GetOrConnectSharedAsync` for call sites that are known to target the same device and want to avoid each opening an independent connection
-- Raw and smart-method command execution helpers for diagnostics and advanced integrations
+- Attribute-controlled System.Text.Json wire models with typed public state and control operations
 
 This .NET library was developed with compatibility and behavior reference material from the upstream `python-kasa` project. See [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
 
@@ -254,51 +254,19 @@ Operations on a single `KasaDevice` are serialized internally. This means concur
 
 Different `KasaDevice` instances for different physical hosts can still run in parallel. The serialization is intended to prevent overlapping transport/session access and command/refresh interleaving on the same device.
 
-Existing public APIs remain source-compatible, but callers that previously issued concurrent operations against the same `KasaDevice` may now observe those operations completing sequentially.
+Version 2.0 removes public raw-payload APIs. See the [2.0 migration guide](MIGRATION-2.0.md) before upgrading from 1.x.
 
-### Raw and smart command helpers
+### Typed state and commands
 
-`ExecuteCommandAsync` sends a complete JSON payload exactly as supplied. It is useful for legacy Kasa JSON modules or diagnostics where the full request body is already known.
+Refresh a device with `await device.UpdateAsync()` and read `SystemInfo`, `EnergyUsage`, `Light.State`, or its child modules. Use operations such as `TurnOnAsync()`, `TurnOffAsync()`, `SetBrightnessAsync()` and the typed module methods to change state. Control operations refresh their cached state before returning.
 
-```csharp
-string response = await device.ExecuteCommandAsync(
-    "{\"system\":{\"get_sysinfo\":{}}}").ConfigureAwait(false);
-```
-
-For raw command scenarios that need the cached state refreshed before returning, use `DeviceStateUpdateMode.UpdateAfterCommand`:
-
-```csharp
-string response = await device.ExecuteCommandAsync(
-    "{\"system\":{\"set_relay_state\":{\"state\":1}}}",
-    DeviceStateUpdateMode.UpdateAfterCommand).ConfigureAwait(false);
-```
-
-`ExecuteSmartCommandAsync` is for TP-Link smart-protocol methods such as `get_device_info` and `set_device_info`. It builds the required smart request envelope, including request timestamp and terminal UUID fields, before sending the command.
-
-```csharp
-string response = await device.ExecuteSmartCommandAsync(
-    "set_device_info",
-    new Newtonsoft.Json.Linq.JObject { ["device_on"] = true },
-    DeviceStateUpdateMode.UpdateAfterCommand).ConfigureAwait(false);
-```
+The library handles wire JSON internally using attribute-controlled models. Public state models expose values rather than raw JSON strings; public commands do not accept JSON payloads or JSON-library types. Newtonsoft.Json and log4net are no longer dependencies. Debug builds retain diagnostic `System.Diagnostics.Debug` tracing; no logging provider is configured by the library.
 
 ## Test Console
 
 The solution includes `KasaClient.Console`, a console application for discovery and command execution against real devices.
 
 Useful diagnostic commands include:
-
-```powershell
-dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework net10.0 -- host device-host-or-ip raw "{\"system\":{\"get_sysinfo\":{}}}"
-```
-
-```powershell
-dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework net10.0 -- host device-host-or-ip smart get_device_info
-```
-
-```powershell
-dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework net10.0 -- host device-host-or-ip smart set_device_info "{""device_on"":true}" --update
-```
 
 ```powershell
 dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework net10.0 -- host device-host-or-ip light on --t 1500
@@ -315,8 +283,6 @@ dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework ne
 dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework net10.0 -- host device-host-or-ip light transition-on 12
 dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework net10.0 -- host device-host-or-ip light transition-off 8
 ```
-
-`raw` sends the JSON exactly as supplied. `smart` accepts a smart method name and optional parameters JSON, then builds the smart-protocol request envelope for TPAP/KLAP/AES smart devices. Add `--update` to refresh cached device state under the same device operation lock after the command completes.
 
 For supported legacy light on/off/brightness commands, the console accepts `--t[ransition] <ms>` to pass a transition duration in milliseconds.
 
@@ -340,7 +306,7 @@ dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework ne
 
 ## Testing and Benchmark Scaffolding
 
-The test projects have been converted from MSTest to the official NUnit 4.6.1 package. This test infrastructure update does not change the published library version or require a new NuGet release. `KasaClient.Tests` targets `net472` and `net10.0` and includes NUnit3TestAdapter for Visual Studio Test Explorer and `dotnet test`.
+`KasaClient.Tests` targets `net472` and `net10.0`, using NUnit 4.6.1, NUnit3TestAdapter 6.3.0, Microsoft.NET.Test.Sdk 18.10.1, NUnit.Analyzers 4.15.0 and coverlet.collector 10.0.1. See the [test README](KasaClient.Tests/README.md) for dependencies, offline and live commands, and configuration handling.
 
 Run the deterministic tests on both targets with:
 
@@ -354,7 +320,7 @@ Fixtures use `LifeCycle.InstancePerTestCase` to preserve a fresh instance for ev
 
 - `KasaClient.Tests` contains deterministic unit coverage and optional live-device integration coverage
 - Live-test scaffolding is included for exercising real hardware paths when a compatible device environment is available
-- `BenchmarkSuite1`, `BenchmarkSuite2`, and `BenchmarkSuite3` contain Benchmark.NET measurement artifacts used for transport, latency, and keepalive investigation
+- `BenchmarkSuite1`, `BenchmarkSuite2`, and `BenchmarkSuite3` measure typed control and refresh operations. Version 2.0 measurements include state refresh, so they are not directly comparable with earlier raw-command round-trip measurements.
 
 This means the repository includes not just the production library and console app, but also the test and measurement infrastructure used to validate protocol behavior and performance characteristics.
 

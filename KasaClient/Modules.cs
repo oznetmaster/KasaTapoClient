@@ -1134,7 +1134,7 @@ public sealed class ChildDevice
 	/// </summary>
 	public IReadOnlyList<DeviceFeature> Features => Info?.Features ?? Array.Empty<DeviceFeature> ();
 
-	internal KasaResponseParser.SmartChildDeviceDto? RawState => _parent.GetChildRawState (Id);
+	internal KasaResponseParser.SmartChildDeviceDto? RawState => _parent.GetChildState (Id);
 
 	internal ChildTriggerLogState? TriggerLogState
 		{

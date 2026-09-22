@@ -5,7 +5,7 @@ using KasaTapoClient.Internal;
 
 using NUnit.Framework;
 
-using Newtonsoft.Json.Linq;
+using System.Text.Json.Nodes;
 
 namespace KasaClient.Tests;
 
@@ -20,9 +20,9 @@ public sealed class ReportIntervalCommandTests
 		string request = KasaCommands.CreateSmartChildRequest (
 			CHILD_DEVICE_ID,
 			"set_device_info",
-			new JObject { ["report_interval"] = 45 });
+			new ReportIntervalParametersDto { ReportInterval = 45 });
 
-		var parsed = JObject.Parse (request);
+		var parsed = JsonNode.Parse (request)!;
 
 		Assert.That ((string?)parsed["method"], Is.EqualTo ("control_child"));
 		Assert.That ((string?)parsed["params"]?["device_id"], Is.EqualTo (CHILD_DEVICE_ID));
@@ -37,7 +37,7 @@ public sealed class ReportIntervalCommandTests
 			CHILD_DEVICE_ID,
 			KasaCommands.SMART_GET_REPORT_MODE_METHOD);
 
-		var parsed = JObject.Parse (request);
+		var parsed = JsonNode.Parse (request)!;
 
 		Assert.That ((string?)parsed["params"]?["requestData"]?["method"], Is.EqualTo ("get_report_mode"));
 		Assert.That (parsed["params"]?["requestData"]?["params"], Is.Null);
