@@ -11,6 +11,13 @@ See the [product changelog](CHANGELOG.md) for shipped changes. This document pre
 
 <!-- development-history -->
 
+## TPAP session recovery fix - 2026-09-26 (unreleased)
+
+- Treat HTTP 401 from an already authenticated TPAP secure request or keepalive as an expired session, so the existing bounded recovery establishes a fresh session. Keep login rejection, other HTTP failures, timeouts and caller cancellation outside that recovery rule. Public APIs are unchanged.
+- Reproduced the stuck-session behavior using a loopback HTTP server for both normal requests and overdue keepalives. The two recovery cases failed before the fix; all 132 offline tests pass on each of net472 and net10.0 afterward. Coverage also verifies that rejected login and HTTP 403/429/500 responses do not cause authentication retries.
+- Hardware confirmation is pending. The loopback fixture seeds an existing session and checks transition to a fresh handshake; it does not simulate the full PAKE exchange or claim successful reconnection to a real device.
+
+
 ## 2.0.0 validation - 2026-09-22
 
 - Validate the typed System.Text.Json wire contracts with 123 offline tests on each of net472 and net10.0, including payload ordering, escaped identifiers, flexible sensor numbers, authentication, child overlays, response merging, cancellation and public API boundaries.

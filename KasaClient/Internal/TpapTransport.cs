@@ -140,12 +140,8 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			}
 		catch (Exception ex) when (!cancellationToken.IsCancellationRequested && ShouldRetryLiveSession (ex))
 			{
-			// Only retry when the failure was NOT caused by the caller's own CancellationToken.
-			// ShouldRetryLiveSession() treats TaskCanceledException/OperationCanceledException as
-			// retryable because SendOnceAsync uses an internal per-request timeout CancellationTokenSource
-			// linked to the caller's token; without this guard, a genuine external cancellation would be
-			// swallowed and silently retried (including a full Reset()+handshake) instead of propagating
-			// to the caller immediately.
+			// Retry one rejected live session or connection reset. Timeouts, caller cancellation,
+			// and rejected login credentials propagate without an authentication retry loop.
 			Reset ();
 			return await SendOnceAsync (commandJson, cancellationToken).ConfigureAwait (false);
 			}
@@ -205,10 +201,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			try
 				{
 				using HttpResponseMessage response = await SendHttpAsync (request, operationCancellationToken).ConfigureAwait (false);
-				if ((int)response.StatusCode != 200)
-					{
-					throw new InvalidOperationException ($"TPAP secure request failed for '{_configuration.Host}': status {(int)response.StatusCode}.");
-					}
+				RequireSecureResponse (response.StatusCode, "secure request");
 
 				body = await ReadBytesAsync (response, operationCancellationToken).ConfigureAwait (false);
 				}
@@ -1003,10 +996,7 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 			try
 				{
 				using HttpResponseMessage response = await SendHttpAsync (request, operationCancellationToken).ConfigureAwait (false);
-				if ((int)response.StatusCode != 200)
-					{
-					throw new InvalidOperationException ($"TPAP keepalive failed for '{_configuration.Host}': status {(int)response.StatusCode}.");
-					}
+				RequireSecureResponse (response.StatusCode, "keepalive");
 
 				body = await ReadBytesAsync (response, operationCancellationToken).ConfigureAwait (false);
 				}
@@ -1079,6 +1069,25 @@ internal sealed class TpapTransport : IDisposableDeviceTransport
 		#pragma warning restore CA2249
 		}
 	#pragma warning restore CA2249
+
+	// HTTP 401 from an established session means its token is no longer accepted (for example,
+	// after a device reboot). Login HTTP errors remain separate: rejected credentials must not
+	// trigger this recovery policy. Other HTTP failures also retain their existing behavior.
+	private void RequireSecureResponse (HttpStatusCode status, string action)
+		{
+		if (status == HttpStatusCode.OK)
+			{
+			return;
+			}
+
+		string message = $"TPAP {action} failed for '{_configuration.Host}': status {(int)status}.";
+		if (status == HttpStatusCode.Unauthorized)
+			{
+			throw new TpapProtocolException (message, ERROR_CODE_SESSION_EXPIRED, retryable: true, authentication: false);
+			}
+
+		throw new InvalidOperationException (message);
+		}
 
 	private void HandleResponseErrorCode (AuthenticationResponseDto response, string action)
 		{
