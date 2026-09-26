@@ -1,15 +1,15 @@
 # KasaTapoClient
 
-For shipped changes, see the [changelog](CHANGELOG.md). Test, CI and build history is recorded separately in [development and validation history](DEVELOPMENT-HISTORY.md).
+For shipped changes, see the [changelog](https://github.com/oznetmaster/KasaTapoClient/blob/main/CHANGELOG.md). Test, CI and build history is recorded separately in [development and validation history](https://github.com/oznetmaster/KasaTapoClient/blob/main/DEVELOPMENT-HISTORY.md).
 
 
 A .NET client library for TP-Link Kasa and Tapo devices, enabling local-network discovery, monitoring, inspection, and control of supported plugs, bulbs, light strips, power strips, hubs, and selected child devices.
 
 TP-Link, Kasa, and Tapo are trademarks of their respective owners. This project is an independent, unofficial .NET library and is not affiliated with or endorsed by TP-Link.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/oznetmaster/KasaTapoClient/blob/main/LICENSE)
 
-See [CHANGELOG.md](CHANGELOG.md) for a summary of all release history, or the [GitHub releases](https://github.com/oznetmaster/KasaTapoClient/releases) page for full per-version details and build assets.
+See [CHANGELOG.md](https://github.com/oznetmaster/KasaTapoClient/blob/main/CHANGELOG.md) for a summary of all release history, or the [GitHub releases](https://github.com/oznetmaster/KasaTapoClient/releases) page for full per-version details and build assets.
 
 ## Supported Platforms
 
@@ -37,7 +37,7 @@ See [CHANGELOG.md](CHANGELOG.md) for a summary of all release history, or the [G
 - Optional, explicit shared-connection reuse via `Discover.GetOrConnectSharedAsync` for call sites that are known to target the same device and want to avoid each opening an independent connection
 - Attribute-controlled System.Text.Json wire models with typed public state and control operations
 
-This .NET library was developed with compatibility and behavior reference material from the upstream `python-kasa` project. See [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
+This .NET library was developed with compatibility and behavior reference material from the upstream `python-kasa` project. See [ATTRIBUTIONS.md](https://github.com/oznetmaster/KasaTapoClient/blob/main/ATTRIBUTIONS.md).
 
 `KasaTapoClient` is for local device communication only. It does not implement TP-Link cloud control or remote cloud APIs.
 
@@ -204,7 +204,7 @@ Console.WriteLine ($"Is on: {device.IsOn}");
 | Credentials | Use the TP-Link account credentials used by the plug. They authenticate the local connection; this is not TP-Link cloud control. |
 | Discovery result | Use `Discover.CreateConfiguration (result, credentials)` to retain the discovered protocol metadata, or call `Discover.ConnectAsync (result, credentials: credentials)` directly. `DiscoveryResult.Configuration` is not a public property. |
 
-The runnable [DirectTapoPlug example](examples/DirectTapoPlug/Program.cs) requires the protocol, port and HTTP/HTTPS scheme explicitly; it has no default protocol. It references NuGet **1.8.1**, rather than the local library project, and builds for both supported frameworks. With `TAPO_USERNAME` and `TAPO_PASSWORD` supplied privately, a known TPAP/HTTP/80 configuration is:
+The runnable [DirectTapoPlug example](https://github.com/oznetmaster/KasaTapoClient/blob/main/examples/DirectTapoPlug/Program.cs) requires the protocol, port and HTTP/HTTPS scheme explicitly; it has no default protocol. It references NuGet **1.8.1**, rather than the local library project, and builds for both supported frameworks. With `TAPO_USERNAME` and `TAPO_PASSWORD` supplied privately, a known TPAP/HTTP/80 configuration is:
 
 ```powershell
 dotnet run --project examples/DirectTapoPlug --framework net10.0 -- 192.0.2.10 tpap 80 http state
@@ -227,7 +227,7 @@ IReadOnlyList<DiscoveryResult> targeted = await Discover.DiscoverAsync (
 Console.WriteLine ($"Broadcast: {broadcast.Count}; targeted: {targeted.Count}");
 ```
 
-Replace the example address with the plug's address. The runnable [DiscoveryDiagnostics example](examples/DiscoveryDiagnostics/Program.cs) performs both checks plus legacy-only discovery, and lists active IPv4 adapters and the returned protocol configuration. It needs no credentials and does not switch devices:
+Replace the example address with the plug's address. The runnable [DiscoveryDiagnostics example](https://github.com/oznetmaster/KasaTapoClient/blob/main/examples/DiscoveryDiagnostics/Program.cs) performs both checks plus legacy-only discovery, and lists active IPv4 adapters and the returned protocol configuration. It needs no credentials and does not switch devices:
 
 ```powershell
 dotnet run --project examples/DiscoveryDiagnostics --framework net10.0 -- 192.0.2.10
@@ -254,7 +254,7 @@ Operations on a single `KasaDevice` are serialized internally. This means concur
 
 Different `KasaDevice` instances for different physical hosts can still run in parallel. The serialization is intended to prevent overlapping transport/session access and command/refresh interleaving on the same device.
 
-Version 2.0 removes public raw-payload APIs. See the [2.0 migration guide](MIGRATION-2.0.md) before upgrading from 1.x.
+Version 2.0 removes public raw-payload APIs. See the [2.0 migration guide](https://github.com/oznetmaster/KasaTapoClient/blob/main/MIGRATION-2.0.md) before upgrading from 1.x.
 
 ### Typed state and commands
 
@@ -306,7 +306,7 @@ dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework ne
 
 ## Testing and Benchmark Scaffolding
 
-`KasaClient.Tests` targets `net472` and `net10.0`, using NUnit 4.6.1, NUnit3TestAdapter 6.3.0, Microsoft.NET.Test.Sdk 18.10.1, NUnit.Analyzers 4.15.0 and coverlet.collector 10.0.1. See the [test README](KasaClient.Tests/README.md) for dependencies, offline and live commands, and configuration handling.
+`KasaClient.Tests` targets `net472` and `net10.0`, using NUnit 4.6.1, NUnit3TestAdapter 6.3.0, Microsoft.NET.Test.Sdk 18.10.1, NUnit.Analyzers 4.15.0 and coverlet.collector 10.0.1. See the [test README](https://github.com/oznetmaster/KasaTapoClient/blob/main/KasaClient.Tests/README.md) for dependencies, offline and live commands, and configuration handling.
 
 Run the deterministic tests on both targets with:
 
@@ -384,11 +384,11 @@ Behavioral and compatibility reference work in this project draws on the upstrea
 
 ## License
 
-MIT © 2026 Neil Colvin — see [LICENSE](LICENSE).
+MIT © 2026 Neil Colvin — see [LICENSE](https://github.com/oznetmaster/KasaTapoClient/blob/main/LICENSE).
 
 ## Continuous integration tests
 
-The [Unit tests workflow](.github/workflows/unit-tests.yml) runs on pull requests and pushes to the main development branch. Separate Windows jobs test **net472** and **.NET 10**, retaining a result file for each suite/runtime. Live tests are excluded; no account credentials or physical devices are needed. These checks do not publish packages or releases.
+The [Unit tests workflow](https://github.com/oznetmaster/KasaTapoClient/blob/main/.github/workflows/unit-tests.yml) runs on pull requests and pushes to the main development branch. Separate Windows jobs test **net472** and **.NET 10**, retaining a result file for each suite/runtime. Live tests are excluded; no account credentials or physical devices are needed. These checks do not publish packages or releases.
 
 ## Publishing when local hardware is unavailable
 

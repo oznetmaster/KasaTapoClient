@@ -1,0 +1,8 @@
+{
+  "BaseSha256": "A92284C78386F07BC50659EED79BBE92E54921D198FD66A5B884CDBA9DCA665A",
+  "ReleaseNotesFile": "NUGET-PATCH-NOTES.md",
+  "ReadmeBaseUrl": "https://github.com/oznetmaster/KasaTapoClient/blob/v2.0.1/",
+  "Version": "2.0.2",
+  "Id": "KasaTapoClient",
+  "BaseVersion": "2.0.1"
+}

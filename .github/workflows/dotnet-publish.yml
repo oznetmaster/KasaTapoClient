@@ -6,6 +6,11 @@ on:
       - 'v*'
   workflow_dispatch:
     inputs:
+      documentation_patch:
+        description: Publish only the reviewed NuGet documentation patch; preserve existing runtime binaries and GitHub releases
+        required: false
+        type: boolean
+        default: false
       version:
         description: Version or tag to publish, for example 1.2.3 or v1.2.3
         required: true
@@ -27,6 +32,7 @@ permissions:
 
 jobs:
   publish:
+    if: inputs.documentation_patch != true
     runs-on: ubuntu-latest
     env:
       PROJECT_PATH: KasaClient/KasaTapoClient.csproj
@@ -93,6 +99,10 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path "${{ env.ARTIFACT_DIR }}/nuget" -Force | Out-Null
           dotnet pack ${{ env.PROJECT_PATH }} --configuration Release --no-build -p:ContinuousIntegrationBuild=true -p:Version=${{ steps.version.outputs.package_version }} -p:PackageVersion=${{ steps.version.outputs.package_version }} --output "${{ env.ARTIFACT_DIR }}/nuget"
+          if ($LASTEXITCODE -ne 0) { throw 'NuGet pack failed.' }
+          $packages = @(Get-ChildItem -LiteralPath "${{ env.ARTIFACT_DIR }}/nuget" -Filter *.nupkg -File)
+          if ($packages.Count -ne 1) { throw 'Expected exactly one NuGet package.' }
+          ./tools/Test-NuGetDocumentation.ps1 -PackagePath $packages[0].FullName
 
       - name: Publish package
         shell: pwsh
@@ -153,3 +163,32 @@ jobs:
           files: |
             ${{ env.ARTIFACT_DIR }}/release/*.dll
             ${{ env.ARTIFACT_DIR }}/release/*.xml
+
+  nuget-documentation:
+    if: github.event_name == 'workflow_dispatch' && inputs.documentation_patch == true
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.401
+      - name: Build and verify documentation-only package
+        shell: pwsh
+        run: ./tools/New-NuGetDocumentationPatch.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nuget-documentation-patch
+          path: artifacts/nuget-documentation/*
+          if-no-files-found: error
+
+      - name: Publish verified NuGet documentation patch
+        shell: pwsh
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          $packages = @(Get-ChildItem artifacts/nuget-documentation -Filter *.nupkg -File)
+          if ($packages.Count -ne 1) { throw 'Expected exactly one verified package.' }
+          dotnet nuget push $packages[0].FullName --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json
+          if ($LASTEXITCODE -ne 0) { throw 'NuGet documentation patch publication failed.' }
