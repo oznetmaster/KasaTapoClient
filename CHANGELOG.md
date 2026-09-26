@@ -6,6 +6,11 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 This changelog records shipped features, fixes, compatibility and runtime dependency changes. See [development and validation history](DEVELOPMENT-HISTORY.md) for tests, CI, build tooling and work not yet released.
 
+## [2.0.1] - TPAP recovery after device restart
+
+- Recover an established TPAP session when a restarted device rejects a secure request or keepalive with HTTP 401. The existing bounded retry now establishes a fresh session instead of repeatedly reusing the rejected one.
+- Login rejection and other HTTP errors keep their existing behavior. Public APIs and dependencies are unchanged.
+
 ## [2.0.0] - Typed wire contracts and public API cleanup
 
 - **Breaking:** Removed public `RawJson` state properties and `KasaDevice.ExecuteCommandAsync` / `ExecuteSmartCommandAsync`. Use typed state, control methods and child modules; see [migration guidance](MIGRATION-2.0.md).

@@ -10,7 +10,7 @@
 		<TargetFrameworks>net472;net10.0</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<PackageId>KasaTapoClient</PackageId>
-		<Version>2.0.0</Version>
+		<Version>2.0.1</Version>
 		<Authors>Neil Colvin</Authors>
 		<Company>Neil Colvin</Company>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -21,7 +21,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes>Major release: typed System.Text.Json wire contracts replace manual JSON traversal; public RawJson properties and raw command methods are removed. Removes Newtonsoft.Json and log4net dependencies. Existing typed discovery, state and control operations remain available. See MIGRATION-2.0.md for upgrade guidance.</PackageReleaseNotes>
+		<PackageReleaseNotes>Recover automatically when a device rejects an established TPAP session after restarting. Secure-request and keepalive HTTP 401 responses now trigger bounded session renewal. Login rejection and other HTTP errors retain their existing behavior. Public APIs and dependencies are unchanged.</PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
 		<Nullable>enable</Nullable>
