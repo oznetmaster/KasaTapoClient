@@ -306,7 +306,7 @@ dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework ne
 
 ## Testing and Benchmark Scaffolding
 
-`KasaClient.Tests` targets `net472` and `net10.0`, using NUnit 4.6.1, NUnit3TestAdapter 6.3.0, Microsoft.NET.Test.Sdk 18.10.1, NUnit.Analyzers 4.15.0 and coverlet.collector 10.0.1. See the [test README](https://github.com/oznetmaster/KasaTapoClient/blob/main/KasaClient.Tests/README.md) for dependencies, offline and live commands, and configuration handling.
+`KasaClient.Tests` targets `net472` and `net10.0`, using NUnit 5.0.0, NUnit3TestAdapter 6.3.0, Microsoft.NET.Test.Sdk 18.10.1, NUnit.Analyzers 4.15.0 and coverlet.collector 10.0.1. See the [test README](https://github.com/oznetmaster/KasaTapoClient/blob/main/KasaClient.Tests/README.md) for dependencies, offline and live commands, and configuration handling.
 
 Run the deterministic tests on both targets with:
 
@@ -395,3 +395,6 @@ The [Unit tests workflow](https://github.com/oznetmaster/KasaTapoClient/blob/mai
 The publish/release workflows support an explicit manual override when the processor or local self-hosted GitHub Actions runner is unavailable. Select `skip_hardware_checks` and provide a single-line `hardware_skip_reason`. Use the workflow's normal source and version controls. The override applies only to that invocation and is recorded with the exact source revision in its warning and job summary; it does not create a passing hardware-test result.
 
 GitHub-hosted validation remains mandatory for the checked-out source, and the normal build, tests and packaging steps still run. Wait for the configured hosted workflows to pass, or run them on the same source revision first. None of these hosted checks needs the local runner or processor. Automatic tag/release-triggered runs retain the normal hardware checks; use a manual invocation of the updated release workflow when an offline override is needed.
+## NUnit 5 test tooling
+
+All maintained NUnit suites use the official NUnit 5.0.0 framework. Async exception assertions are awaited, and discarded-task warnings fail test builds. Processor test packages use CrestronHomeNUnit SDK 2.2.0; workflow and Android suites, where provided, use the released 2.2.0 adapter. Tests remain available in Visual Studio, VS Code and the command line. Live and manual tests still require their documented devices and permissions. This is a test-tooling update; the published product version and runtime behavior are unchanged.

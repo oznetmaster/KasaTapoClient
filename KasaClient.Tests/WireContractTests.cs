@@ -145,7 +145,7 @@ public sealed class WireContractTests
 		Assert.That (typeof (KasaDevice).Assembly.GetReferencedAssemblies ().Select (assembly => assembly.Name), Does.Not.Contain ("Newtonsoft.Json").And.Not.Contain ("log4net"));
 		}
 	[Test]
-	public void OptionalModuleRefresh_PropagatesCancellation ()
+	public async System.Threading.Tasks.Task OptionalModuleRefresh_PropagatesCancellation ()
 		{
 		int calls = 0;
 		using var cancelled = new System.Threading.CancellationTokenSource ();
@@ -156,7 +156,7 @@ public sealed class WireContractTests
 			throw new OperationCanceledException (cancelled.Token);
 			});
 		using var device = new KasaDevice (new DeviceConfiguration ("127.0.0.1", connectionOptions: new DeviceConnectionOptions (connectionParameters: new DeviceConnectionParameters (DeviceFamilyKind.SmartTapoPlug, DeviceEncryptionKind.Aes))), transport);
-		Assert.ThrowsAsync<OperationCanceledException> (async () => await device.UpdateAsync (cancelled.Token).ConfigureAwait (false));
+		await Assert.ThrowsAsync<OperationCanceledException> (async () => await device.UpdateAsync (cancelled.Token).ConfigureAwait (false));
 		Assert.That (calls, Is.EqualTo (2));
 		Assert.That (device.SystemInfo, Is.Null, "A cancelled refresh must not publish a partial snapshot.");
 		}

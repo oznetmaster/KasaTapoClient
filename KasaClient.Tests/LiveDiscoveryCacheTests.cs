@@ -58,7 +58,7 @@ public sealed class LiveDiscoveryCacheTests
 			? Task.FromException<IReadOnlyList<DiscoveryResult>> (new TimeoutException ())
 			: Results (Device ("one", scans == 1 ? "192.0.2.1" : "192.0.2.3")));
 		await cache.ResolveAsync (Target ("one"), TimeSpan.Zero);
-		Assert.ThrowsAsync<TimeoutException> (async () => await cache.ResolveAsync (Target ("one"), TimeSpan.Zero, refresh: true));
+		await Assert.ThrowsAsync<TimeoutException> (async () => await cache.ResolveAsync (Target ("one"), TimeSpan.Zero, refresh: true));
 		Assert.That ((await cache.ResolveAsync (Target ("one"), TimeSpan.Zero)).Device.Host, Is.EqualTo ("192.0.2.3"));
 		Assert.That (scans, Is.EqualTo (3));
 		}

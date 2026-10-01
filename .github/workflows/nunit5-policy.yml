@@ -1,0 +1,9 @@
+name: NUnit 5 configuration policy
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  audit:
+    uses: oznetmaster/CrestronHomeNUnit/.github/workflows/nunit5-policy.yml@a88c405165fbc7100368be5bfd8b7955adc7bfe8

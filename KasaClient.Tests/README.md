@@ -4,7 +4,7 @@ The NUnit suite targets `net472` and `net10.0`. Use the .NET 10 SDK; executing `
 
 | Package | Version | Purpose |
 | --- | --- | --- |
-| NUnit | 4.6.1 | Test framework and assertions |
+| NUnit | 5.0.0 | Test framework and assertions |
 | NUnit3TestAdapter | 6.3.0 | Visual Studio Test Explorer and `dotnet test` discovery/execution |
 | Microsoft.NET.Test.Sdk | 18.10.1 | Desktop test host |
 | NUnit.Analyzers | 4.15.0 | NUnit compile-time checks |
