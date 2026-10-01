@@ -398,3 +398,9 @@ GitHub-hosted validation remains mandatory for the checked-out source, and the n
 ## NUnit 5 test tooling
 
 All maintained NUnit suites use the official NUnit 5.0.0 framework. Async exception assertions are awaited, and discarded-task warnings fail test builds. Processor test packages use CrestronHomeNUnit SDK 2.2.0; workflow and Android suites, where provided, use the released 2.2.0 adapter. Tests remain available in Visual Studio, VS Code and the command line. Live and manual tests still require their documented devices and permissions. This is a test-tooling update; the published product version and runtime behavior are unchanged.
+
+## NUnit 5 test package
+
+Test package **1.1.0** uses **NUnit 5.0.0**. It is independent of the product version. [Download package](https://github.com/oznetmaster/KasaTapoClient/releases/download/v2.0.1/KasaClient.ProcessorTests-1.1.0.pkg), [documentation](https://github.com/oznetmaster/KasaTapoClient/releases/download/v2.0.1/KasaClient.ProcessorTests-1.1.0-Documentation.zip), [validation](https://github.com/oznetmaster/KasaTapoClient/releases/download/v2.0.1/KasaClient.ProcessorTests-1.1.0.validation.json), [exact source revisions](https://github.com/oznetmaster/KasaTapoClient/releases/download/v2.0.1/KasaClient.ProcessorTests-1.1.0.sources.json), and [SHA-256 checksums](https://github.com/oznetmaster/KasaTapoClient/releases/download/v2.0.1/KasaClient.ProcessorTests-1.1.0-SHA256SUMS.txt) are attached to the existing product release. No product binary or NuGet version changed for this test update.
+
+Validated on 1 October 2026: 132 offline cases passed in each of two runs from the packaged assembly on Windows. All suite identities were checked against source discovery. Live/manual tests and execution on the processor were not repeated during this migration; earlier hardware results do not certify this new package.
