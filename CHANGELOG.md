@@ -6,25 +6,33 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 This changelog records shipped features, fixes, compatibility and runtime dependency changes. See [development and validation history](DEVELOPMENT-HISTORY.md) for tests, CI, build tooling and work not yet released.
 
-## [2.0.1] - TPAP recovery after device restart
+## 2.0.1 — 2026-09-26
+
+**TPAP recovery after device restart**
 
 - Recover an established TPAP session when a restarted device rejects a secure request or keepalive with HTTP 401. The existing bounded retry now establishes a fresh session instead of repeatedly reusing the rejected one.
 - Login rejection and other HTTP errors keep their existing behavior. Public APIs and dependencies are unchanged.
 
-## [2.0.0] - Typed wire contracts and public API cleanup
+## 2.0.0 — 2026-09-22
+
+**Typed wire contracts and public API cleanup**
 
 - **Breaking:** Removed public `RawJson` state properties and `KasaDevice.ExecuteCommandAsync` / `ExecuteSmartCommandAsync`. Use typed state, control methods and child modules; see [migration guidance](MIGRATION-2.0.md).
 - **Serialization:** Replaced Newtonsoft.Json and manual JSON DOM processing with attribute-controlled System.Text.Json request/response models across discovery, authentication, commands and state handling.
 - **Dependencies:** Removed Newtonsoft.Json and unused log4net; uses stable System.Text.Json 10.0.12 on both supported frameworks.
 - **Console:** Removed arbitrary JSON command entry points and reads child event state through typed modules.
 
-## [1.8.1] - Dependency version alignment
+## 1.8.1 — 2026-09-09
+
+**Dependency version alignment**
 
 - **Build**: Fixed a NuGet restore failure (NU1605: package downgrade) caused by Microsoft.Bcl.Memory being pinned to 10.0.12 in KasaTapoClient.csproj while KasaClient.Console, KasaClient.Tests, and the BenchmarkSuite* projects pinned 10.0.11. All projects now reference Microsoft.Bcl.Memory 10.0.12.
 
 - **Compatibility**: No public API or behavior changes.
 
-## [1.8.0] - Report-interval enablement for hub child sensors
+## 1.8.0 — 2026-09-09
+
+**Report-interval enablement for hub child sensors**
 
 - **KasaDevice**: Added `SetChildReportIntervalAsync (childDeviceId, reportIntervalSeconds)` for Tapo hub child sensors (T100, T110, T310, T315, S200B, and similar). `ChildReportModeModule.ReportInterval` was previously read-only. The setter issues `set_device_info` with a `report_interval` parameter through the existing `control_child` envelope - the same generic method already used for `device_on` - and then refreshes parent state so the module and feature reflect the new value.
 
@@ -38,7 +46,9 @@ This changelog records shipped features, fixes, compatibility and runtime depend
 
 - **Compatibility**: Additive only. No existing public API signatures changed.
 
-## [1.7.0] - Double-click enablement for button child devices
+## 1.7.0 — 2026-09-08
+
+**Double-click enablement for button child devices**
 
 - **KasaDevice**: Added `SetChildDoubleClickEnabledAsync (childDeviceId, enabled)` for Tapo button child devices (S200B and similar). Double-click was previously read-only - `ChildDoubleClickModule.Enabled` and the `double_click_enabled` feature reported the current value, and `get_double_click_info` was already issued during child refresh, but the library exposed no way to change it. The setter issues `set_double_click_info` through the existing `control_child` envelope and then refreshes parent state, so the module and feature reflect the new value immediately after the call returns.
 
@@ -52,7 +62,9 @@ This changelog records shipped features, fixes, compatibility and runtime depend
 
 - **Compatibility**: Additive only. No existing public API signatures changed.
 
-## [1.6.1] - TPAP hub authentication and discovery preference fixes
+## 1.6.1 — 2026-09-08
+
+**TPAP hub authentication and discovery preference fixes**
 
 - **TpapTransport**: Tapo hubs (H100 and similar) could not complete TPAP authentication, failing the PAKE exchange with `-2203` even when the TP-Link account credentials were correct. `SmartTapoHub` was listed in the transport's camera-authentication family set, so hubs took the camera/doorbell path that blanks the username and hashes a local device passcode, rather than authenticating with the account credentials used by plugs, bulbs, and light strips. `SmartTapoHub` has been removed from that set, so hubs now authenticate exactly like other non-camera TPAP devices. Cameras and doorbells are unaffected and retain the passcode path. This bug predates this release and was not a regression: a pristine 1.6.0 build reproduces the identical failure.
 
@@ -64,25 +76,35 @@ This changelog records shipped features, fixes, compatibility and runtime depend
 
 - **Console**: Saved connection profiles are now schema-versioned. Profiles written by earlier versions could pin a device to an obsolete transport/encryption kind indefinitely, bypassing discovery entirely; this is what masked the hub issue above by forcing KLAP onto a TPAP-preferred device. Profiles from older schema versions now have their cached connection parameters discarded on load while credentials are preserved, so the transport is re-resolved from current discovery data.
 
-## [1.6.0] - Value equality for device/child state models
+## 1.6.0 — 2026-09-07
+
+**Value equality for device/child state models**
 
 - **Models**: All public device/child state model types in `Models.cs` (e.g. `LightState`, `FanState`, `AlarmState`, `ChildBatterySensorState`, `ChildContactSensorState`, `ChildMotionSensorState`, `ChildLockState`, `ChildThermostatState`, and similar snapshot types for sensors, buttons, and other state) are now declared as `sealed record` instead of `sealed class`. This gives them compiler-generated value-based `Equals`/`GetHashCode`/`==`/`!=` plus a descriptive `ToString()`, instead of default reference identity. Most of these state snapshots (for example `ChildDevice.TriggerLogState`, `FrostProtectionState`, and the various `KasaDevice`/`Modules.cs` state properties) are recomputed on every access rather than cached, so two consecutive reads previously always compared as unequal via `==`/`Equals`/`ReferenceEquals` even when the underlying device state had not changed. Consumers can now meaningfully compare snapshots (e.g. to detect whether a sensor or button's reported state changed between polls) without manually comparing every property.
 
 - **Compatibility**: No properties, constructors, or public API signatures changed. All affected types remain `sealed` (no subclassing was possible before or after), and none of them are serialized directly by the library (only their originating raw JSON/DTOs are). This is a source- and binary-compatible change for all reasonable existing usage; no functional/behavioral changes to device communication were made in this release.
 
-## [1.5.0] - Full child device list retrieval for paginated hubs/strips
+## 1.5.0 — 2026-09-07
+
+**Full child device list retrieval for paginated hubs/strips**
 
 - **KasaDevice**: `get_child_device_list` responses from hubs/strips with more children than fit in a single page previously only returned the first page's children; the `sum`/`start_index` pagination fields the device reports were parsed but never acted on. `UpdateAsync` now detects when `sum` exceeds the number of children already received and issues additional `get_child_device_list` requests with increasing `start_index` until every child has been retrieved (stopping early if a page comes back empty), merging all pages into a single, complete child list before child-state enrichment runs. Devices with child lists that fit in one page are unaffected.
 
-## [1.4.0] - Shared-device cache now honors updateState on cache hits
+## 1.4.0 — 2026-09-06
+
+**Shared-device cache now honors updateState on cache hits**
 
 - **Discover**: `GetOrConnectSharedAsync (..., updateState: true)` previously only loaded device state the very first time a shared instance was created for a given device identity (host/port); every subsequent cache hit silently returned that same instance with whatever state it captured at first connect, regardless of the caller's own `updateState` value. This was most visible on hubs/strips (e.g. KP303) whose `Children` list was empty at first connect and then stayed permanently empty for every later caller, even after child devices were paired. `GetOrConnectSharedAsync` now calls `KasaDevice.UpdateAsync` on a cache-hit shared instance before returning it when `updateState: true` is requested, so `LightState`, `IsOn`, `Children`, and other state are refreshed for every caller that asks for it, not just the first. Callers that pass `updateState: false` are unaffected and continue to receive the cached instance without an extra refresh.
 
-## [1.3.1] - Correct NuGet release notes
+## 1.3.1 — 2026-08-22
+
+**Correct NuGet release notes**
 
 - **Packaging**: The `PackageReleaseNotes` shipped with the 1.3.0 NuGet package was stale (it described the 1.2.8 span-buffer work instead of 1.3.0's brightness-control changes). This release corrects `PackageReleaseNotes` to describe the 1.3.0 brightness-control changes; there are no code, behavior, or API changes beyond the 1.3.0 release.
 
-## [1.3.0] - Brightness control keyed to advertised device capability
+## 1.3.0 — 2026-08-21
+
+**Brightness control keyed to advertised device capability**
 
 - **KasaDevice**: Brightness control is now gated on the capability a device actually advertises rather than on `DeviceType`. `SupportsLightControl` has been split into `SupportsBrightnessControl`, `SupportsColorControl`, and `SupportsColorTemperatureControl`; brightness is permitted whenever the device is a bulb or light strip, or when a SMART-protocol device negotiates the `brightness` component. `SetBrightnessAsync` consequently works on SMART dimmers and dimmable switches that were previously refused, including KS225, KS240, P135, S500D, S505D, S515D, and HS220 hardware revision 3.26. Color temperature and HSV remain restricted to bulbs and light strips, and legacy (IOT) dimmer on/off continues to use `system.set_relay_state` rather than the smartbulb lighting service.
 
@@ -94,31 +116,43 @@ Legacy IOT dimmer brightness (the `smartlife.iot.dimmer` command surface and `de
 
 Contributed by [@xeys](https://github.com/xeys) in [#3](https://github.com/oznetmaster/KasaTapoClient/pull/3).
 
-## [1.2.8] - KLAP/TPAP transport micro-optimizations
+## 1.2.8 — 2026-08-15
+
+**KLAP/TPAP transport micro-optimizations**
 
 - **Internal**: `TpapTransport` now uses `BinaryPrimitives.WriteInt32BigEndian`/`ReadInt32BigEndian` instead of `BitConverter` combined with `Array.Reverse`, and uses span-based hex parsing in `HexToBytes` on net10.0 (with the `Substring`-based implementation retained for the net472 fallback).
 
 - **Internal**: `KlapTransport`'s session-cookie header parsing (`CaptureSessionCookieFromHeader`) now compares cookie names as spans before allocating a string, only calling `Substring` once a matching cookie (`TP_SESSIONID`/`SESSIONID`) is found, avoiding a discarded string allocation per non-matching cookie in the header. The `"SESSIONID"` literal was also promoted to a `SESSIONID_COOKIE_NAME` constant. No public API or behavior changes.
 
-## [1.2.7] - Span-based buffer handling in transport/crypto layer
+## 1.2.7 — 2026-08-15
+
+**Span-based buffer handling in transport/crypto layer**
 
 - **Internal**: The KLAP, TPAP, HTTP AES, discovery, and legacy protocol transports now compose and slice byte buffers using `Span<byte>`/`ReadOnlySpan<byte>` instead of `Buffer.BlockCopy` and intermediate array allocations, reducing allocations on the request/response hot path. `Microsoft.Bcl.Memory` (already referenced) provides the required span APIs on net472. No public API or behavior changes.
 
-## [1.2.6] - SMART energy monitoring v2 compatibility
+## 1.2.6 — 2026-08-03
+
+**SMART energy monitoring v2 compatibility**
 
 - **KasaDevice**: Extended `UpdateEnergyUsageAsync` for SMART energy-monitoring v2 devices, including models that implement only a subset of the advertised methods. It now prefers `get_emeter_data`, falls back to `get_energy_usage`, and requests `get_current_power` only when required. Per-method `unknown method` and `invalid parameters` responses are treated as optional-method failures; other device errors continue to surface. This extends the SMART protocol fix released in 1.2.5 while preserving legacy and SMART v1 behavior.
 
 - **Light features**: Added the reported 2500–9000 K color-temperature range for KL400L5 light strips with newer variable-color-temperature firmware.
 
-## [1.2.5] - SMART energy monitoring support
+## 1.2.5 — 2026-08-03
+
+**SMART energy monitoring support**
 
 - **KasaDevice**: Fixed `UpdateEnergyUsageAsync` for SMART/KLAP/TPAP devices that expose energy monitoring, such as the KP125M. The method previously always issued legacy `emeter` commands, which SMART devices do not support; it now uses the SMART `energy_monitoring` requests and parses their results through the existing SMART energy parser. The SMART path also negotiates component support when energy usage is requested before an initial `UpdateAsync`. Legacy-device energy monitoring behavior is unchanged.
 
-## [1.2.4] - Configuration-mismatch-safe connect coalescing and shared reuse
+## 1.2.4 — 2026-07-21
+
+**Configuration-mismatch-safe connect coalescing and shared reuse**
 
 - **Discover**: \`ConnectAsync\`'s in-flight connect de-duplication and \`GetOrConnectSharedAsync\`'s shared-instance reuse are both keyed only by device identity (host/port), which could previously coalesce or reuse a connection for a caller that supplied a materially different \`DeviceConfiguration\` (different credentials, timeout, or connection options) for the same host/port. Both now perform an internal, field-by-field configuration equivalence check before joining an in-flight connect or returning a cached shared instance; a mismatch falls through to an independent connect rather than silently sharing a connection built from a different caller's settings. \`DeviceConfiguration\` itself gains no public equality contract or API changes - the check is internal to \`Discover\`'s coalescing/reuse decision.
 
-## [1.2.3] - Made shared device reuse explicit and opt-in
+## 1.2.3 — 2026-07-21
+
+**Made shared device reuse explicit and opt-in**
 
 - **Discover**: `Discover.ConnectAsync` no longer caches connected devices across separate (non-concurrent) calls - this reverts the ambient, always-on persistent cache introduced in 1.2.2. `ConnectAsync` once again always returns an instance exclusively owned by the calling code (aside from in-flight concurrent-connect coalescing, which is unchanged), matching the standard connect/use/dispose ownership pattern and avoiding the risk of one caller's `Dispose()` unexpectedly affecting another, unrelated caller sharing the same instance.
 
@@ -126,7 +160,9 @@ Contributed by [@xeys](https://github.com/xeys) in [#3](https://github.com/oznet
 
 - **KasaDevice**: `IsDisposed` (added in 1.2.2) is retained and now backs `GetOrConnectSharedAsync`'s disposal detection.
 
-## [1.2.2] - Persistent shared device cache per host/port
+## 1.2.2 — 2026-07-21
+
+**Persistent shared device cache per host/port**
 
 - **Discover**: `Discover.ConnectAsync` now maintains a persistent, shared `KasaDevice` cache keyed by device identity (host/port). Previously, only concurrent in-flight connect calls for the same device were coalesced; the bookkeeping was discarded as soon as each connect completed, so separate (non-concurrent) calls each opened their own connection. Now, once a device has been connected, later `ConnectAsync` calls for that same identity - from any caller or module, at any time - reuse the same live instance instead of dialing a new connection.
 
@@ -134,19 +170,25 @@ Contributed by [@xeys](https://github.com/xeys) in [#3](https://github.com/oznet
 
 - **KasaDevice**: Added a public `IsDisposed` property. There is no reference counting on the shared cache entry - any caller may `Dispose()` the shared instance, and the next `ConnectAsync` call for that identity simply detects `IsDisposed` and transparently creates and caches a fresh replacement, mirroring the existing stale/idle-connection recovery model already used by `LegacyTransport`. No breaking API changes.
 
-## [1.2.1] - Concurrent connect de-duplication
+## 1.2.1 — 2026-07-21
+
+**Concurrent connect de-duplication**
 
 - **Discover**: `Discover.ConnectAsync` now de-duplicates concurrent connect calls for the same device identity (host/port). If a connect is already in flight, other concurrent callers no longer start a second, independent connection; instead they await the in-flight connect and receive the same `KasaDevice` instance once it completes. This prevents opening multiple simultaneous TCP connections to devices that only tolerate one or a small number of concurrent connections when callers race to (re)connect, and avoids silently orphaning/leaking the socket of whichever instance loses the race.
 
 - Only the connect itself is de-duplicated; the returned `KasaDevice` is still owned and disposed entirely by the caller, exactly as before. No public API changes.
 
-## [1.2.0] - Migrated to Newtonsoft.Json
+## 1.2.0 — 2026-07-18
+
+**Migrated to Newtonsoft.Json**
 
 - **JSON stack**: Replaced `System.Text.Json` with `Newtonsoft.Json` (13.0.3) across the core library, `KasaClient.Console`, tests, and benchmarks. This avoids the extra binding-redirect dependencies (`System.Buffers`, `System.Memory`, `System.Runtime.CompilerServices.Unsafe`, `System.Text.Encodings.Web`) that `System.Text.Json` requires on .NET Framework 4.7.2 and improves reliability on embedded Mono hosts.
 
 - No public API or behavior changes. Validated with a full solution build across `net472`/`net10.0` and live device integration tests against real plugs, bulbs, light strips, and hubs.
 
-## [1.1.11] - Discovery result fix, legacy-only discovery, transport reliability fixes
+## 1.1.11 — 2026-07-18
+
+**Discovery result fix, legacy-only discovery, transport reliability fixes**
 
 - **Discovery**: Fixed a bug where a device that replied to both the legacy (port 9999) and smart/Tapo (port 20002) discovery broadcasts would only have one of the two results kept; results are now kept per (host, transport kind), so both are retained. Added `Discover.DiscoverLegacyAsync` / `DiscoveryClient.DiscoverLegacyAsync` for broadcasting only the legacy discovery request.
 
@@ -154,11 +196,17 @@ Contributed by [@xeys](https://github.com/xeys) in [#3](https://github.com/oznet
 
 - **TpapTransport**: Disabled system proxy auto-detection (`WebRequest.Proxy`), which could stall the first connect to a device for up to the full startup timeout on embedded Mono/Linux hosts due to WPAD probing. Raised the per-host `ServicePoint` connection limit to prevent connection-pool starvation after repeated connect-timeout/abort cycles.
 
-## [1.1.10] - TPAP SecureRandom startup performance fix
+## 1.1.10 — 2026-07-13
+
+**TPAP SecureRandom startup performance fix**
+
+[Compare changes][1.1.10]
 
 Fixed a startup performance issue in the TPAP transport where the first secure handshake per process could take several minutes on slower/embedded CPU hosts. The internal `SecureRandom` instance previously relied on BouncyCastle's default timing-based entropy seeding, which is CPU-speed dependent; it now seeds from the platform's cryptographically secure RNG (`CryptoApiRandomGenerator`) instead, eliminating the delay with no change to cryptographic security. Internal-only change, no public API impact. Added unit tests verifying fast, non-degenerate `SecureRandom` seeding.
 
-## [1.1.4 – 1.1.9] - Cancellation/timeout patch series (KLAP, TPAP, Legacy)
+## 1.1.4–1.1.9 — 2026-07-13
+
+**Cancellation/timeout patch series (KLAP, TPAP, Legacy)**
 
 A rapid same-day series of fixes completing consistent, prompt cancellation/timeout propagation across all three transports (KLAP, TPAP, Legacy), following the gaps identified starting in v1.1.3. See individual [GitHub releases](https://github.com/oznetmaster/KasaTapoClient/releases) for full per-version diagnostic detail.
 
@@ -174,7 +222,11 @@ A rapid same-day series of fixes completing consistent, prompt cancellation/time
 
 - **v1.1.4** — On .NET Framework 4.7.2, `KlapTransport`'s `HttpWebRequest` fallback's `Abort()` didn't always promptly unblock an in-flight request. The net472 fallback now races the request directly against the `CancellationToken` via `Task.WhenAny`.
 
-## [1.1.3] - Missing HTTP timeouts and cancellation support
+## 1.1.3 — 2026-07-12
+
+**Missing HTTP timeouts and cancellation support**
+
+[Compare changes][1.1.3]
 
 Fixed missing request timeouts and cancellation support in two HTTP code paths:
 
@@ -184,11 +236,19 @@ Fixed missing request timeouts and cancellation support in two HTTP code paths:
 
 See README.md "Request Timeouts and Cancellation" section for details.
 
-## [1.1.2] - LegacyTransport stale connection reuse fix
+## 1.1.2 — 2026-07-12
+
+**LegacyTransport stale connection reuse fix**
+
+[Compare changes][1.1.2]
 
 Fixed the persistent-connection reuse added for `LegacyTransport` in v1.1.1, which could fail once a remote device silently closed its end of the socket after inactivity. `LegacyTransport` now tracks time since last successful activity and proactively closes/reopens the connection if it has been idle for more than 10 seconds, rather than risking a failed write/read against a half-open socket.
 
-## [1.1.1] - Connection pooling and reuse
+## 1.1.1 — 2026-07-11
+
+**Connection pooling and reuse**
+
+[Compare changes][1.1.1]
 
 - `HttpTokenTransport`, `KlapTransport`, and `TpapTransport` now each share a single static `HttpClient` per transport type, enabling connection pooling/reuse.
 
@@ -198,7 +258,11 @@ Fixed the persistent-connection reuse added for `LegacyTransport` in v1.1.1, whi
 
 - Benchmark suites now also target `net472` in addition to `net10.0`.
 
-## [1.1.0] - Smart light transition support
+## 1.1.0 — 2026-06-28
+
+**Smart light transition support**
+
+[Compare changes][1.1.0]
 
 - Added smart light transition support aligned with python-kasa semantics for v1 and v2+ devices.
 
@@ -208,11 +272,19 @@ Fixed the persistent-connection reuse added for `LegacyTransport` in v1.1.1, whi
 
 - Updated package metadata and docs.
 
-## [1.0.3] - Concurrency safety
+## 1.0.3 — 2026-06-24
+
+**Concurrency safety**
+
+[Compare changes][1.0.3]
 
 Existing public APIs remain source-compatible. Concurrent operations against the same physical device may now complete sequentially by design.
 
-## [1.0.2] - Discovery resilience
+## 1.0.2 — 2026-06-20
+
+**Discovery resilience**
+
+[Compare changes][1.0.2]
 
 Improved UDP discovery resilience for Mono runtime environments by continuing discovery after transient socket receive errors, increasing receive buffer sizing, and keeping diagnostics debug-only. Also stopped tracking the generated `KasaTapoClient.xml` documentation file so release XML assets come only from workflow build outputs.
 
