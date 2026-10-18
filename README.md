@@ -11,6 +11,15 @@ TP-Link, Kasa, and Tapo are trademarks of their respective owners. This project 
 
 See [CHANGELOG.md](https://github.com/oznetmaster/KasaTapoClient/blob/main/CHANGELOG.md) for a summary of all release history, or the [GitHub releases](https://github.com/oznetmaster/KasaTapoClient/releases) page for full per-version details and build assets.
 
+## Changes in 2.1.0
+
+- Typed physical light-strip length configuration through `LightStripSegment` on supported devices.
+- Optional fading between light settings through `LightTransition.ChangeTransitionEnabled` and `SetChangeTransitionEnabledAsync`, preserving existing turn-on/off settings.
+- KLAP v2 authentication for updated legacy devices advertising login version 2 or later.
+- Corresponding console commands and status output, with existing public APIs, command abbreviations, target frameworks and runtime dependencies preserved.
+
+See the [2.1.0 release notes](https://github.com/oznetmaster/KasaTapoClient/blob/main/RELEASE_NOTES.md) for capability requirements and validation scope, and the [lighting examples below](#optional-lighting-configuration) for usage.
+
 ## Supported Platforms
 
 | Target Framework | Supported |
@@ -297,6 +306,24 @@ For smart transition v2+ behavior, this matches `python-kasa` semantics:
 - the effective public overall enabled state is `True` when either directional transition is enabled, and `False` when both are disabled
 
 The console status output also surfaces the negotiated smart component versions as a `Smart Modules:` line, for example `on_off_gradually=v4, preset=v3`. When light transition state is available, the console prints the overall enabled state, the per-direction enabled states, the effective on/off durations, and the stored on/off durations so `v2+` directional behavior is visible without inspecting raw JSON.
+
+### Optional lighting configuration
+
+Optional lighting configuration is available through typed APIs:
+
+```csharp
+if (device.LightStripSegment.IsAvailable)
+    await device.LightStripSegment.SetSegmentCountAsync (47);
+
+if (device.LightTransition.SupportsChangeTransition)
+    await device.LightTransition.SetChangeTransitionEnabledAsync (true);
+```
+
+`LightStripSegment.SegmentCount` reports the configured physical cut length in 10 cm segments per run; the setter accepts 0–50. This is separate from the existing lighting-effect segment arrays and does not address colors for individual segments. The getter is queried only when the device advertises the `segment` component. `LightTransition.ChangeTransitionEnabled` is nullable: `null` means unavailable or not reported, while `false` means the setting is supported but disabled. Changing it does not alter the stored on/off durations. Both setters refresh device state, honor cancellation, and reject unavailable capabilities with `NotSupportedException` before sending a write.
+
+The equivalent console commands are `host <address> light segments <0-50>` and `host <address> light transition-change <on|off>`. These new action names require exact spelling so all existing action abbreviations retain their meaning. Status output includes these settings when available.
+
+Legacy IOT devices using KLAP select v2 authentication when discovery advertises login version 2 or later. Legacy devices with no login version, or version 1, retain v1 authentication; SMART-family KLAP behavior remains unchanged. These additions preserve existing public APIs. Thermostat `hold_on`, `shutdown` and other TRV flags continue to be available through the existing typed child `States` lists.
 
 To exercise per-device serialization from the console, run concurrent updates against one connected device:
 

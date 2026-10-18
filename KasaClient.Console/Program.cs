@@ -684,6 +684,11 @@ static void PrintDeviceModuleState (KasaDevice device)
 		Console.WriteLine ($"  Transition off: {FormatNullableInt (lightTransitionState.TransitionOffSeconds, "s")}");
 		Console.WriteLine ($"  Stored transition on: {FormatNullableInt (lightTransitionState.TransitionOnDurationSeconds, "s")}");
 		Console.WriteLine ($"  Stored transition off: {FormatNullableInt (lightTransitionState.TransitionOffDurationSeconds, "s")}");
+		Console.WriteLine ($"  Fade between settings: {FormatNullableBoolean (lightTransitionState.IsChangeTransitionEnabled)}");
+		}
+	if (device.LightStripSegment.SegmentCount is int segmentCount)
+		{
+		Console.WriteLine ($"Strip length: {segmentCount} segments of 10 cm per run");
 		}
 	}
 
@@ -1313,6 +1318,8 @@ static async Task<int> RunLightAsync (string host, IReadOnlyList<string> argumen
 				"hsv" => commandIndex + 5,
 				"color" => DetermineColorOptionStartIndex (arguments, commandIndex),
 				"effect" => DetermineEffectOptionStartIndex (arguments, commandIndex),
+				"segments" => commandIndex + 3,
+				"transitionchange" => commandIndex + 3,
 				"transition" => commandIndex + 1 + (transitionActions.Count * 2),
 				"transitionon" => commandIndex + 1 + (transitionActions.Count * 2),
 				"transitionoff" => commandIndex + 1 + (transitionActions.Count * 2),
@@ -1328,6 +1335,12 @@ static async Task<int> RunLightAsync (string host, IReadOnlyList<string> argumen
 	switch (action)
 		{
 		case "state":
+			break;
+		case "segments":
+			await device.LightStripSegment.SetSegmentCountAsync (int.Parse (GetRequiredValue (arguments, commandIndex + 2, "segments"), CultureInfo.InvariantCulture)).ConfigureAwait (false);
+			break;
+		case "transitionchange":
+			await device.LightTransition.SetChangeTransitionEnabledAsync (ParseBooleanStateValue (GetRequiredValue (arguments, commandIndex + 2, "enabled"))).ConfigureAwait (false);
 			break;
 		case "on":
 			if (transitionMilliseconds is int onTransitionMilliseconds)
@@ -1431,7 +1444,7 @@ static async Task<int> RunLightAsync (string host, IReadOnlyList<string> argumen
 				}
 			break;
 		default:
-			return Fail ($"Unknown light action '{action}'. Use 'state', 'on', 'off', 'brightness', 'transition', 'transition-on', 'transition-off', 'temp', 'hsv', 'color', or 'effect'.");
+			return Fail ($"Unknown light action '{action}'. Use 'state', 'on', 'off', 'brightness', 'transition', 'transition-on', 'transition-off', 'transition-change', 'segments', 'temp', 'hsv', 'color', or 'effect'.");
 		}
 
 	Console.WriteLine ($"Host: {device.Host}");
@@ -2344,6 +2357,9 @@ static string ResolveLightAction (string value)
 			"tr-off" => "transitionoff",
 			"transition-on" => "transitionon",
 			"transition-off" => "transitionoff",
+			// Exact new commands preserve all existing abbreviated command resolution.
+			"segments" => "segments",
+			"transition-change" or "transitionchange" => "transitionchange",
 			_ => ResolveKeyword (value, ConsoleCommandLexicon.LightActions),
 		};
 	}
@@ -2610,6 +2626,8 @@ static void PrintLightUsage ()
 	{
 	Console.WriteLine ("ho[st] <address> l[ight] [s[tate]|on [--t[ransition] <ms>]|of[f] [--t[ransition] <ms>]|b[rightness] <0-100> [--t[ransition] <ms>]|tr|transition <on|off>|tr-on|transition-on <seconds>|tr-off|transition-off <seconds>|t[emp] <kelvin>|h[sv] <hue> <saturation> <value>|c[olor] <name>|c[olor] <hue> <saturation> <value>|e[ffect] [name|off|list]] [options]");
 	Console.WriteLine ("  --t[ransition] <ms>  Optional transition duration in milliseconds for supported legacy light on/off/brightness commands.");
+	Console.WriteLine ("  segments <0-50>  Configure physical strip length in 10 cm segments per run, when supported.");
+	Console.WriteLine ("  transition-change <on|off>  Enable or disable fading between settings while the light is on, when supported.");
 	Console.WriteLine ("Named colors: red, orange, yellow, green, cyan, blue, purple, violet, magenta, pink, white, warmwhite, softwhite, daylight");
 	Console.WriteLine ("Effects: use a device-specific effect name to enable one, 'effect off' to disable the current effect, or 'effect list' to show reported effects.");
 	PrintCommonOptions ();

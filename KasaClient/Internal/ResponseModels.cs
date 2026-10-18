@@ -41,6 +41,7 @@ internal sealed class SmartMethodResponseConverter : JsonConverter<SmartMethodRe
 			result = header.Method switch
 				{
 				"get_preset_rules" => JsonSerializer.Deserialize<ResponseEnvelope<SmartPresetRulesDto>> (ref reader, options)?.Result,
+				"get_device_segment" => JsonSerializer.Deserialize<ResponseEnvelope<SmartSegmentInfoDto>> (ref reader, options)?.Result,
 				"get_on_off_gradually_info" => JsonSerializer.Deserialize<ResponseEnvelope<SmartOnOffGraduallyInfoDto>> (ref reader, options)?.Result,
 				"get_dynamic_light_effect_rules" => JsonSerializer.Deserialize<ResponseEnvelope<SmartDynamicLightEffectRulesDto>> (ref reader, options)?.Result,
 				"get_energy_usage" => JsonSerializer.Deserialize<ResponseEnvelope<SmartEnergyUsageDto>> (ref reader, options)?.Result,

@@ -521,7 +521,9 @@ internal sealed class KlapTransport : IDisposableDeviceTransport
 			|| connectionParameters?.DeviceFamily == DeviceFamilyKind.IotSmartBulb
 			|| connectionParameters?.DeviceFamily == DeviceFamilyKind.IotIpCamera)
 			{
-			return false;
+			// Updated legacy firmware advertises KLAP v2 through its login version.
+			// Keep v1 for legacy discovery results that omit the version or report v1.
+			return connectionParameters?.LoginVersion is >= 2;
 			}
 
 		return true;

@@ -67,6 +67,7 @@ internal static class KasaCommands
 	public const string SMART_GET_CHILD_LOCK_INFO_METHOD = "getChildLockInfo";
 	public const string SMART_SET_CHILD_LOCK_INFO_METHOD = "setChildLockInfo";
 	public const string SMART_GET_PRESET_RULES_METHOD = "get_preset_rules";
+	public const string SMART_GET_DEVICE_SEGMENT_METHOD = "get_device_segment";
 	public const string SMART_GET_ON_OFF_GRADUALLY_INFO_METHOD = "get_on_off_gradually_info";
 	public const string SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD = "set_on_off_gradually_info";
 	public const string SMART_GET_DYNAMIC_LIGHT_EFFECT_RULES_METHOD = "get_dynamic_light_effect_rules";
@@ -135,6 +136,10 @@ internal static class KasaCommands
 			});
 		}
 
+	public static string CreateSetSmartLightStripSegmentCommand (int segmentCount) =>
+		CreateSmartRequest ("set_device_segment", new SegmentParametersDto { Segment = segmentCount });
+	public static string CreateSetSmartLightChangeTransitionCommand (bool enabled) =>
+		CreateSmartRequest (SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD, new TransitionParametersDto { ChangeState = new TransitionParametersDto { Enable = enabled } });
 	public static string CreateSetSmartLightTransitionEnabledCommand (bool enabled) => CreateSmartRequest (SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD, new TransitionParametersDto { Enable = enabled });
 	public static string CreateSetSmartLightTransitionEnabledCommand (bool enabled, int onDurationSeconds, int offDurationSeconds) =>
 		CreateSmartRequest (SMART_SET_ON_OFF_GRADUALLY_INFO_METHOD, new TransitionParametersDto { OnState = new TransitionParametersDto { Enable = enabled, Duration = onDurationSeconds }, OffState = new TransitionParametersDto { Enable = enabled, Duration = offDurationSeconds } });

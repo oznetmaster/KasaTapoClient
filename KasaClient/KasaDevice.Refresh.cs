@@ -148,6 +148,7 @@ public sealed partial class KasaDevice
 		LightPresetState = parsed.LightPresetState;
 		LightTransitionState = parsed.LightTransitionState;
 		LightStripEffectState = parsed.LightStripEffectState;
+		LightStripSegmentState = parsed.LightStripSegmentState;
 		AlarmState = parsed.AlarmState;
 		OverheatProtectionState = parsed.OverheatProtectionState;
 		PowerProtectionState = parsed.PowerProtectionState;

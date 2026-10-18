@@ -48,3 +48,12 @@ For smart transition v2+ behavior, this matches `python-kasa` semantics:
 - the effective public overall enabled state is `True` when either directional transition is enabled, and `False` when both are disabled
 
 Console status output also prints a `Smart Modules:` summary with the negotiated smart component versions, such as `on_off_gradually=v4, preset=v3`. When light transition state is reported, the console shows the overall enabled state, the per-direction enabled states, the effective transition durations, and the stored transition durations.
+
+## Optional strip length and fading (2.1.0)
+
+```powershell
+dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework net10.0 -- host device-host-or-ip light segments 47
+dotnet run --project KasaClient.Console/KasaClient.Console.csproj --framework net10.0 -- host device-host-or-ip light transition-change on
+```
+
+`segments` sets the physical strip length to 0–50 segments of 10 cm per run on devices advertising segment support. `transition-change` accepts `on` or `off` and controls fading between settings while a light is on; it leaves existing turn-on and turn-off durations intact. These action names require exact spelling so existing abbreviations keep their meaning. Status output includes reported strip length and fade-on-change state.

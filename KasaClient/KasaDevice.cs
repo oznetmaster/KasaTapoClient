@@ -43,6 +43,7 @@ public sealed partial class KasaDevice : IDisposable
 		new SmartRefreshContribution ("alarm", KasaCommands.SMART_GET_ALARM_CONFIG_METHOD),
 		new SmartRefreshContribution ("preset", KasaCommands.SMART_GET_PRESET_RULES_METHOD, minimumSupportedVersion: 1),
 		new SmartRefreshContribution ("on_off_gradually", KasaCommands.SMART_GET_ON_OFF_GRADUALLY_INFO_METHOD),
+		new SmartRefreshContribution ("segment", KasaCommands.SMART_GET_DEVICE_SEGMENT_METHOD),
 		new SmartRefreshContribution ("light_effect", KasaCommands.SMART_GET_DYNAMIC_LIGHT_EFFECT_RULES_METHOD, static () => new PageParametersDto { StartIndex = 0 }),
 		];
 	private static readonly Dictionary<string, SmartChildRefreshDefinition> SMART_CHILD_REFRESH_DEFINITIONS =
@@ -78,6 +79,7 @@ public sealed partial class KasaDevice : IDisposable
 		LightPreset = new LightPresetModule (this);
 		LightTransition = new LightTransitionModule (this);
 		LightStripEffect = new LightStripEffectModule (this);
+		LightStripSegment = new LightStripSegmentModule (this);
 		Alarm = new AlarmModule (this);
 		OverheatProtection = new OverheatProtectionModule (this);
 		PowerProtection = new PowerProtectionModule (this);

@@ -21,7 +21,7 @@ dotnet test KasaClient.Tests/KasaClient.Tests.csproj -c Debug -f net472
 dotnet test KasaClient.Tests/KasaClient.Tests.csproj -c Debug -f net10.0
 ```
 
-The default `.runsettings` excludes the `Live` category. The 123 deterministic cases cover protocol requests/responses, child modules, discovery, concurrency, retries, numeric firmware variants, typed response dispatch, legacy response merging and public API boundaries. Some tests inspect generated wire JSON independently to detect serialization regressions; the library itself uses typed contracts without a JSON DOM.
+The default `.runsettings` excludes the `Live` category. The 169 deterministic cases cover protocol requests/responses, child modules, discovery, concurrency, retries, numeric firmware variants, typed response dispatch, legacy response merging, KLAP login-version selection, optional lighting capability gates and public API boundaries. Some tests inspect generated wire JSON independently to detect serialization regressions; the library itself uses typed contracts without a JSON DOM.
 
 ## Live tests
 

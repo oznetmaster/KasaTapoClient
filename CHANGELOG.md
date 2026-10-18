@@ -4,7 +4,17 @@ All notable changes to this project are documented here. Each entry summarizes t
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/).
 
-This changelog records shipped features, fixes, compatibility and runtime dependency changes. See [development and validation history](DEVELOPMENT-HISTORY.md) for tests, CI, build tooling and work not yet released.
+Dated entries record shipped features, fixes, compatibility and runtime dependency changes; an Unreleased entry describes the next prepared version. See [development and validation history](DEVELOPMENT-HISTORY.md) for tests, CI, build tooling and work not yet released.
+
+## 2.1.0 — 2026-10-18
+
+**Optional lighting configuration and legacy KLAP v2 compatibility**
+
+- Add typed physical strip-length state and control through `LightStripSegment`, using 0–50 segments of 10 cm per run on devices advertising the `segment` component. Existing lighting-effect segment arrays remain separate.
+- Add nullable fade-on-change state and control through `LightTransition.ChangeTransitionEnabled` and `SetChangeTransitionEnabledAsync`. Existing turn-on/off transition settings are preserved. Both new setters check capabilities, honor cancellation, report device rejection and refresh typed state.
+- Add console status and exact `light segments <0-50>` / `light transition-change <on|off>` commands while retaining existing abbreviations.
+- Honor login version 2 or later for legacy IOT.KLAP authentication. Absent/older legacy versions retain v1; SMART-family KLAP behavior is unchanged.
+- Preserve existing public API signatures, .NET 10/.NET Framework 4.7.2 targets, runtime dependencies and thermostat state flags. See the [release notes](RELEASE_NOTES.md) for compatibility and validation details.
 
 ## 2.0.1 — 2026-09-26
 

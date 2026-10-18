@@ -756,6 +756,26 @@ public sealed class LightTransitionModule
 	public LightTransitionState? State => _device.LightTransitionState;
 
 	/// <summary>
+	/// Gets whether fading between settings is enabled, or <see langword="null" /> when unsupported or unavailable.
+	/// </summary>
+	public bool? ChangeTransitionEnabled => State?.IsChangeTransitionEnabled;
+
+	/// <summary>
+	/// Gets whether the device has reported support for fading between settings while the light is on.
+	/// </summary>
+	public bool SupportsChangeTransition => ChangeTransitionEnabled is not null;
+
+	/// <summary>
+	/// Enables or disables fading between light settings, then refreshes device state.
+	/// </summary>
+	/// <param name="enabled">Whether changes should fade between settings.</param>
+	/// <param name="cancellationToken">The cancellation token for the operation.</param>
+	/// <returns>A task that completes after device state has been refreshed.</returns>
+	/// <exception cref="NotSupportedException">The device has not reported change-transition support.</exception>
+	public Task SetChangeTransitionEnabledAsync (bool enabled, CancellationToken cancellationToken = default) =>
+		_device.SetLightChangeTransitionEnabledAsync (enabled, cancellationToken);
+
+	/// <summary>
 	/// Gets the transition-on duration in seconds.
 	/// </summary>
 	public int? TransitionOnSeconds => _device.LightTransitionState?.TransitionOnSeconds;

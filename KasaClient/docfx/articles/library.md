@@ -37,3 +37,17 @@ await device.TurnLightOffAsync().ConfigureAwait(false);
 ## Notes
 
 Modern TPAP devices can maintain a warm session through the built-in keepalive support, reducing the reconnect penalty for long idle gaps.
+
+## Optional lighting configuration (2.1.0)
+
+```csharp
+if (device.LightStripSegment.IsAvailable)
+    await device.LightStripSegment.SetSegmentCountAsync (47).ConfigureAwait (false);
+
+if (device.LightTransition.SupportsChangeTransition)
+    await device.LightTransition.SetChangeTransitionEnabledAsync (true).ConfigureAwait (false);
+```
+
+`LightStripSegment.SegmentCount` is the physical cut length in 10 cm segments per run, with setter values from 0 to 50. It is independent of lighting-effect segment arrays. State is queried only for advertised `segment` components. `ChangeTransitionEnabled` reports fading between brightness or color settings while the light is on: `null` means unavailable, while `false` means supported and disabled. Existing on/off transition durations are preserved.
+
+Both setters reject unavailable capabilities, honor cancellation, report device errors and refresh typed state after successful writes. Existing public APIs, target frameworks and runtime dependencies are unchanged.

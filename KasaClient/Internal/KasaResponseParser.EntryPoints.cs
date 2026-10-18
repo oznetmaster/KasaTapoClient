@@ -242,7 +242,8 @@ internal static partial class KasaResponseParser
 			CreateSmartAutoOffState (response),
 			CreateSmartLedState (response),
 			CreateSmartChildLockState (response),
-			response.DeviceInfo.Rssi);
+			response.DeviceInfo.Rssi,
+			CreateSmartLightStripSegmentState (response));
 		}
 
 	internal static ParsedDeviceState ParseDeviceState (ParsedResponse response)

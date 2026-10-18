@@ -68,12 +68,23 @@ internal static partial class KasaResponseParser
 		return presets;
 		}
 
+	private static LightStripSegmentState? CreateSmartLightStripSegmentState (SmartParsedResponse response)
+		{
+		if (!response.ComponentVersions.ContainsKey ("segment"))
+			{
+			return null;
+			}
+
+		SmartSegmentInfoDto? info = DeserializeModuleResult<SmartSegmentInfoDto> (response, KasaCommands.SMART_GET_DEVICE_SEGMENT_METHOD);
+		return info?.Segment is int count ? new LightStripSegmentState (count) : null;
+		}
+
 	private static LightTransitionState? CreateSmartLightTransitionState (SmartParsedResponse response)
 		{
 		SmartOnOffGraduallyInfoDto? graduallyInfo = DeserializeModuleResult<SmartOnOffGraduallyInfoDto> (response, KasaCommands.SMART_GET_ON_OFF_GRADUALLY_INFO_METHOD);
 		SmartOnOffGraduallyStateDto? onGraduallyState = graduallyInfo?.OnState;
 		SmartOnOffGraduallyStateDto? offGraduallyState = graduallyInfo?.OffState;
-		if (onGraduallyState is not null || offGraduallyState is not null)
+		if (onGraduallyState is not null || offGraduallyState is not null || graduallyInfo?.ChangeState is not null)
 			{
 			bool? isEnabled = graduallyInfo?.Enable;
 			if (isEnabled is null)
@@ -97,7 +108,8 @@ internal static partial class KasaResponseParser
 				onGraduallyState?.MaximumDuration,
 				offGraduallyState?.Enable,
 				offGraduallyState?.Duration,
-				offGraduallyState?.MaximumDuration);
+				offGraduallyState?.MaximumDuration,
+				graduallyInfo?.ChangeState?.Enable);
 			}
 
 		if (graduallyInfo?.Enable is bool enabled)

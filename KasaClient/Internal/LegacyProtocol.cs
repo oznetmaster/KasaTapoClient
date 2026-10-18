@@ -478,7 +478,8 @@ internal static partial class KasaResponseParser
 			AutoOffState? autoOffState,
 			LedState? ledState,
 			ChildLockState? childLockState,
-			int? rssi)
+			int? rssi,
+			LightStripSegmentState? lightStripSegmentState = null)
 			{
 			SystemInfo = systemInfo;
 			EnergyUsage = energyUsage;
@@ -501,6 +502,7 @@ internal static partial class KasaResponseParser
 			LedState = ledState;
 			ChildLockState = childLockState;
 			Rssi = rssi;
+			LightStripSegmentState = lightStripSegmentState;
 			}
 
 		public DeviceSystemInfo SystemInfo
@@ -522,6 +524,8 @@ internal static partial class KasaResponseParser
 			{
 			get;
 			}
+
+		public LightStripSegmentState? LightStripSegmentState { get; }
 
 		public LightTransitionState? LightTransitionState
 			{
@@ -1235,6 +1239,12 @@ internal static partial class KasaResponseParser
 		public List<int>? BrightnessLevels { get; set; }
 		}
 
+	internal sealed class SmartSegmentInfoDto
+		{
+		[System.Text.Json.Serialization.JsonPropertyName ("segment")]
+		public int? Segment { get; set; }
+		}
+
 	internal sealed class SmartOnOffGraduallyInfoDto
 		{
 		[System.Text.Json.Serialization.JsonPropertyName ("enable")]
@@ -1245,6 +1255,9 @@ internal static partial class KasaResponseParser
 
 		[System.Text.Json.Serialization.JsonPropertyName ("off_state")]
 		public SmartOnOffGraduallyStateDto? OffState { get; set; }
+
+		[System.Text.Json.Serialization.JsonPropertyName ("change_state")]
+		public SmartOnOffGraduallyStateDto? ChangeState { get; set; }
 		}
 
 	internal sealed class SmartOnOffGraduallyStateDto

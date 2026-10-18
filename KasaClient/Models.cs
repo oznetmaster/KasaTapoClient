@@ -2600,7 +2600,8 @@ public sealed record LightTransitionState
 		int? transitionOnMaximumDurationSeconds,
 		bool? isTransitionOffEnabled,
 		int? transitionOffDurationSeconds,
-		int? transitionOffMaximumDurationSeconds)
+		int? transitionOffMaximumDurationSeconds,
+		bool? isChangeTransitionEnabled = null)
 		{
 		IsEnabled = isEnabled;
 		IsTransitionOnEnabled = isTransitionOnEnabled;
@@ -2609,7 +2610,13 @@ public sealed record LightTransitionState
 		IsTransitionOffEnabled = isTransitionOffEnabled;
 		TransitionOffDurationSeconds = transitionOffDurationSeconds;
 		TransitionOffMaximumDurationSeconds = transitionOffMaximumDurationSeconds;
+		IsChangeTransitionEnabled = isChangeTransitionEnabled;
 		}
+
+	/// <summary>
+	/// Gets whether fading between light settings is enabled, or <see langword="null" /> if not reported.
+	/// </summary>
+	public bool? IsChangeTransitionEnabled { get; }
 
 	/// <summary>
 	/// Gets a value indicating whether smooth transition behavior is enabled.

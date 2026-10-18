@@ -69,6 +69,16 @@ public sealed partial class KasaDevice
 			features.Add (new DeviceFeature ("device_time", "Device time", FeatureKind.Info, TimeState.LocalTime?.ToString ("O", CultureInfo.InvariantCulture)));
 			}
 
+		if (LightStripSegmentState is not null)
+			{
+			features.Add (new DeviceFeature ("strip_segments", "Strip segments", FeatureKind.Number,
+				LightStripSegmentState.SegmentCount.ToString (CultureInfo.InvariantCulture), minimumValue: 0, maximumValue: 50));
+			}
+		if (LightTransitionState?.IsChangeTransitionEnabled is bool changeEnabled)
+			{
+			features.Add (new DeviceFeature ("smooth_transition_change", "Fade between light settings", FeatureKind.Switch, changeEnabled));
+			}
+
 		features.Add (new DeviceFeature ("reboot", "Reboot", FeatureKind.Action, value: null));
 
 		if (MatterSetup is not null)

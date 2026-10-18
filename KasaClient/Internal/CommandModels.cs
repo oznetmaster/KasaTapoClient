@@ -97,6 +97,12 @@ internal sealed class ChildRequestParametersDto
 	public WireRequest<object>? RequestData { get; set; }
 	}
 
+internal sealed class SegmentParametersDto
+	{
+	[JsonPropertyName ("segment")]
+	public int Segment { get; set; }
+	}
+
 internal sealed class TransitionParametersDto
 	{
 	[JsonPropertyName ("enable")]
@@ -111,6 +117,9 @@ internal sealed class TransitionParametersDto
 	[JsonPropertyName ("off_state")]
 	[JsonIgnore (Condition = JsonIgnoreCondition.WhenWritingNull)]
 	public TransitionParametersDto? OffState { get; set; }
+	[JsonPropertyName ("change_state")]
+	[JsonIgnore (Condition = JsonIgnoreCondition.WhenWritingNull)]
+	public TransitionParametersDto? ChangeState { get; set; }
 	}
 
 internal sealed class LegacyRequestParametersDto

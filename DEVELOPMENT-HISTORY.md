@@ -11,6 +11,15 @@ See the [product changelog](CHANGELOG.md) for shipped changes. This document pre
 
 <!-- development-history -->
 
+## 2.1.0 preparation and validation - 2026-10-18
+
+- Prepare version 2.1.0, README, changelog, matching NuGet/GitHub release notes and documentation articles. Include changelog and release notes in the package. Isolated Release builds pass XML-documentation checks and all 169 tests on each target; the package documentation check and documentation-site build pass. Both target DLL/XML payloads, package documents, unchanged dependency metadata and public API compatibility against released 2.0.1 are verified. This records local preparation, not a public publication.
+
+- Honor login version 2 or later for legacy IOT.KLAP authentication, preserving v1 for absent/older legacy versions and v2 for SMART families. Fixed independent challenge vectors cover correct signatures, invalid signatures, legacy families and unchanged defaults on both supported runtimes.
+- Add typed, capability-gated physical strip-length configuration (`segment`, `get_device_segment`, `set_device_segment`) and nullable `change_state.enable` support for fading between settings while a light is on. Preserve existing on/off transition commands and durations, lighting-effect segment arrays, public signatures and thermostat state flags. New setters use the existing serialized operation path and refresh snapshots after writes.
+- Add console status and exact command names for these settings without changing existing abbreviations. No raw JSON public API, dependency change or published package is introduced.
+- All 169 offline cases pass on each of net472 and net10.0. Microsoft's API compatibility checker reports no breaking changes against the preceding maintained source for either target, including parameter-name and attribute checks; the public NuGet 2.0.1 package is also checked on both targets. Live identity reads confirmed six Demo devices. The Demo L900 and L530 passed fade-on-change write/read/restoration on both targets. No discovered device advertised the physical segment component, and no Demo device used legacy IOT.KLAP v2, so those cases retain offline coverage rather than a hardware claim.
+
 ## TPAP session recovery fix - 2026-09-26 (unreleased)
 
 - Treat HTTP 401 from an already authenticated TPAP secure request or keepalive as an expired session, so the existing bounded recovery establishes a fresh session. Keep login rejection, other HTTP failures, timeouts and caller cancellation outside that recovery rule. Public APIs are unchanged.
