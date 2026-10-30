@@ -11,6 +11,7 @@ permissions:
 concurrency:
   group: validate-release-source
   cancel-in-progress: false
+  queue: max
 jobs:
   validate:
     if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository)
@@ -21,8 +22,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Verify release-check policy
-        shell: pwsh
-        run: '& ./.github/scripts/Test-RequiredReleaseChecks.ps1'
+        uses: oznetmaster/CrestronHomeNUnit/.github/actions/release-validation@2ae8197c6685099c2133e7bb962d1f3568aae9c3
+        with:
+          policy-tests-only: 'true'
       - name: Validate the current default-branch source
         shell: pwsh
         env:
@@ -31,9 +33,21 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $branch = gh api "repos/$env:GITHUB_REPOSITORY" --jq .default_branch
           if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($branch)) { throw 'Cannot resolve the default branch.' }
+          $revision = gh api "repos/$env:GITHUB_REPOSITORY/commits/$branch" --jq .sha
+          if ($LASTEXITCODE -ne 0 -or $revision -notmatch '^[0-9a-f]{40}$') { throw 'Cannot resolve the default-branch revision.' }
           # A release-created commit does not trigger normal push workflows with GITHUB_TOKEN.
           # Explicit workflow dispatch does, without granting access to other repositories.
           foreach ($workflow in @('unit-tests.yml')) {
+            $json = gh api "repos/$env:GITHUB_REPOSITORY/actions/workflows/$workflow/runs?head_sha=$revision&per_page=100"
+            if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect existing default-branch validation.' }
+            $existing = @((ConvertFrom-Json ($json | Out-String)).workflow_runs | Where-Object {
+              $_.head_sha -ceq $revision -and $_.head_repository.full_name -ceq $env:GITHUB_REPOSITORY -and
+              $_.event -in @('push','pull_request','workflow_dispatch')
+            } | Sort-Object id -Descending)[0]
+            if ($existing -and ($existing.status -ne 'completed' -or $existing.conclusion -eq 'success')) {
+              Write-Output "Existing validation for $revision is $($existing.status)/$($existing.conclusion); no duplicate run is needed."
+              continue
+            }
             gh workflow run $workflow -R $env:GITHUB_REPOSITORY --ref $branch
             if ($LASTEXITCODE -ne 0) { throw 'Post-release validation dispatch failed.' }
           }
