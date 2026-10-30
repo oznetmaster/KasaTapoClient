@@ -6,7 +6,7 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 Dated entries record shipped features, fixes, compatibility and runtime dependency changes; an Unreleased entry describes the next prepared version. See [development and validation history](DEVELOPMENT-HISTORY.md) for tests, CI, build tooling and work not yet released.
 
-## 2.1.0 — 2026-10-18
+## [2.1.0](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v2.1.0) — 2026-10-18
 
 **Optional lighting configuration and legacy KLAP v2 compatibility**
 
@@ -16,14 +16,14 @@ Dated entries record shipped features, fixes, compatibility and runtime dependen
 - Honor login version 2 or later for legacy IOT.KLAP authentication. Absent/older legacy versions retain v1; SMART-family KLAP behavior is unchanged.
 - Preserve existing public API signatures, .NET 10/.NET Framework 4.7.2 targets, runtime dependencies and thermostat state flags. See the [release notes](RELEASE_NOTES.md) for compatibility and validation details.
 
-## 2.0.1 — 2026-09-26
+## [2.0.1](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v2.0.1) — 2026-09-26
 
 **TPAP recovery after device restart**
 
 - Recover an established TPAP session when a restarted device rejects a secure request or keepalive with HTTP 401. The existing bounded retry now establishes a fresh session instead of repeatedly reusing the rejected one.
 - Login rejection and other HTTP errors keep their existing behavior. Public APIs and dependencies are unchanged.
 
-## 2.0.0 — 2026-09-22
+## [2.0.0](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v2.0.0) — 2026-09-22
 
 **Typed wire contracts and public API cleanup**
 
@@ -32,7 +32,7 @@ Dated entries record shipped features, fixes, compatibility and runtime dependen
 - **Dependencies:** Removed Newtonsoft.Json and unused log4net; uses stable System.Text.Json 10.0.12 on both supported frameworks.
 - **Console:** Removed arbitrary JSON command entry points and reads child event state through typed modules.
 
-## 1.8.1 — 2026-09-09
+## [1.8.1](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.8.1) — 2026-09-09
 
 **Dependency version alignment**
 
@@ -40,7 +40,7 @@ Dated entries record shipped features, fixes, compatibility and runtime dependen
 
 - **Compatibility**: No public API or behavior changes.
 
-## 1.8.0 — 2026-09-09
+## [1.8.0](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.8.0) — 2026-09-09
 
 **Report-interval enablement for hub child sensors**
 
@@ -56,7 +56,7 @@ Dated entries record shipped features, fixes, compatibility and runtime dependen
 
 - **Compatibility**: Additive only. No existing public API signatures changed.
 
-## 1.7.0 — 2026-09-08
+## [1.7.0](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.7.0) — 2026-09-08
 
 **Double-click enablement for button child devices**
 
@@ -72,7 +72,7 @@ Dated entries record shipped features, fixes, compatibility and runtime dependen
 
 - **Compatibility**: Additive only. No existing public API signatures changed.
 
-## 1.6.1 — 2026-09-08
+## [1.6.1](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.6.1) — 2026-09-08
 
 **TPAP hub authentication and discovery preference fixes**
 
@@ -86,7 +86,7 @@ Dated entries record shipped features, fixes, compatibility and runtime dependen
 
 - **Console**: Saved connection profiles are now schema-versioned. Profiles written by earlier versions could pin a device to an obsolete transport/encryption kind indefinitely, bypassing discovery entirely; this is what masked the hub issue above by forcing KLAP onto a TPAP-preferred device. Profiles from older schema versions now have their cached connection parameters discarded on load while credentials are preserved, so the transport is re-resolved from current discovery data.
 
-## 1.6.0 — 2026-09-07
+## [1.6.0](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.6.0) — 2026-09-07
 
 **Value equality for device/child state models**
 
@@ -94,19 +94,19 @@ Dated entries record shipped features, fixes, compatibility and runtime dependen
 
 - **Compatibility**: No properties, constructors, or public API signatures changed. All affected types remain `sealed` (no subclassing was possible before or after), and none of them are serialized directly by the library (only their originating raw JSON/DTOs are). This is a source- and binary-compatible change for all reasonable existing usage; no functional/behavioral changes to device communication were made in this release.
 
-## 1.5.0 — 2026-09-07
+## [1.5.0](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.5.0) — 2026-09-07
 
 **Full child device list retrieval for paginated hubs/strips**
 
 - **KasaDevice**: `get_child_device_list` responses from hubs/strips with more children than fit in a single page previously only returned the first page's children; the `sum`/`start_index` pagination fields the device reports were parsed but never acted on. `UpdateAsync` now detects when `sum` exceeds the number of children already received and issues additional `get_child_device_list` requests with increasing `start_index` until every child has been retrieved (stopping early if a page comes back empty), merging all pages into a single, complete child list before child-state enrichment runs. Devices with child lists that fit in one page are unaffected.
 
-## 1.4.0 — 2026-09-06
+## [1.4.0](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.4.0) — 2026-09-06
 
 **Shared-device cache now honors updateState on cache hits**
 
 - **Discover**: `GetOrConnectSharedAsync (..., updateState: true)` previously only loaded device state the very first time a shared instance was created for a given device identity (host/port); every subsequent cache hit silently returned that same instance with whatever state it captured at first connect, regardless of the caller's own `updateState` value. This was most visible on hubs/strips (e.g. KP303) whose `Children` list was empty at first connect and then stayed permanently empty for every later caller, even after child devices were paired. `GetOrConnectSharedAsync` now calls `KasaDevice.UpdateAsync` on a cache-hit shared instance before returning it when `updateState: true` is requested, so `LightState`, `IsOn`, `Children`, and other state are refreshed for every caller that asks for it, not just the first. Callers that pass `updateState: false` are unaffected and continue to receive the cached instance without an extra refresh.
 
-## 1.3.1 — 2026-08-22
+## [1.3.1](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.3.1) — 2026-08-22
 
 **Correct NuGet release notes**
 
@@ -126,7 +126,7 @@ Legacy IOT dimmer brightness (the `smartlife.iot.dimmer` command surface and `de
 
 Contributed by [@xeys](https://github.com/xeys) in [#3](https://github.com/oznetmaster/KasaTapoClient/pull/3).
 
-## 1.2.8 — 2026-08-15
+## [1.2.8](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.2.8) — 2026-08-15
 
 **KLAP/TPAP transport micro-optimizations**
 
@@ -134,13 +134,13 @@ Contributed by [@xeys](https://github.com/xeys) in [#3](https://github.com/oznet
 
 - **Internal**: `KlapTransport`'s session-cookie header parsing (`CaptureSessionCookieFromHeader`) now compares cookie names as spans before allocating a string, only calling `Substring` once a matching cookie (`TP_SESSIONID`/`SESSIONID`) is found, avoiding a discarded string allocation per non-matching cookie in the header. The `"SESSIONID"` literal was also promoted to a `SESSIONID_COOKIE_NAME` constant. No public API or behavior changes.
 
-## 1.2.7 — 2026-08-15
+## [1.2.7](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.2.7) — 2026-08-15
 
 **Span-based buffer handling in transport/crypto layer**
 
 - **Internal**: The KLAP, TPAP, HTTP AES, discovery, and legacy protocol transports now compose and slice byte buffers using `Span<byte>`/`ReadOnlySpan<byte>` instead of `Buffer.BlockCopy` and intermediate array allocations, reducing allocations on the request/response hot path. `Microsoft.Bcl.Memory` (already referenced) provides the required span APIs on net472. No public API or behavior changes.
 
-## 1.2.6 — 2026-08-03
+## [1.2.6](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.2.6) — 2026-08-03
 
 **SMART energy monitoring v2 compatibility**
 
@@ -148,19 +148,19 @@ Contributed by [@xeys](https://github.com/xeys) in [#3](https://github.com/oznet
 
 - **Light features**: Added the reported 2500–9000 K color-temperature range for KL400L5 light strips with newer variable-color-temperature firmware.
 
-## 1.2.5 — 2026-08-03
+## [1.2.5](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.2.5) — 2026-08-03
 
 **SMART energy monitoring support**
 
 - **KasaDevice**: Fixed `UpdateEnergyUsageAsync` for SMART/KLAP/TPAP devices that expose energy monitoring, such as the KP125M. The method previously always issued legacy `emeter` commands, which SMART devices do not support; it now uses the SMART `energy_monitoring` requests and parses their results through the existing SMART energy parser. The SMART path also negotiates component support when energy usage is requested before an initial `UpdateAsync`. Legacy-device energy monitoring behavior is unchanged.
 
-## 1.2.4 — 2026-07-21
+## [1.2.4](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.2.4) — 2026-07-21
 
 **Configuration-mismatch-safe connect coalescing and shared reuse**
 
 - **Discover**: \`ConnectAsync\`'s in-flight connect de-duplication and \`GetOrConnectSharedAsync\`'s shared-instance reuse are both keyed only by device identity (host/port), which could previously coalesce or reuse a connection for a caller that supplied a materially different \`DeviceConfiguration\` (different credentials, timeout, or connection options) for the same host/port. Both now perform an internal, field-by-field configuration equivalence check before joining an in-flight connect or returning a cached shared instance; a mismatch falls through to an independent connect rather than silently sharing a connection built from a different caller's settings. \`DeviceConfiguration\` itself gains no public equality contract or API changes - the check is internal to \`Discover\`'s coalescing/reuse decision.
 
-## 1.2.3 — 2026-07-21
+## [1.2.3](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.2.3) — 2026-07-21
 
 **Made shared device reuse explicit and opt-in**
 
@@ -180,7 +180,7 @@ Contributed by [@xeys](https://github.com/xeys) in [#3](https://github.com/oznet
 
 - **KasaDevice**: Added a public `IsDisposed` property. There is no reference counting on the shared cache entry - any caller may `Dispose()` the shared instance, and the next `ConnectAsync` call for that identity simply detects `IsDisposed` and transparently creates and caches a fresh replacement, mirroring the existing stale/idle-connection recovery model already used by `LegacyTransport`. No breaking API changes.
 
-## 1.2.1 — 2026-07-21
+## [1.2.1](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.2.1) — 2026-07-21
 
 **Concurrent connect de-duplication**
 
@@ -188,7 +188,7 @@ Contributed by [@xeys](https://github.com/xeys) in [#3](https://github.com/oznet
 
 - Only the connect itself is de-duplicated; the returned `KasaDevice` is still owned and disposed entirely by the caller, exactly as before. No public API changes.
 
-## 1.2.0 — 2026-07-18
+## [1.2.0](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.2.0) — 2026-07-18
 
 **Migrated to Newtonsoft.Json**
 
@@ -196,7 +196,7 @@ Contributed by [@xeys](https://github.com/xeys) in [#3](https://github.com/oznet
 
 - No public API or behavior changes. Validated with a full solution build across `net472`/`net10.0` and live device integration tests against real plugs, bulbs, light strips, and hubs.
 
-## 1.1.11 — 2026-07-18
+## [1.1.11](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.1.11) — 2026-07-18
 
 **Discovery result fix, legacy-only discovery, transport reliability fixes**
 
@@ -206,7 +206,7 @@ Contributed by [@xeys](https://github.com/xeys) in [#3](https://github.com/oznet
 
 - **TpapTransport**: Disabled system proxy auto-detection (`WebRequest.Proxy`), which could stall the first connect to a device for up to the full startup timeout on embedded Mono/Linux hosts due to WPAD probing. Raised the per-host `ServicePoint` connection limit to prevent connection-pool starvation after repeated connect-timeout/abort cycles.
 
-## 1.1.10 — 2026-07-13
+## [1.1.10](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.1.10) — 2026-07-13
 
 **TPAP SecureRandom startup performance fix**
 
@@ -232,7 +232,7 @@ A rapid same-day series of fixes completing consistent, prompt cancellation/time
 
 - **v1.1.4** — On .NET Framework 4.7.2, `KlapTransport`'s `HttpWebRequest` fallback's `Abort()` didn't always promptly unblock an in-flight request. The net472 fallback now races the request directly against the `CancellationToken` via `Task.WhenAny`.
 
-## 1.1.3 — 2026-07-12
+## [1.1.3](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.1.3) — 2026-07-12
 
 **Missing HTTP timeouts and cancellation support**
 
@@ -246,7 +246,7 @@ Fixed missing request timeouts and cancellation support in two HTTP code paths:
 
 See README.md "Request Timeouts and Cancellation" section for details.
 
-## 1.1.2 — 2026-07-12
+## [1.1.2](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.1.2) — 2026-07-12
 
 **LegacyTransport stale connection reuse fix**
 
@@ -254,7 +254,7 @@ See README.md "Request Timeouts and Cancellation" section for details.
 
 Fixed the persistent-connection reuse added for `LegacyTransport` in v1.1.1, which could fail once a remote device silently closed its end of the socket after inactivity. `LegacyTransport` now tracks time since last successful activity and proactively closes/reopens the connection if it has been idle for more than 10 seconds, rather than risking a failed write/read against a half-open socket.
 
-## 1.1.1 — 2026-07-11
+## [1.1.1](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.1.1) — 2026-07-11
 
 **Connection pooling and reuse**
 
@@ -268,7 +268,7 @@ Fixed the persistent-connection reuse added for `LegacyTransport` in v1.1.1, whi
 
 - Benchmark suites now also target `net472` in addition to `net10.0`.
 
-## 1.1.0 — 2026-06-28
+## [1.1.0](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.1.0) — 2026-06-28
 
 **Smart light transition support**
 
@@ -282,7 +282,7 @@ Fixed the persistent-connection reuse added for `LegacyTransport` in v1.1.1, whi
 
 - Updated package metadata and docs.
 
-## 1.0.3 — 2026-06-24
+## [1.0.3](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.0.3) — 2026-06-24
 
 **Concurrency safety**
 
@@ -290,7 +290,7 @@ Fixed the persistent-connection reuse added for `LegacyTransport` in v1.1.1, whi
 
 Existing public APIs remain source-compatible. Concurrent operations against the same physical device may now complete sequentially by design.
 
-## 1.0.2 — 2026-06-20
+## [1.0.2](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v1.0.2) — 2026-06-20
 
 **Discovery resilience**
 
