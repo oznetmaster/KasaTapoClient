@@ -31,7 +31,7 @@ jobs:
         with:
           dotnet-version: 10.0.x
       - name: Run unit tests
-        uses: oznetmaster/BuildAutomation@6f20e1937d3bab8ba7e545a3a77b6fe689f63f2e
+        uses: oznetmaster/BuildAutomation@ae6f311e530a18dc705971dcc655fc97de03e368
         with:
           task: unit-tests-test-run-unit-tests
         env:
