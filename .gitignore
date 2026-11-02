@@ -386,3 +386,7 @@ temp-discovery-dump.cs
 # Shared Cake build downloads and invocation receipts
 /artifacts/build-components/
 /artifacts/build-automation/
+
+# Generated documentation output
+/KasaClient/docfx/api/
+/KasaClient/docfx/_site/

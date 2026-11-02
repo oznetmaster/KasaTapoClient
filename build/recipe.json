@@ -24,6 +24,82 @@
       "results": [
         "TestResults/**/*.trx"
       ]
+    },
+    "documentation": {
+      "commands": [
+        {
+          "executable": "dotnet",
+          "arguments": [
+            "tool",
+            "restore"
+          ]
+        },
+        {
+          "executable": "dotnet",
+          "arguments": [
+            "restore",
+            "KasaClient.slnx"
+          ]
+        },
+        {
+          "executable": "dotnet",
+          "arguments": [
+            "build",
+            "KasaClient.slnx",
+            "--configuration",
+            "Release",
+            "--no-restore"
+          ]
+        },
+        {
+          "executable": "dotnet",
+          "arguments": [
+            "build",
+            "examples/DirectTapoPlug/DirectTapoPlug.csproj",
+            "--configuration",
+            "Release",
+            "--warnaserror"
+          ]
+        },
+        {
+          "executable": "dotnet",
+          "arguments": [
+            "build",
+            "examples/DiscoveryDiagnostics/DiscoveryDiagnostics.csproj",
+            "--configuration",
+            "Release",
+            "--warnaserror"
+          ]
+        },
+        {
+          "executable": "dotnet",
+          "arguments": [
+            "test",
+            "KasaClient.Tests/KasaClient.Tests.csproj",
+            "--configuration",
+            "Release",
+            "--no-build",
+            "--framework",
+            "net10.0",
+            "--filter",
+            "TestCategory!=Live"
+          ]
+        },
+        {
+          "executable": "dotnet",
+          "arguments": [
+            "tool",
+            "run",
+            "docfx",
+            "KasaClient/docfx/docfx.json"
+          ]
+        }
+      ],
+      "documentation": {
+        "config": "KasaClient/docfx/docfx.json",
+        "site": "KasaClient/docfx/_site",
+        "title": "KasaTapoClient"
+      }
     }
   }
 }

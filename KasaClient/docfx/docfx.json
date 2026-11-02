@@ -22,6 +22,15 @@
           "api/**.yml",
           "api/index.md"
         ]
+      },
+      {
+        "files": [
+          "toc.yml",
+          "guides/**.md",
+          "guides/**/toc.yml",
+          "reference/**.md",
+          "reference/**/toc.yml"
+        ]
       }
     ],
     "resource": [

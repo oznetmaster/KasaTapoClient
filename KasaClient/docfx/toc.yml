@@ -1,0 +1,10 @@
+- name: Home
+  href: index.md
+- name: Guides
+  href: guides/
+- name: API Reference
+  href: reference/
+- name: GitHub
+  href: https://github.com/oznetmaster/KasaTapoClient
+- name: NuGet
+  href: https://www.nuget.org/profiles/oznetmaster

@@ -1,0 +1,10 @@
+- name: Guides
+  href: index.md
+- name: Attribution and licensing
+  href: ../articles/attribution.md
+- name: Console usage
+  href: ../articles/console.md
+- name: Getting started
+  href: ../articles/getting-started.md
+- name: Library usage
+  href: ../articles/library.md
