@@ -24,46 +24,55 @@ public sealed class SystemModule
 	/// <summary>
 	/// Gets the latest raw system information payload.
 	/// </summary>
+	/// <value>The latest raw system information payload.</value>
 	public DeviceSystemInfo? Info => _device.SystemInfo;
 
 	/// <summary>
 	/// Gets the latest device alias.
 	/// </summary>
+	/// <value>The latest device alias.</value>
 	public string Alias => _device.Alias;
 
 	/// <summary>
 	/// Gets the latest device model.
 	/// </summary>
+	/// <value>The latest device model.</value>
 	public string? Model => _device.SystemInfo?.Model;
 
 	/// <summary>
 	/// Gets the latest hardware version.
 	/// </summary>
+	/// <value>The latest hardware version.</value>
 	public string? HardwareVersion => _device.SystemInfo?.HardwareVersion;
 
 	/// <summary>
 	/// Gets the latest software version.
 	/// </summary>
+	/// <value>The latest software version.</value>
 	public string? SoftwareVersion => _device.SystemInfo?.SoftwareVersion;
 
 	/// <summary>
 	/// Gets the latest device MAC address.
 	/// </summary>
+	/// <value>The latest device MAC address.</value>
 	public string? MacAddress => _device.SystemInfo?.MacAddress;
 
 	/// <summary>
 	/// Gets the reported device RSSI in dBm.
 	/// </summary>
+	/// <value>The reported device RSSI in dBm.</value>
 	public int? Rssi => _device.Rssi;
 
 	/// <summary>
 	/// Gets the reported device on-time duration.
 	/// </summary>
+	/// <value>The reported device on-time duration.</value>
 	public TimeSpan? OnTime => _device.SystemInfo?.OnTime;
 
 	/// <summary>
 	/// Gets the derived timestamp for when the device was turned on.
 	/// </summary>
+	/// <value>The derived timestamp for when the device was turned on.</value>
 	public DateTimeOffset? OnSince => _device.OnSince;
 
 	/// <summary>
@@ -86,6 +95,7 @@ public sealed class ChildSetupModule
 	/// <summary>
 	/// Gets the categories supported for child pairing, when reported.
 	/// </summary>
+	/// <value>The categories supported for child pairing, when reported.</value>
 	public IReadOnlyList<string> SupportedCategories => _device.GetSupportedChildSetupCategories ();
 
 	/// <summary>
@@ -140,36 +150,43 @@ public sealed class FirmwareModule
 	/// <summary>
 	/// Gets the latest normalized firmware state.
 	/// </summary>
+	/// <value>The latest normalized firmware state.</value>
 	public FirmwareState? State => _device.FirmwareState;
 
 	/// <summary>
 	/// Gets a value indicating whether firmware metadata is currently available.
 	/// </summary>
+	/// <value>A value indicating whether firmware metadata is currently available.</value>
 	public bool IsAvailable => _device.SupportsFirmwareModule;
 
 	/// <summary>
 	/// Gets the current firmware version.
 	/// </summary>
+	/// <value>The current firmware version.</value>
 	public string? CurrentVersion => _device.FirmwareState?.CurrentFirmwareVersion;
 
 	/// <summary>
 	/// Gets the current hardware version.
 	/// </summary>
+	/// <value>The current hardware version.</value>
 	public string? HardwareVersion => _device.FirmwareState?.CurrentHardwareVersion;
 
 	/// <summary>
 	/// Gets whether automatic firmware updates are enabled.
 	/// </summary>
+	/// <value>Whether automatic firmware updates are enabled.</value>
 	public bool? AutoUpdateEnabled => _device.FirmwareState?.AutoUpdateEnabled;
 
 	/// <summary>
 	/// Gets the available firmware version, when known.
 	/// </summary>
+	/// <value>The available firmware version, when known.</value>
 	public string? AvailableVersion => _device.FirmwareState?.AvailableFirmwareVersion;
 
 	/// <summary>
 	/// Gets whether a newer firmware version is available, when known.
 	/// </summary>
+	/// <value>Whether a newer firmware version is available, when known.</value>
 	public bool? UpdateAvailable => _device.FirmwareState?.UpdateAvailable;
 
 	/// <summary>
@@ -192,31 +209,37 @@ public sealed class CloudModule
 	/// <summary>
 	/// Gets the latest normalized cloud state.
 	/// </summary>
+	/// <value>The latest normalized cloud state.</value>
 	public CloudConnectionState? State => _device.CloudState;
 
 	/// <summary>
 	/// Gets a value indicating whether cloud metadata is currently available.
 	/// </summary>
+	/// <value>A value indicating whether cloud metadata is currently available.</value>
 	public bool IsAvailable => _device.SupportsCloudConnection;
 
 	/// <summary>
 	/// Gets whether the device reports an active cloud connection.
 	/// </summary>
+	/// <value>Whether the device reports an active cloud connection.</value>
 	public bool? IsConnected => _device.CloudState?.IsConnected;
 
 	/// <summary>
 	/// Gets whether the device reports being provisioned to a cloud account.
 	/// </summary>
+	/// <value>Whether the device reports being provisioned to a cloud account.</value>
 	public bool? IsProvisioned => _device.CloudState?.IsProvisioned;
 
 	/// <summary>
 	/// Gets the configured cloud server, when reported.
 	/// </summary>
+	/// <value>The configured cloud server, when reported.</value>
 	public string? Server => _device.CloudState?.Server;
 
 	/// <summary>
 	/// Gets the cloud account user name, when reported.
 	/// </summary>
+	/// <value>The cloud account user name, when reported.</value>
 	public string? UserName => _device.CloudState?.UserName;
 
 	/// <summary>
@@ -239,26 +262,31 @@ public sealed class TimeModule
 	/// <summary>
 	/// Gets the latest normalized device time state.
 	/// </summary>
+	/// <value>The latest normalized device time state.</value>
 	public DeviceTimeState? State => _device.TimeState;
 
 	/// <summary>
 	/// Gets a value indicating whether device time metadata is currently available.
 	/// </summary>
+	/// <value>A value indicating whether device time metadata is currently available.</value>
 	public bool IsAvailable => _device.SupportsDeviceTime;
 
 	/// <summary>
 	/// Gets the latest device-local time.
 	/// </summary>
+	/// <value>The latest device-local time.</value>
 	public DateTime? LocalTime => _device.TimeState?.LocalTime;
 
 	/// <summary>
 	/// Gets the reported timezone region.
 	/// </summary>
+	/// <value>The reported timezone region.</value>
 	public string? Region => _device.TimeState?.Region;
 
 	/// <summary>
 	/// Gets the reported UTC offset in minutes.
 	/// </summary>
+	/// <value>The reported UTC offset in minutes.</value>
 	public int? TimeDifferenceMinutes => _device.TimeState?.TimeDifferenceMinutes;
 
 	/// <summary>
@@ -281,21 +309,25 @@ public sealed class MatterModule
 	/// <summary>
 	/// Gets the latest Matter setup information.
 	/// </summary>
+	/// <value>The latest Matter setup information.</value>
 	public MatterSetupInfo? Info => _device.MatterSetup;
 
 	/// <summary>
 	/// Gets a value indicating whether Matter setup information is currently available.
 	/// </summary>
+	/// <value>A value indicating whether Matter setup information is currently available.</value>
 	public bool IsAvailable => _device.SupportsMatterSetup;
 
 	/// <summary>
 	/// Gets the Matter setup code.
 	/// </summary>
+	/// <value>The Matter setup code.</value>
 	public string? SetupCode => _device.MatterSetup?.SetupCode;
 
 	/// <summary>
 	/// Gets the Matter setup payload.
 	/// </summary>
+	/// <value>The Matter setup payload.</value>
 	public string? SetupPayload => _device.MatterSetup?.SetupPayload;
 
 	/// <summary>
@@ -318,21 +350,25 @@ public sealed class HomeKitModule
 	/// <summary>
 	/// Gets the latest HomeKit setup information.
 	/// </summary>
+	/// <value>The latest HomeKit setup information.</value>
 	public HomeKitSetupInfo? Info => _device.HomeKitSetup;
 
 	/// <summary>
 	/// Gets a value indicating whether HomeKit setup information is currently available.
 	/// </summary>
+	/// <value>A value indicating whether HomeKit setup information is currently available.</value>
 	public bool IsAvailable => _device.SupportsHomeKitSetup;
 
 	/// <summary>
 	/// Gets the HomeKit setup code.
 	/// </summary>
+	/// <value>The HomeKit setup code.</value>
 	public string? SetupCode => _device.HomeKitSetup?.SetupCode;
 
 	/// <summary>
 	/// Gets the HomeKit setup payload.
 	/// </summary>
+	/// <value>The HomeKit setup payload.</value>
 	public string? SetupPayload => _device.HomeKitSetup?.SetupPayload;
 
 	/// <summary>
@@ -355,31 +391,37 @@ public sealed class AutoOffModule
 	/// <summary>
 	/// Gets the latest normalized auto-off state.
 	/// </summary>
+	/// <value>The latest normalized auto-off state.</value>
 	public AutoOffState? State => _device.AutoOffState;
 
 	/// <summary>
 	/// Gets a value indicating whether auto-off state is currently available.
 	/// </summary>
+	/// <value>A value indicating whether auto-off state is currently available.</value>
 	public bool IsAvailable => _device.SupportsAutoOff;
 
 	/// <summary>
 	/// Gets whether auto-off is enabled.
 	/// </summary>
+	/// <value>Whether auto-off is enabled.</value>
 	public bool? Enabled => _device.AutoOffState?.Enabled;
 
 	/// <summary>
 	/// Gets the configured auto-off delay in minutes.
 	/// </summary>
+	/// <value>The configured auto-off delay in minutes.</value>
 	public int? DelayMinutes => _device.AutoOffState?.DelayMinutes;
 
 	/// <summary>
 	/// Gets whether an auto-off timer is currently active.
 	/// </summary>
+	/// <value>Whether an auto-off timer is currently active.</value>
 	public bool? TimerActive => _device.AutoOffState?.TimerActive;
 
 	/// <summary>
 	/// Gets the expected automatic shutoff time.
 	/// </summary>
+	/// <value>The expected automatic shutoff time.</value>
 	public DateTime? AutoOffAt => _device.AutoOffState?.AutoOffAt;
 
 	/// <summary>
@@ -402,26 +444,31 @@ public sealed class LedModule
 	/// <summary>
 	/// Gets the latest normalized LED state.
 	/// </summary>
+	/// <value>The latest normalized LED state.</value>
 	public LedState? State => _device.LedState;
 
 	/// <summary>
 	/// Gets a value indicating whether LED state is currently available.
 	/// </summary>
+	/// <value>A value indicating whether LED state is currently available.</value>
 	public bool IsAvailable => _device.SupportsLedControl;
 
 	/// <summary>
 	/// Gets whether the device LED is enabled.
 	/// </summary>
+	/// <value>Whether the device LED is enabled.</value>
 	public bool? Enabled => _device.LedState?.Enabled;
 
 	/// <summary>
 	/// Gets the LED mode string.
 	/// </summary>
+	/// <value>The LED mode string.</value>
 	public string? Mode => _device.LedState?.Mode;
 
 	/// <summary>
 	/// Gets the LED night-mode settings, when reported.
 	/// </summary>
+	/// <value>The LED night-mode settings, when reported.</value>
 	public LedNightModeSettings? NightModeSettings => _device.LedState?.NightModeSettings;
 
 	/// <summary>
@@ -444,16 +491,19 @@ public sealed class ChildLockModule
 	/// <summary>
 	/// Gets the latest normalized child-lock state.
 	/// </summary>
+	/// <value>The latest normalized child-lock state.</value>
 	public ChildLockState? State => _device.ChildLockState;
 
 	/// <summary>
 	/// Gets a value indicating whether child-lock state is currently available.
 	/// </summary>
+	/// <value>A value indicating whether child-lock state is currently available.</value>
 	public bool IsAvailable => _device.SupportsChildLock;
 
 	/// <summary>
 	/// Gets whether child lock is enabled.
 	/// </summary>
+	/// <value>Whether child lock is enabled.</value>
 	public bool? Enabled => _device.ChildLockState?.Enabled;
 
 	/// <summary>
@@ -476,41 +526,49 @@ public sealed class EnergyModule
 	/// <summary>
 	/// Gets the latest energy usage snapshot.
 	/// </summary>
+	/// <value>The latest energy usage snapshot.</value>
 	public EnergyUsage? Usage => _device.EnergyUsage;
 
 	/// <summary>
 	/// Gets a value indicating whether energy telemetry is currently available.
 	/// </summary>
+	/// <value>A value indicating whether energy telemetry is currently available.</value>
 	public bool IsAvailable => _device.EnergyUsage is not null;
 
 	/// <summary>
 	/// Gets the latest current power draw in watts.
 	/// </summary>
+	/// <value>The latest current power draw in watts.</value>
 	public double? CurrentPowerWatts => _device.EnergyUsage?.CurrentPowerWatts;
 
 	/// <summary>
 	/// Gets the latest line voltage in volts.
 	/// </summary>
+	/// <value>The latest line voltage in volts.</value>
 	public double? VoltageVolts => _device.EnergyUsage?.VoltageVolts;
 
 	/// <summary>
 	/// Gets the latest current draw in amps.
 	/// </summary>
+	/// <value>The latest current draw in amps.</value>
 	public double? CurrentAmps => _device.EnergyUsage?.CurrentAmps;
 
 	/// <summary>
 	/// Gets the latest total measured energy in kilowatt-hours.
 	/// </summary>
+	/// <value>The latest total measured energy in kilowatt-hours.</value>
 	public double? TotalKilowattHours => _device.EnergyUsage?.TotalKilowattHours;
 
 	/// <summary>
 	/// Gets today's measured energy in kilowatt-hours.
 	/// </summary>
+	/// <value>Today's measured energy in kilowatt-hours.</value>
 	public double? TodayKilowattHours => _device.EnergyUsage?.TodayKilowattHours;
 
 	/// <summary>
 	/// Gets this month's measured energy in kilowatt-hours.
 	/// </summary>
+	/// <value>This month's measured energy in kilowatt-hours.</value>
 	public double? MonthKilowattHours => _device.EnergyUsage?.MonthKilowattHours;
 
 	/// <summary>
@@ -533,31 +591,37 @@ public sealed class UsageModule
 	/// <summary>
 	/// Gets the latest usage snapshot.
 	/// </summary>
+	/// <value>The latest usage snapshot.</value>
 	public EnergyUsage? State => _device.EnergyUsage;
 
 	/// <summary>
 	/// Gets a value indicating whether usage telemetry is currently available.
 	/// </summary>
+	/// <value>A value indicating whether usage telemetry is currently available.</value>
 	public bool IsAvailable => _device.EnergyUsage is not null;
 
 	/// <summary>
 	/// Gets the latest total measured energy in kilowatt-hours.
 	/// </summary>
+	/// <value>The latest total measured energy in kilowatt-hours.</value>
 	public double? TotalKilowattHours => _device.EnergyUsage?.TotalKilowattHours;
 
 	/// <summary>
 	/// Gets today's measured energy in kilowatt-hours.
 	/// </summary>
+	/// <value>Today's measured energy in kilowatt-hours.</value>
 	public double? TodayKilowattHours => _device.EnergyUsage?.TodayKilowattHours;
 
 	/// <summary>
 	/// Gets this month's measured energy in kilowatt-hours.
 	/// </summary>
+	/// <value>This month's measured energy in kilowatt-hours.</value>
 	public double? MonthKilowattHours => _device.EnergyUsage?.MonthKilowattHours;
 
 	/// <summary>
 	/// Gets the latest current power draw in watts.
 	/// </summary>
+	/// <value>The latest current power draw in watts.</value>
 	public double? CurrentPowerWatts => _device.EnergyUsage?.CurrentPowerWatts;
 
 	/// <summary>
@@ -580,31 +644,37 @@ public sealed class LightModule
 	/// <summary>
 	/// Gets the latest normalized light state.
 	/// </summary>
+	/// <value>The latest normalized light state.</value>
 	public LightState? State => _device.LightState;
 
 	/// <summary>
 	/// Gets the latest normalized HSV color.
 	/// </summary>
+	/// <value>The latest normalized HSV color.</value>
 	public HsvColor? Hsv => _device.LightState?.Hsv;
 
 	/// <summary>
 	/// Gets the latest normalized light effect state.
 	/// </summary>
+	/// <value>The latest normalized light effect state.</value>
 	public LightEffectState? Effect => _device.LightEffect;
 
 	/// <summary>
 	/// Gets the available light effects reported by the device.
 	/// </summary>
+	/// <value>The available light effects reported by the device.</value>
 	public IReadOnlyList<LightEffectDefinition> AvailableEffects => _device.AvailableLightEffects;
 
 	/// <summary>
 	/// Gets a value indicating whether the light reports effect capability.
 	/// </summary>
+	/// <value>A value indicating whether the light reports effect capability.</value>
 	public bool SupportsEffects => _device.SupportsLightEffects;
 
 	/// <summary>
 	/// Gets a value indicating whether light control is available.
 	/// </summary>
+	/// <value>A value indicating whether light control is available.</value>
 	public bool IsAvailable => _device.LightState is not null || _device.DeviceType is DeviceType.Bulb or DeviceType.LightStrip;
 
 	/// <summary>
@@ -718,26 +788,32 @@ public sealed class LightPresetModule
 	/// <summary>
 	/// Gets the latest light preset module state.
 	/// </summary>
+	/// <value>The latest light preset module state.</value>
 	public LightPresetState? State => _device.LightPresetState;
 
 	/// <summary>
 	/// Gets the available presets.
 	/// </summary>
+	/// <value>The available presets.</value>
 	public IReadOnlyList<LightPresetDefinition> Presets => _device.LightPresetState?.Presets ?? Array.Empty<LightPresetDefinition> ();
 
 	/// <summary>
 	/// Gets the active preset name.
 	/// </summary>
+	/// <value>The active preset name.</value>
 	public string? ActivePreset => _device.LightPresetState?.ActivePreset;
 
 	/// <summary>
 	/// Gets a value indicating whether light presets are currently available.
 	/// </summary>
+	/// <value>A value indicating whether light presets are currently available.</value>
 	public bool IsAvailable => _device.LightPresetState is not null;
 
 	/// <summary>
 	/// Refreshes light preset state.
 	/// </summary>
+	/// <param name="cancellationToken">A token used to cancel the operation.</param>
+	/// <returns>A task that completes when the device state has been refreshed.</returns>
 	public Task UpdateAsync (CancellationToken cancellationToken = default) => _device.UpdateAsync (cancellationToken);
 	}
 
@@ -753,16 +829,19 @@ public sealed class LightTransitionModule
 	/// <summary>
 	/// Gets the latest light transition module state.
 	/// </summary>
+	/// <value>The latest light transition module state.</value>
 	public LightTransitionState? State => _device.LightTransitionState;
 
 	/// <summary>
 	/// Gets whether fading between settings is enabled, or <see langword="null" /> when unsupported or unavailable.
 	/// </summary>
+	/// <value>Whether fading between settings is enabled, or <see langword="null" /> when unsupported or unavailable.</value>
 	public bool? ChangeTransitionEnabled => State?.IsChangeTransitionEnabled;
 
 	/// <summary>
 	/// Gets whether the device has reported support for fading between settings while the light is on.
 	/// </summary>
+	/// <value>Whether the device has reported support for fading between settings while the light is on.</value>
 	public bool SupportsChangeTransition => ChangeTransitionEnabled is not null;
 
 	/// <summary>
@@ -778,38 +857,52 @@ public sealed class LightTransitionModule
 	/// <summary>
 	/// Gets the transition-on duration in seconds.
 	/// </summary>
+	/// <value>The transition-on duration in seconds.</value>
 	public int? TransitionOnSeconds => _device.LightTransitionState?.TransitionOnSeconds;
 
 	/// <summary>
 	/// Gets the transition-off duration in seconds.
 	/// </summary>
+	/// <value>The transition-off duration in seconds.</value>
 	public int? TransitionOffSeconds => _device.LightTransitionState?.TransitionOffSeconds;
 
 	/// <summary>
 	/// Gets a value indicating whether transition configuration is currently available.
 	/// </summary>
+	/// <value>A value indicating whether transition configuration is currently available.</value>
 	public bool IsAvailable => _device.LightTransitionState is not null;
 
 	/// <summary>
 	/// Refreshes light transition state.
 	/// </summary>
+	/// <param name="cancellationToken">A token used to cancel the operation.</param>
+	/// <returns>A task that completes when the device state has been refreshed.</returns>
 	public Task UpdateAsync (CancellationToken cancellationToken = default) => _device.UpdateAsync (cancellationToken);
 
 	/// <summary>
 	/// Enables or disables persistent smooth transitions when supported by the device.
 	/// </summary>
+	/// <param name="enabled">Whether persistent light transitions are enabled.</param>
+	/// <param name="cancellationToken">A token used to cancel the operation.</param>
+	/// <returns>A task that completes when the transition setting has been sent.</returns>
 	public Task SetEnabledAsync (bool enabled, CancellationToken cancellationToken = default) =>
 		_device.SetLightTransitionsEnabledAsync (enabled, cancellationToken);
 
 	/// <summary>
 	/// Sets the persistent turn-on transition duration in seconds. Specify 0 to disable the turn-on transition.
 	/// </summary>
+	/// <param name="seconds">The transition duration in seconds; zero disables this transition.</param>
+	/// <param name="cancellationToken">A token used to cancel the operation.</param>
+	/// <returns>A task that completes when the turn-on transition duration has been sent.</returns>
 	public Task SetTurnOnTransitionAsync (int seconds, CancellationToken cancellationToken = default) =>
 		_device.SetLightTurnOnTransitionAsync (seconds, cancellationToken);
 
 	/// <summary>
 	/// Sets the persistent turn-off transition duration in seconds. Specify 0 to disable the turn-off transition.
 	/// </summary>
+	/// <param name="seconds">The transition duration in seconds; zero disables this transition.</param>
+	/// <param name="cancellationToken">A token used to cancel the operation.</param>
+	/// <returns>A task that completes when the turn-off transition duration has been sent.</returns>
 	public Task SetTurnOffTransitionAsync (int seconds, CancellationToken cancellationToken = default) =>
 		_device.SetLightTurnOffTransitionAsync (seconds, cancellationToken);
 	}
@@ -826,26 +919,32 @@ public sealed class LightStripEffectModule
 	/// <summary>
 	/// Gets the latest light strip effect module state.
 	/// </summary>
+	/// <value>The latest light strip effect module state.</value>
 	public LightStripEffectState? State => _device.LightStripEffectState;
 
 	/// <summary>
 	/// Gets the active light strip effect.
 	/// </summary>
+	/// <value>The active light strip effect.</value>
 	public LightEffectState? Effect => _device.LightStripEffectState?.Effect;
 
 	/// <summary>
 	/// Gets the available light strip effects.
 	/// </summary>
+	/// <value>The available light strip effects.</value>
 	public IReadOnlyList<LightEffectDefinition> AvailableEffects => _device.LightStripEffectState?.AvailableEffects ?? Array.Empty<LightEffectDefinition> ();
 
 	/// <summary>
 	/// Gets a value indicating whether light strip effect state is currently available.
 	/// </summary>
+	/// <value>A value indicating whether light strip effect state is currently available.</value>
 	public bool IsAvailable => _device.LightStripEffectState is not null;
 
 	/// <summary>
 	/// Refreshes light strip effect state.
 	/// </summary>
+	/// <param name="cancellationToken">A token used to cancel the operation.</param>
+	/// <returns>A task that completes when the device state has been refreshed.</returns>
 	public Task UpdateAsync (CancellationToken cancellationToken = default) => _device.UpdateAsync (cancellationToken);
 	}
 
@@ -861,41 +960,50 @@ public sealed class AlarmModule
 	/// <summary>
 	/// Gets the latest alarm state.
 	/// </summary>
+	/// <value>The latest alarm state.</value>
 	public AlarmState? State => _device.AlarmState;
 
 	/// <summary>
 	/// Gets whether the alarm is active.
 	/// </summary>
+	/// <value>Whether the alarm is active.</value>
 	public bool? IsActive => _device.AlarmState?.IsActive;
 
 	/// <summary>
 	/// Gets the alarm source.
 	/// </summary>
+	/// <value>The alarm source.</value>
 	public string? Source => _device.AlarmState?.Source;
 
 	/// <summary>
 	/// Gets the alarm sound.
 	/// </summary>
+	/// <value>The alarm sound.</value>
 	public string? Sound => _device.AlarmState?.Sound;
 
 	/// <summary>
 	/// Gets the alarm volume label.
 	/// </summary>
+	/// <value>The alarm volume label.</value>
 	public string? Volume => _device.AlarmState?.Volume;
 
 	/// <summary>
 	/// Gets the alarm duration in seconds.
 	/// </summary>
+	/// <value>The alarm duration in seconds.</value>
 	public int? DurationSeconds => _device.AlarmState?.DurationSeconds;
 
 	/// <summary>
 	/// Gets a value indicating whether alarm state is currently available.
 	/// </summary>
+	/// <value>A value indicating whether alarm state is currently available.</value>
 	public bool IsAvailable => _device.AlarmState is not null;
 
 	/// <summary>
 	/// Refreshes alarm state.
 	/// </summary>
+	/// <param name="cancellationToken">A token used to cancel the operation.</param>
+	/// <returns>A task that completes when the device state has been refreshed.</returns>
 	public Task UpdateAsync (CancellationToken cancellationToken = default) => _device.UpdateAsync (cancellationToken);
 	}
 
@@ -911,21 +1019,26 @@ public sealed class OverheatProtectionModule
 	/// <summary>
 	/// Gets the latest overheat protection state.
 	/// </summary>
+	/// <value>The latest overheat protection state.</value>
 	public OverheatProtectionState? State => _device.OverheatProtectionState;
 
 	/// <summary>
 	/// Gets whether the device is overheated.
 	/// </summary>
+	/// <value>Whether the device is overheated.</value>
 	public bool? Overheated => _device.OverheatProtectionState?.Overheated;
 
 	/// <summary>
 	/// Gets a value indicating whether overheat protection state is currently available.
 	/// </summary>
+	/// <value>A value indicating whether overheat protection state is currently available.</value>
 	public bool IsAvailable => _device.OverheatProtectionState is not null;
 
 	/// <summary>
 	/// Refreshes overheat protection state.
 	/// </summary>
+	/// <param name="cancellationToken">A token used to cancel the operation.</param>
+	/// <returns>A task that completes when the device state has been refreshed.</returns>
 	public Task UpdateAsync (CancellationToken cancellationToken = default) => _device.UpdateAsync (cancellationToken);
 	}
 
@@ -941,21 +1054,26 @@ public sealed class PowerProtectionModule
 	/// <summary>
 	/// Gets the latest power protection state.
 	/// </summary>
+	/// <value>The latest power protection state.</value>
 	public PowerProtectionState? State => _device.PowerProtectionState;
 
 	/// <summary>
 	/// Gets whether power protection is active.
 	/// </summary>
+	/// <value>Whether power protection is active.</value>
 	public bool? ProtectionActive => _device.PowerProtectionState?.ProtectionActive;
 
 	/// <summary>
 	/// Gets a value indicating whether power protection state is currently available.
 	/// </summary>
+	/// <value>A value indicating whether power protection state is currently available.</value>
 	public bool IsAvailable => _device.PowerProtectionState is not null;
 
 	/// <summary>
 	/// Refreshes power protection state.
 	/// </summary>
+	/// <param name="cancellationToken">A token used to cancel the operation.</param>
+	/// <returns>A task that completes when the device state has been refreshed.</returns>
 	public Task UpdateAsync (CancellationToken cancellationToken = default) => _device.UpdateAsync (cancellationToken);
 	}
 
@@ -971,21 +1089,26 @@ public sealed class FanModule
 	/// <summary>
 	/// Gets the latest fan state.
 	/// </summary>
+	/// <value>The latest fan state.</value>
 	public FanState? State => _device.FanState;
 
 	/// <summary>
 	/// Gets whether the fan is on.
 	/// </summary>
+	/// <value>Whether the fan is on.</value>
 	public bool? IsOn => _device.FanState?.IsOn;
 
 	/// <summary>
 	/// Gets a value indicating whether fan state is currently available.
 	/// </summary>
+	/// <value>A value indicating whether fan state is currently available.</value>
 	public bool IsAvailable => _device.FanState is not null;
 
 	/// <summary>
 	/// Refreshes fan state.
 	/// </summary>
+	/// <param name="cancellationToken">A token used to cancel the operation.</param>
+	/// <returns>A task that completes when the device state has been refreshed.</returns>
 	public Task UpdateAsync (CancellationToken cancellationToken = default) => _device.UpdateAsync (cancellationToken);
 	}
 
@@ -1001,21 +1124,26 @@ public sealed class SpeakerModule
 	/// <summary>
 	/// Gets the latest speaker state.
 	/// </summary>
+	/// <value>The latest speaker state.</value>
 	public SpeakerState? State => _device.SpeakerState;
 
 	/// <summary>
 	/// Gets whether speaker capability is available.
 	/// </summary>
+	/// <value>Whether speaker capability is available.</value>
 	public bool? Available => _device.SpeakerState?.IsAvailable;
 
 	/// <summary>
 	/// Gets a value indicating whether speaker state is currently available.
 	/// </summary>
+	/// <value>A value indicating whether speaker state is currently available.</value>
 	public bool IsAvailable => _device.SpeakerState is not null;
 
 	/// <summary>
 	/// Refreshes speaker state.
 	/// </summary>
+	/// <param name="cancellationToken">A token used to cancel the operation.</param>
+	/// <returns>A task that completes when the device state has been refreshed.</returns>
 	public Task UpdateAsync (CancellationToken cancellationToken = default) => _device.UpdateAsync (cancellationToken);
 	}
 
@@ -1031,31 +1159,37 @@ public sealed class CountdownModule
 	/// <summary>
 	/// Gets the latest normalized countdown timer state.
 	/// </summary>
+	/// <value>The latest normalized countdown timer state.</value>
 	public CountdownRuleState? State => _device.RuleState?.Countdown;
 
 	/// <summary>
 	/// Gets a value indicating whether countdown state is currently available.
 	/// </summary>
+	/// <value>A value indicating whether countdown state is currently available.</value>
 	public bool IsAvailable => _device.RuleState?.Countdown is not null;
 
 	/// <summary>
 	/// Gets a value indicating whether the countdown feature is enabled.
 	/// </summary>
+	/// <value>A value indicating whether the countdown feature is enabled.</value>
 	public bool? IsEnabled => _device.RuleState?.Countdown?.IsEnabled;
 
 	/// <summary>
 	/// Gets a value indicating whether a countdown is currently active.
 	/// </summary>
+	/// <value>A value indicating whether a countdown is currently active.</value>
 	public bool? IsActive => _device.RuleState?.Countdown?.IsActive;
 
 	/// <summary>
 	/// Gets the configured countdown delay in seconds.
 	/// </summary>
+	/// <value>The configured countdown delay in seconds.</value>
 	public int? DelaySeconds => _device.RuleState?.Countdown?.DelaySeconds;
 
 	/// <summary>
 	/// Gets a value indicating whether the countdown action turns the device on.
 	/// </summary>
+	/// <value>A value indicating whether the countdown action turns the device on.</value>
 	public bool? ActionTurnsOn => _device.RuleState?.Countdown?.ActionTurnsOn;
 
 	/// <summary>
@@ -1078,21 +1212,25 @@ public sealed class RuleModule
 	/// <summary>
 	/// Gets the latest normalized rule state.
 	/// </summary>
+	/// <value>The latest normalized rule state.</value>
 	public RuleModuleState? State => _device.RuleState;
 
 	/// <summary>
 	/// Gets the latest countdown timer state.
 	/// </summary>
+	/// <value>The latest countdown timer state.</value>
 	public CountdownRuleState? Countdown => _device.RuleState?.Countdown;
 
 	/// <summary>
 	/// Gets the latest schedule rules.
 	/// </summary>
+	/// <value>The latest schedule rules.</value>
 	public IReadOnlyList<ScheduledRule> Schedules => _device.RuleState?.Schedules ?? Array.Empty<ScheduledRule> ();
 
 	/// <summary>
 	/// Gets the latest antitheft rules.
 	/// </summary>
+	/// <value>The latest antitheft rules.</value>
 	public IReadOnlyList<ScheduledRule> AntitheftRules => _device.RuleState?.AntitheftRules ?? Array.Empty<ScheduledRule> ();
 
 	/// <summary>
@@ -1119,6 +1257,7 @@ public sealed class ChildDevice
 	/// <summary>
 	/// Gets the child device identifier.
 	/// </summary>
+	/// <value>The child device identifier.</value>
 	public string Id
 		{
 		get;
@@ -1127,31 +1266,37 @@ public sealed class ChildDevice
 	/// <summary>
 	/// Gets the latest child device snapshot.
 	/// </summary>
+	/// <value>The latest child device snapshot.</value>
 	public ChildDeviceInfo? Info => _parent.GetChild (Id);
 
 	/// <summary>
 	/// Gets the latest child alias.
 	/// </summary>
+	/// <value>The latest child alias.</value>
 	public string? Alias => Info?.Alias;
 
 	/// <summary>
 	/// Gets the latest child model.
 	/// </summary>
+	/// <value>The latest child model.</value>
 	public string? Model => Info?.Model;
 
 	/// <summary>
 	/// Gets the latest child device family.
 	/// </summary>
+	/// <value>The latest child device family.</value>
 	public DeviceType DeviceType => Info?.DeviceType ?? DeviceType.Unknown;
 
 	/// <summary>
 	/// Gets the latest child power state.
 	/// </summary>
+	/// <value>The latest child power state.</value>
 	public bool? IsOn => Info?.IsOn;
 
 	/// <summary>
 	/// Gets the latest child features.
 	/// </summary>
+	/// <value>The latest child features.</value>
 	public IReadOnlyList<DeviceFeature> Features => Info?.Features ?? Array.Empty<DeviceFeature> ();
 
 	internal KasaResponseParser.SmartChildDeviceDto? RawState => _parent.GetChildState (Id);
@@ -1422,66 +1567,79 @@ public sealed class ChildDevice
 	/// <summary>
 	/// Gets trigger-log information for event-driven child devices.
 	/// </summary>
+	/// <value>Trigger-log information for event-driven child devices.</value>
 	public ChildTriggerLogModule TriggerLogs => new (this);
 
 	/// <summary>
 	/// Gets battery information for child sensor devices.
 	/// </summary>
+	/// <value>Battery information for child sensor devices.</value>
 	public ChildBatterySensorModule Battery => new (this);
 
 	/// <summary>
 	/// Gets contact/open information for child contact sensors.
 	/// </summary>
+	/// <value>Contact/open information for child contact sensors.</value>
 	public ChildContactSensorModule Contact => new (this);
 
 	/// <summary>
 	/// Gets motion state information for child motion sensors.
 	/// </summary>
+	/// <value>Motion state information for child motion sensors.</value>
 	public ChildMotionSensorModule Motion => new (this);
 
 	/// <summary>
 	/// Gets water leak information for child water leak sensors.
 	/// </summary>
+	/// <value>Water leak information for child water leak sensors.</value>
 	public ChildWaterLeakSensorModule WaterLeak => new (this);
 
 	/// <summary>
 	/// Gets temperature information for child environmental sensors.
 	/// </summary>
+	/// <value>Temperature information for child environmental sensors.</value>
 	public ChildTemperatureSensorModule Temperature => new (this);
 
 	/// <summary>
 	/// Gets humidity information for child environmental sensors.
 	/// </summary>
+	/// <value>Humidity information for child environmental sensors.</value>
 	public ChildHumiditySensorModule Humidity => new (this);
 
 	/// <summary>
 	/// Gets report-mode information for child environmental sensors.
 	/// </summary>
+	/// <value>Report-mode information for child environmental sensors.</value>
 	public ChildReportModeModule ReportMode => new (this);
 
 	/// <summary>
 	/// Gets double-click information for child button devices.
 	/// </summary>
+	/// <value>Double-click information for child button devices.</value>
 	public ChildDoubleClickModule DoubleClick => new (this);
 
 	/// <summary>
 	/// Gets frost-protection information for child thermostat devices.
 	/// </summary>
+	/// <value>Frost-protection information for child thermostat devices.</value>
 	public ChildFrostProtectionModule FrostProtection => new (this);
 
 	/// <summary>
 	/// Gets child-protection information for child thermostat devices.
 	/// </summary>
+	/// <value>Child-protection information for child thermostat devices.</value>
 	public ChildProtectionModule ChildProtection => new (this);
 
 	/// <summary>
 	/// Gets temperature-control information for child thermostat devices.
 	/// </summary>
+	/// <value>Temperature-control information for child thermostat devices.</value>
 	public ChildTemperatureControlModule TemperatureControl => new (this);
 
 	/// <summary>
 	/// Gets aggregated thermostat information for child thermostat devices.
 	/// </summary>
+	/// <value>Aggregated thermostat information for child thermostat devices.</value>
 	public ChildThermostatModule Thermostat => new (this);
 
 	/// <summary>
@@ -1538,11 +1696,13 @@ public sealed class ChildTriggerLogModule
 	/// <summary>
 	/// Gets the latest typed trigger-log state for the child device.
 	/// </summary>
+	/// <value>The latest typed trigger-log state for the child device.</value>
 	public ChildTriggerLogState? State => StateOrNull;
 
 	/// <summary>
 	/// Gets the latest trigger log entries reported for the child device.
 	/// </summary>
+	/// <value>The latest trigger log entries reported for the child device.</value>
 	public IReadOnlyList<ChildTriggerLogEntry> Logs
 		{
 		get
@@ -1574,11 +1734,13 @@ public sealed class ChildDoubleClickModule
 	/// <summary>
 	/// Gets the latest typed double-click state for the child device.
 	/// </summary>
+	/// <value>The latest typed double-click state for the child device.</value>
 	public ChildDoubleClickState? State => StateOrNull;
 
 	/// <summary>
 	/// Gets whether double-click is enabled.
 	/// </summary>
+	/// <value>Whether double-click is enabled.</value>
 	public bool? Enabled => StateOrNull is ChildDoubleClickState state ? state.Enabled : null;
 
 	/// <summary>
@@ -1613,21 +1775,25 @@ public sealed class ChildFrostProtectionModule
 	/// <summary>
 	/// Gets the latest typed frost-protection state for the child device.
 	/// </summary>
+	/// <value>The latest typed frost-protection state for the child device.</value>
 	public ChildFrostProtectionState? State => StateOrNull;
 
 	/// <summary>
 	/// Gets whether frost protection is enabled.
 	/// </summary>
+	/// <value>Whether frost protection is enabled.</value>
 	public bool? Enabled => StateOrNull is ChildFrostProtectionState state ? state.Enabled : null;
 
 	/// <summary>
 	/// Gets the minimum frost-protection temperature, when reported.
 	/// </summary>
+	/// <value>The minimum frost-protection temperature, when reported.</value>
 	public int? MinimumTemperature => StateOrNull is ChildFrostProtectionState state ? state.MinimumTemperature : null;
 
 	/// <summary>
 	/// Gets the reported temperature unit.
 	/// </summary>
+	/// <value>The reported temperature unit.</value>
 	public string? Unit => StateOrNull is ChildFrostProtectionState state ? state.Unit : null;
 
 	/// <summary>
@@ -1652,11 +1818,13 @@ public sealed class ChildProtectionModule
 	/// <summary>
 	/// Gets the latest typed child-protection state for the child device.
 	/// </summary>
+	/// <value>The latest typed child-protection state for the child device.</value>
 	public ChildProtectionState? State => StateOrNull;
 
 	/// <summary>
 	/// Gets whether child protection is enabled.
 	/// </summary>
+	/// <value>Whether child protection is enabled.</value>
 	public bool? Enabled => StateOrNull is ChildProtectionState state ? state.Enabled : null;
 
 	/// <summary>
@@ -1681,36 +1849,43 @@ public sealed class ChildTemperatureControlModule
 	/// <summary>
 	/// Gets the latest typed temperature-control state for the child device.
 	/// </summary>
+	/// <value>The latest typed temperature-control state for the child device.</value>
 	public ChildTemperatureControlState? State => StateOrNull;
 
 	/// <summary>
 	/// Gets whether temperature control is enabled.
 	/// </summary>
+	/// <value>Whether temperature control is enabled.</value>
 	public bool? Enabled => StateOrNull is ChildTemperatureControlState state ? state.Enabled : null;
 
 	/// <summary>
 	/// Gets the target temperature, when reported.
 	/// </summary>
+	/// <value>The target temperature, when reported.</value>
 	public double? TargetTemperature => StateOrNull is ChildTemperatureControlState state ? state.TargetTemperature : null;
 
 	/// <summary>
 	/// Gets the minimum supported target temperature, when reported.
 	/// </summary>
+	/// <value>The minimum supported target temperature, when reported.</value>
 	public int? MinimumTargetTemperature => StateOrNull is ChildTemperatureControlState state ? state.MinimumTargetTemperature : null;
 
 	/// <summary>
 	/// Gets the maximum supported target temperature, when reported.
 	/// </summary>
+	/// <value>The maximum supported target temperature, when reported.</value>
 	public int? MaximumTargetTemperature => StateOrNull is ChildTemperatureControlState state ? state.MaximumTargetTemperature : null;
 
 	/// <summary>
 	/// Gets the temperature offset, when reported.
 	/// </summary>
+	/// <value>The temperature offset, when reported.</value>
 	public int? TemperatureOffset => StateOrNull is ChildTemperatureControlState state ? state.TemperatureOffset : null;
 
 	/// <summary>
 	/// Gets the raw TRV state flags reported by the device.
 	/// </summary>
+	/// <value>The raw TRV state flags reported by the device.</value>
 	public IReadOnlyList<string> States
 		{
 		get
@@ -1742,31 +1917,37 @@ public sealed class ChildThermostatModule
 	/// <summary>
 	/// Gets the latest typed thermostat state for the child device.
 	/// </summary>
+	/// <value>The latest typed thermostat state for the child device.</value>
 	public ChildThermostatState? State => StateOrNull;
 
 	/// <summary>
 	/// Gets whether the thermostat is enabled.
 	/// </summary>
+	/// <value>Whether the thermostat is enabled.</value>
 	public bool? Enabled => StateOrNull is ChildThermostatState state ? state.Enabled : null;
 
 	/// <summary>
 	/// Gets the target temperature, when reported.
 	/// </summary>
+	/// <value>The target temperature, when reported.</value>
 	public double? TargetTemperature => StateOrNull is ChildThermostatState state ? state.TargetTemperature : null;
 
 	/// <summary>
 	/// Gets the current measured temperature, when reported.
 	/// </summary>
+	/// <value>The current measured temperature, when reported.</value>
 	public double? CurrentTemperature => StateOrNull is ChildThermostatState state ? state.CurrentTemperature : null;
 
 	/// <summary>
 	/// Gets the reported temperature unit.
 	/// </summary>
+	/// <value>The reported temperature unit.</value>
 	public string? Unit => StateOrNull is ChildThermostatState state ? state.Unit : null;
 
 	/// <summary>
 	/// Gets the raw TRV state flags reported by the device.
 	/// </summary>
+	/// <value>The raw TRV state flags reported by the device.</value>
 	public IReadOnlyList<string> States
 		{
 		get
@@ -1798,16 +1979,19 @@ public sealed class ChildBatterySensorModule
 	/// <summary>
 	/// Gets the latest typed battery state for the child device.
 	/// </summary>
+	/// <value>The latest typed battery state for the child device.</value>
 	public ChildBatterySensorState? State => StateOrNull;
 
 	/// <summary>
 	/// Gets the latest battery level percentage, when reported.
 	/// </summary>
+	/// <value>The latest battery level percentage, when reported.</value>
 	public int? BatteryLevel => StateOrNull is ChildBatterySensorState state ? state.BatteryLevel : null;
 
 	/// <summary>
 	/// Gets whether the child device reports a low battery condition.
 	/// </summary>
+	/// <value>Whether the child device reports a low battery condition.</value>
 	public bool? BatteryLow => StateOrNull is ChildBatterySensorState state ? state.BatteryLow : null;
 
 	/// <summary>
@@ -1832,11 +2016,13 @@ public sealed class ChildContactSensorModule
 	/// <summary>
 	/// Gets the latest typed contact sensor state for the child device.
 	/// </summary>
+	/// <value>The latest typed contact sensor state for the child device.</value>
 	public ChildContactSensorState? State => StateOrNull;
 
 	/// <summary>
 	/// Gets whether the contact sensor is currently open.
 	/// </summary>
+	/// <value>Whether the contact sensor is currently open.</value>
 	public bool? IsOpen => StateOrNull is ChildContactSensorState state ? state.IsOpen : null;
 
 	/// <summary>
@@ -1861,11 +2047,13 @@ public sealed class ChildMotionSensorModule
 	/// <summary>
 	/// Gets the latest typed motion sensor state for the child device.
 	/// </summary>
+	/// <value>The latest typed motion sensor state for the child device.</value>
 	public ChildMotionSensorState? State => StateOrNull;
 
 	/// <summary>
 	/// Gets whether motion is currently detected.
 	/// </summary>
+	/// <value>Whether motion is currently detected.</value>
 	public bool? MotionDetected => StateOrNull is ChildMotionSensorState state ? state.MotionDetected : null;
 
 	/// <summary>
@@ -1890,21 +2078,25 @@ public sealed class ChildWaterLeakSensorModule
 	/// <summary>
 	/// Gets the latest typed water leak state for the child device.
 	/// </summary>
+	/// <value>The latest typed water leak state for the child device.</value>
 	public ChildWaterLeakSensorState? State => StateOrNull;
 
 	/// <summary>
 	/// Gets the latest reported water leak status string.
 	/// </summary>
+	/// <value>The latest reported water leak status string.</value>
 	public string? Status => StateOrNull is ChildWaterLeakSensorState state ? state.Status : null;
 
 	/// <summary>
 	/// Gets whether the child device currently reports an active alert.
 	/// </summary>
+	/// <value>Whether the child device currently reports an active alert.</value>
 	public bool? Alert => StateOrNull is ChildWaterLeakSensorState state ? state.Alert : null;
 
 	/// <summary>
 	/// Gets the latest reported alert timestamp, when available.
 	/// </summary>
+	/// <value>The latest reported alert timestamp, when available.</value>
 	public long? AlertTimestamp => StateOrNull is ChildWaterLeakSensorState state ? state.AlertTimestamp : null;
 
 	/// <summary>
@@ -1929,31 +2121,37 @@ public sealed class ChildTemperatureSensorModule
 	/// <summary>
 	/// Gets the latest typed temperature state for the child device.
 	/// </summary>
+	/// <value>The latest typed temperature state for the child device.</value>
 	public ChildTemperatureSensorState? State => StateOrNull;
 
 	/// <summary>
 	/// Gets the latest reported temperature value.
 	/// </summary>
+	/// <value>The latest reported temperature value.</value>
 	public double? Temperature => StateOrNull is ChildTemperatureSensorState state ? state.Temperature : null;
 
 	/// <summary>
 	/// Gets whether the child device reports a temperature warning.
 	/// </summary>
+	/// <value>Whether the child device reports a temperature warning.</value>
 	public bool? Warning => StateOrNull is ChildTemperatureSensorState state ? state.Warning : null;
 
 	/// <summary>
 	/// Gets the reported temperature unit.
 	/// </summary>
+	/// <value>The reported temperature unit.</value>
 	public string? Unit => StateOrNull is ChildTemperatureSensorState state ? state.Unit : null;
 
 	/// <summary>
 	/// Gets the minimum comfort temperature, when reported.
 	/// </summary>
+	/// <value>The minimum comfort temperature, when reported.</value>
 	public double? MinimumComfortTemperature => StateOrNull is ChildTemperatureSensorState state ? state.MinimumComfortTemperature : null;
 
 	/// <summary>
 	/// Gets the maximum comfort temperature, when reported.
 	/// </summary>
+	/// <value>The maximum comfort temperature, when reported.</value>
 	public double? MaximumComfortTemperature => StateOrNull is ChildTemperatureSensorState state ? state.MaximumComfortTemperature : null;
 
 	/// <summary>
@@ -1978,26 +2176,31 @@ public sealed class ChildHumiditySensorModule
 	/// <summary>
 	/// Gets the latest typed humidity state for the child device.
 	/// </summary>
+	/// <value>The latest typed humidity state for the child device.</value>
 	public ChildHumiditySensorState? State => StateOrNull;
 
 	/// <summary>
 	/// Gets the latest reported humidity percentage.
 	/// </summary>
+	/// <value>The latest reported humidity percentage.</value>
 	public int? Humidity => StateOrNull is ChildHumiditySensorState state ? state.Humidity : null;
 
 	/// <summary>
 	/// Gets whether the child device reports a humidity warning.
 	/// </summary>
+	/// <value>Whether the child device reports a humidity warning.</value>
 	public bool? Warning => StateOrNull is ChildHumiditySensorState state ? state.Warning : null;
 
 	/// <summary>
 	/// Gets the minimum comfort humidity, when reported.
 	/// </summary>
+	/// <value>The minimum comfort humidity, when reported.</value>
 	public double? MinimumComfortHumidity => StateOrNull is ChildHumiditySensorState state ? state.MinimumComfortHumidity : null;
 
 	/// <summary>
 	/// Gets the maximum comfort humidity, when reported.
 	/// </summary>
+	/// <value>The maximum comfort humidity, when reported.</value>
 	public double? MaximumComfortHumidity => StateOrNull is ChildHumiditySensorState state ? state.MaximumComfortHumidity : null;
 
 	/// <summary>
@@ -2022,11 +2225,13 @@ public sealed class ChildReportModeModule
 	/// <summary>
 	/// Gets the latest typed report-mode state for the child device.
 	/// </summary>
+	/// <value>The latest typed report-mode state for the child device.</value>
 	public ChildReportModeState? State => StateOrNull;
 
 	/// <summary>
 	/// Gets the latest reported sensor report interval in seconds.
 	/// </summary>
+	/// <value>The latest reported sensor report interval in seconds.</value>
 	public int? ReportInterval => StateOrNull is ChildReportModeState state ? state.ReportInterval : null;
 
 	/// <summary>
@@ -2042,5 +2247,7 @@ public sealed class ChildReportModeModule
 	/// <summary>
 	/// Refreshes the parent device state and child module data.
 	/// </summary>
+	/// <param name="cancellationToken">A token used to cancel the operation.</param>
+	/// <returns>A task that completes when the device state has been refreshed.</returns>
 	public Task UpdateAsync (CancellationToken cancellationToken = default) => _child.UpdateAsync (cancellationToken);
 	}

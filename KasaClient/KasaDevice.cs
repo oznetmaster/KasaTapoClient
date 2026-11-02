@@ -93,6 +93,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the connection settings for the device.
 	/// </summary>
+	/// <value>The connection settings for the device.</value>
 	public DeviceConfiguration Configuration
 		{
 		get;
@@ -101,11 +102,13 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the current device host.
 	/// </summary>
+	/// <value>The current device host.</value>
 	public string Host => Configuration.Host;
 
 	/// <summary>
 	/// Gets the module-style system wrapper.
 	/// </summary>
+	/// <value>The module-style system wrapper.</value>
 	public SystemModule System
 		{
 		get;
@@ -114,6 +117,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style energy wrapper.
 	/// </summary>
+	/// <value>The module-style energy wrapper.</value>
 	public EnergyModule Energy
 		{
 		get;
@@ -122,6 +126,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style usage wrapper.
 	/// </summary>
+	/// <value>The module-style usage wrapper.</value>
 	public UsageModule Usage
 		{
 		get;
@@ -130,6 +135,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style firmware wrapper.
 	/// </summary>
+	/// <value>The module-style firmware wrapper.</value>
 	public FirmwareModule Firmware
 		{
 		get;
@@ -138,6 +144,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style cloud wrapper.
 	/// </summary>
+	/// <value>The module-style cloud wrapper.</value>
 	public CloudModule Cloud
 		{
 		get;
@@ -146,6 +153,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style time wrapper.
 	/// </summary>
+	/// <value>The module-style time wrapper.</value>
 	public TimeModule Time
 		{
 		get;
@@ -154,6 +162,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style Matter wrapper.
 	/// </summary>
+	/// <value>The module-style Matter wrapper.</value>
 	public MatterModule Matter
 		{
 		get;
@@ -162,6 +171,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style HomeKit wrapper.
 	/// </summary>
+	/// <value>The module-style HomeKit wrapper.</value>
 	public HomeKitModule HomeKit
 		{
 		get;
@@ -170,6 +180,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style auto-off wrapper.
 	/// </summary>
+	/// <value>The module-style auto-off wrapper.</value>
 	public AutoOffModule AutoOff
 		{
 		get;
@@ -178,6 +189,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style LED wrapper.
 	/// </summary>
+	/// <value>The module-style LED wrapper.</value>
 	public LedModule Led
 		{
 		get;
@@ -186,6 +198,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style child-lock wrapper.
 	/// </summary>
+	/// <value>The module-style child-lock wrapper.</value>
 	public ChildLockModule ChildLock
 		{
 		get;
@@ -194,6 +207,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style light wrapper.
 	/// </summary>
+	/// <value>The module-style light wrapper.</value>
 	public LightModule Light
 		{
 		get;
@@ -202,6 +216,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style light preset wrapper.
 	/// </summary>
+	/// <value>The module-style light preset wrapper.</value>
 	public LightPresetModule LightPreset
 		{
 		get;
@@ -210,6 +225,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style light transition wrapper.
 	/// </summary>
+	/// <value>The module-style light transition wrapper.</value>
 	public LightTransitionModule LightTransition
 		{
 		get;
@@ -218,6 +234,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style light strip effect wrapper.
 	/// </summary>
+	/// <value>The module-style light strip effect wrapper.</value>
 	public LightStripEffectModule LightStripEffect
 		{
 		get;
@@ -226,6 +243,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style alarm wrapper.
 	/// </summary>
+	/// <value>The module-style alarm wrapper.</value>
 	public AlarmModule Alarm
 		{
 		get;
@@ -234,6 +252,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style overheat protection wrapper.
 	/// </summary>
+	/// <value>The module-style overheat protection wrapper.</value>
 	public OverheatProtectionModule OverheatProtection
 		{
 		get;
@@ -242,6 +261,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style power protection wrapper.
 	/// </summary>
+	/// <value>The module-style power protection wrapper.</value>
 	public PowerProtectionModule PowerProtection
 		{
 		get;
@@ -250,6 +270,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style fan wrapper.
 	/// </summary>
+	/// <value>The module-style fan wrapper.</value>
 	public FanModule Fan
 		{
 		get;
@@ -258,6 +279,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style speaker wrapper.
 	/// </summary>
+	/// <value>The module-style speaker wrapper.</value>
 	public SpeakerModule Speaker
 		{
 		get;
@@ -266,6 +288,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style countdown wrapper.
 	/// </summary>
+	/// <value>The module-style countdown wrapper.</value>
 	public CountdownModule Countdown
 		{
 		get;
@@ -274,6 +297,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style rules wrapper.
 	/// </summary>
+	/// <value>The module-style rules wrapper.</value>
 	public RuleModule Rules
 		{
 		get;
@@ -282,6 +306,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the module-style child setup wrapper for smart hub devices.
 	/// </summary>
+	/// <value>The module-style child setup wrapper for smart hub devices.</value>
 	public ChildSetupModule ChildSetup
 		{
 		get;
@@ -290,6 +315,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent normalized system information, or <see langword="null" /> until <see cref="UpdateAsync" /> succeeds.
 	/// </summary>
+	/// <value>The most recent normalized system information, or <see langword="null" /> until <see cref="UpdateAsync" /> succeeds.</value>
 	public DeviceSystemInfo? SystemInfo
 		{
 		get; private set;
@@ -298,11 +324,13 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the best known alias for the device.
 	/// </summary>
+	/// <value>The best known alias for the device.</value>
 	public string Alias => SystemInfo?.Alias ?? Host;
 
 	/// <summary>
 	/// Gets the most recent normalized energy usage information, when supported by the device.
 	/// </summary>
+	/// <value>The most recent normalized energy usage information, when supported by the device.</value>
 	public EnergyUsage? EnergyUsage
 		{
 		get; private set;
@@ -311,6 +339,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent host RSSI value in dBm when the device reports it.
 	/// </summary>
+	/// <value>The most recent host RSSI value in dBm when the device reports it.</value>
 	public int? Rssi
 		{
 		get; private set;
@@ -319,6 +348,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the derived timestamp for when the device was turned on, when reported.
 	/// </summary>
+	/// <value>The derived timestamp for when the device was turned on, when reported.</value>
 	public DateTimeOffset? OnSince => TimeState?.LocalTime is DateTime localTime && SystemInfo?.OnTime is TimeSpan onTime
 		&& IsOn == true
 		? new DateTimeOffset (localTime).Subtract (onTime)
@@ -327,6 +357,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent normalized light state, when supported by the device.
 	/// </summary>
+	/// <value>The most recent normalized light state, when supported by the device.</value>
 	public LightState? LightState
 		{
 		get; private set;
@@ -335,6 +366,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent normalized light preset module state, when supported by the device.
 	/// </summary>
+	/// <value>The most recent normalized light preset module state, when supported by the device.</value>
 	public LightPresetState? LightPresetState
 		{
 		get; private set;
@@ -343,6 +375,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent normalized light transition module state, when supported by the device.
 	/// </summary>
+	/// <value>The most recent normalized light transition module state, when supported by the device.</value>
 	public LightTransitionState? LightTransitionState
 		{
 		get; private set;
@@ -351,6 +384,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent normalized light strip effect module state, when supported by the device.
 	/// </summary>
+	/// <value>The most recent normalized light strip effect module state, when supported by the device.</value>
 	public LightStripEffectState? LightStripEffectState
 		{
 		get; private set;
@@ -359,6 +393,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent normalized alarm state, when supported by the device.
 	/// </summary>
+	/// <value>The most recent normalized alarm state, when supported by the device.</value>
 	public AlarmState? AlarmState
 		{
 		get; private set;
@@ -367,6 +402,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent normalized overheat protection state, when supported by the device.
 	/// </summary>
+	/// <value>The most recent normalized overheat protection state, when supported by the device.</value>
 	public OverheatProtectionState? OverheatProtectionState
 		{
 		get; private set;
@@ -375,6 +411,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent normalized power protection state, when supported by the device.
 	/// </summary>
+	/// <value>The most recent normalized power protection state, when supported by the device.</value>
 	public PowerProtectionState? PowerProtectionState
 		{
 		get; private set;
@@ -383,6 +420,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent normalized fan state, when supported by the device.
 	/// </summary>
+	/// <value>The most recent normalized fan state, when supported by the device.</value>
 	public FanState? FanState
 		{
 		get; private set;
@@ -391,6 +429,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent normalized speaker state, when supported by the device.
 	/// </summary>
+	/// <value>The most recent normalized speaker state, when supported by the device.</value>
 	public SpeakerState? SpeakerState
 		{
 		get; private set;
@@ -399,6 +438,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent normalized rule module state, when supported by the device.
 	/// </summary>
+	/// <value>The most recent normalized rule module state, when supported by the device.</value>
 	public RuleModuleState? RuleState
 		{
 		get; private set;
@@ -407,6 +447,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent normalized firmware state, when supported by the device.
 	/// </summary>
+	/// <value>The most recent normalized firmware state, when supported by the device.</value>
 	public FirmwareState? FirmwareState
 		{
 		get; private set;
@@ -415,6 +456,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent normalized cloud-connection state, when supported by the device.
 	/// </summary>
+	/// <value>The most recent normalized cloud-connection state, when supported by the device.</value>
 	public CloudConnectionState? CloudState
 		{
 		get; private set;
@@ -423,6 +465,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent normalized device-local time state, when supported by the device.
 	/// </summary>
+	/// <value>The most recent normalized device-local time state, when supported by the device.</value>
 	public DeviceTimeState? TimeState
 		{
 		get; private set;
@@ -431,6 +474,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent Matter setup information, when supported by the device.
 	/// </summary>
+	/// <value>The most recent Matter setup information, when supported by the device.</value>
 	public MatterSetupInfo? MatterSetup
 		{
 		get; private set;
@@ -439,6 +483,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent HomeKit setup information, when supported by the device.
 	/// </summary>
+	/// <value>The most recent HomeKit setup information, when supported by the device.</value>
 	public HomeKitSetupInfo? HomeKitSetup
 		{
 		get; private set;
@@ -447,6 +492,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent auto-off state, when supported by the device.
 	/// </summary>
+	/// <value>The most recent auto-off state, when supported by the device.</value>
 	public AutoOffState? AutoOffState
 		{
 		get; private set;
@@ -455,6 +501,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent LED state, when supported by the device.
 	/// </summary>
+	/// <value>The most recent LED state, when supported by the device.</value>
 	public LedState? LedState
 		{
 		get; private set;
@@ -463,6 +510,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent child-lock state, when supported by the device.
 	/// </summary>
+	/// <value>The most recent child-lock state, when supported by the device.</value>
 	public ChildLockState? ChildLockState
 		{
 		get; private set;
@@ -471,46 +519,55 @@ public sealed partial class KasaDevice : IDisposable
 	/// <summary>
 	/// Gets the most recent normalized light effect state, when supported by the device.
 	/// </summary>
+	/// <value>The most recent normalized light effect state, when supported by the device.</value>
 	public LightEffectState? LightEffect => LightState?.Effect;
 
 	/// <summary>
 	/// Gets the available light effects reported by the device.
 	/// </summary>
+	/// <value>The available light effects reported by the device.</value>
 	public IReadOnlyList<LightEffectDefinition> AvailableLightEffects => LightEffect?.AvailableEffects ?? Array.Empty<LightEffectDefinition> ();
 
 	/// <summary>
 	/// Gets a value indicating whether the device reports light-effect capability.
 	/// </summary>
+	/// <value>A value indicating whether the device reports light-effect capability.</value>
 	public bool SupportsLightEffects => LightState?.SupportsEffects == true;
 
 	/// <summary>
 	/// Gets the inferred device family.
 	/// </summary>
+	/// <value>The inferred device family.</value>
 	public DeviceType DeviceType => SystemInfo?.DeviceType ?? DeviceType.Unknown;
 
 	/// <summary>
 	/// Gets a value indicating whether the device is currently on.
 	/// </summary>
+	/// <value>A value indicating whether the device is currently on.</value>
 	public bool? IsOn => SystemInfo?.IsOn;
 
 	/// <summary>
 	/// Gets the child devices reported by the device.
 	/// </summary>
+	/// <value>The child devices reported by the device.</value>
 	public IReadOnlyList<ChildDeviceInfo> Children => SystemInfo?.Children ?? Array.Empty<ChildDeviceInfo> ();
 
 	/// <summary>
 	/// Gets wrapper objects for child devices.
 	/// </summary>
+	/// <value>Wrapper objects for child devices.</value>
 	public IReadOnlyList<ChildDevice> ChildDevices => CreateChildDevices ();
 
 	/// <summary>
 	/// Gets the current feature collection derived from the latest device state.
 	/// </summary>
+	/// <value>The current feature collection derived from the latest device state.</value>
 	public IReadOnlyList<DeviceFeature> Features => _features;
 
 	/// <summary>
 	/// Gets the negotiated smart component versions reported by the device.
 	/// </summary>
+	/// <value>The negotiated smart component versions reported by the device.</value>
 	public IReadOnlyDictionary<string, int> SmartComponentVersions => _smartComponentVersions;
 
 	/// <summary>
@@ -521,6 +578,7 @@ public sealed partial class KasaDevice : IDisposable
 	/// that hold a long-lived reference to a device instance obtained from elsewhere and need to detect
 	/// that it is no longer usable without having to catch <see cref="ObjectDisposedException"/>.
 	/// </remarks>
+	/// <value>A value indicating whether <see cref="Dispose"/> has already been called on this instance.</value>
 	public bool IsDisposed => _disposed;
 
 	/// <summary>

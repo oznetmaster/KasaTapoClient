@@ -134,6 +134,10 @@ public static class Discover
 	/// <summary>
 	/// Broadcasts only the legacy UDP discovery request on port 9999.
 	/// </summary>
+	/// <param name="timeout">The discovery response window; null uses three seconds.</param>
+	/// <param name="target">The target address; defaults to the IPv4 broadcast address.</param>
+	/// <param name="cancellationToken">A token used to cancel the operation.</param>
+	/// <returns>A task containing the legacy devices discovered during the response window.</returns>
 	public static async Task<IReadOnlyList<DiscoveryResult>> DiscoverLegacyAsync (
 		TimeSpan? timeout = null,
 		string target = "255.255.255.255",

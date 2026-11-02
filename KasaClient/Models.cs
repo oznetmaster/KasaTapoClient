@@ -109,6 +109,7 @@ public sealed class DeviceCredentials
 	/// <summary>
 	/// Gets the user name or email address.
 	/// </summary>
+	/// <value>The user name or email address.</value>
 	public string? UserName
 		{
 		get;
@@ -117,6 +118,7 @@ public sealed class DeviceCredentials
 	/// <summary>
 	/// Gets the password.
 	/// </summary>
+	/// <value>The password.</value>
 	public string? Password
 		{
 		get;
@@ -271,6 +273,11 @@ public sealed class DeviceConnectionParameters
 	/// <summary>
 	/// Initializes a new instance of the <see cref="DeviceConnectionParameters" /> class.
 	/// </summary>
+	/// <param name="deviceFamily">The device protocol family.</param>
+	/// <param name="encryptionKind">The encryption protocol used by the device.</param>
+	/// <param name="loginVersion">The optional login protocol version.</param>
+	/// <param name="useHttps">Whether to use HTTPS for the device connection.</param>
+	/// <param name="httpPort">The optional port for the HTTP connection.</param>
 	public DeviceConnectionParameters (
 		DeviceFamilyKind deviceFamily,
 		DeviceEncryptionKind encryptionKind,
@@ -288,6 +295,7 @@ public sealed class DeviceConnectionParameters
 	/// <summary>
 	/// Gets the device family identifier.
 	/// </summary>
+	/// <value>The device family identifier.</value>
 	public DeviceFamilyKind DeviceFamily
 		{
 		get;
@@ -296,6 +304,7 @@ public sealed class DeviceConnectionParameters
 	/// <summary>
 	/// Gets the transport encryption identifier.
 	/// </summary>
+	/// <value>The transport encryption identifier.</value>
 	public DeviceEncryptionKind EncryptionKind
 		{
 		get;
@@ -304,6 +313,7 @@ public sealed class DeviceConnectionParameters
 	/// <summary>
 	/// Gets the optional login version.
 	/// </summary>
+	/// <value>The optional login version.</value>
 	public int? LoginVersion
 		{
 		get;
@@ -312,6 +322,7 @@ public sealed class DeviceConnectionParameters
 	/// <summary>
 	/// Gets a value indicating whether HTTPS is supported or required.
 	/// </summary>
+	/// <value>A value indicating whether HTTPS is supported or required.</value>
 	public bool UseHttps
 		{
 		get;
@@ -320,6 +331,7 @@ public sealed class DeviceConnectionParameters
 	/// <summary>
 	/// Gets the HTTP port reported by discovery when available.
 	/// </summary>
+	/// <value>The HTTP port reported by discovery when available.</value>
 	public int? HttpPort
 		{
 		get;
@@ -421,6 +433,7 @@ public sealed class DeviceConnectionOptions
 	/// <summary>
 	/// Gets the transport kind.
 	/// </summary>
+	/// <value>The transport kind.</value>
 	public DeviceTransportKind TransportKind
 		{
 		get;
@@ -429,6 +442,7 @@ public sealed class DeviceConnectionOptions
 	/// <summary>
 	/// Gets the parsed connection parameters, when known.
 	/// </summary>
+	/// <value>The parsed connection parameters, when known.</value>
 	public DeviceConnectionParameters? ConnectionParameters
 		{
 		get;
@@ -437,6 +451,7 @@ public sealed class DeviceConnectionOptions
 	/// <summary>
 	/// Gets a value indicating whether HTTPS should be used for HTTP token transport.
 	/// </summary>
+	/// <value>A value indicating whether HTTPS should be used for HTTP token transport.</value>
 	public bool UseSsl
 		{
 		get;
@@ -445,6 +460,7 @@ public sealed class DeviceConnectionOptions
 	/// <summary>
 	/// Gets a value indicating whether a known default credential profile should be used.
 	/// </summary>
+	/// <value>A value indicating whether a known default credential profile should be used.</value>
 	public bool UseDefaultCredentials
 		{
 		get;
@@ -453,6 +469,7 @@ public sealed class DeviceConnectionOptions
 	/// <summary>
 	/// Gets the default credential profile.
 	/// </summary>
+	/// <value>The default credential profile.</value>
 	public DefaultCredentialProfile DefaultCredentialProfile
 		{
 		get;
@@ -461,6 +478,7 @@ public sealed class DeviceConnectionOptions
 	/// <summary>
 	/// Gets the application API path.
 	/// </summary>
+	/// <value>The application API path.</value>
 	public string ApplicationPath
 		{
 		get;
@@ -469,6 +487,7 @@ public sealed class DeviceConnectionOptions
 	/// <summary>
 	/// Gets a value indicating whether the HTTP transport should use secure passthrough wrapping when available.
 	/// </summary>
+	/// <value>A value indicating whether the HTTP transport should use secure passthrough wrapping when available.</value>
 	public bool UseSecurePassthrough
 		{
 		get;
@@ -477,6 +496,7 @@ public sealed class DeviceConnectionOptions
 	/// <summary>
 	/// Gets the optional TPAP keepalive interval.
 	/// </summary>
+	/// <value>The optional TPAP keepalive interval.</value>
 	public TimeSpan? TpapKeepAliveInterval
 		{
 		get;
@@ -526,6 +546,7 @@ public sealed class DeviceConfiguration
 	/// <summary>
 	/// Gets the device host name or IP address.
 	/// </summary>
+	/// <value>The device host name or IP address.</value>
 	public string Host
 		{
 		get;
@@ -534,6 +555,7 @@ public sealed class DeviceConfiguration
 	/// <summary>
 	/// Gets the device control port.
 	/// </summary>
+	/// <value>The device control port.</value>
 	public int Port
 		{
 		get;
@@ -542,6 +564,7 @@ public sealed class DeviceConfiguration
 	/// <summary>
 	/// Gets the optional device credentials.
 	/// </summary>
+	/// <value>The optional device credentials.</value>
 	public DeviceCredentials? Credentials
 		{
 		get;
@@ -550,6 +573,7 @@ public sealed class DeviceConfiguration
 	/// <summary>
 	/// Gets the transport-specific connection options.
 	/// </summary>
+	/// <value>The transport-specific connection options.</value>
 	public DeviceConnectionOptions ConnectionOptions
 		{
 		get;
@@ -558,6 +582,7 @@ public sealed class DeviceConfiguration
 	/// <summary>
 	/// Gets the per-operation timeout.
 	/// </summary>
+	/// <value>The per-operation timeout.</value>
 	public TimeSpan Timeout
 		{
 		get;
@@ -630,6 +655,7 @@ public sealed class DiscoveryResult
 	/// <summary>
 	/// Gets the device host that produced the discovery response.
 	/// </summary>
+	/// <value>The device host that produced the discovery response.</value>
 	public string Host
 		{
 		get;
@@ -638,6 +664,7 @@ public sealed class DiscoveryResult
 	/// <summary>
 	/// Gets the inferred device family.
 	/// </summary>
+	/// <value>The inferred device family.</value>
 	public DeviceType DeviceType
 		{
 		get;
@@ -646,6 +673,7 @@ public sealed class DiscoveryResult
 	/// <summary>
 	/// Gets the user-visible device alias, when available.
 	/// </summary>
+	/// <value>The user-visible device alias, when available.</value>
 	public string? Alias
 		{
 		get;
@@ -654,6 +682,7 @@ public sealed class DiscoveryResult
 	/// <summary>
 	/// Gets the model identifier, when available.
 	/// </summary>
+	/// <value>The model identifier, when available.</value>
 	public string? Model
 		{
 		get;
@@ -662,6 +691,7 @@ public sealed class DiscoveryResult
 	/// <summary>
 	/// Gets the device identifier, when available.
 	/// </summary>
+	/// <value>The device identifier, when available.</value>
 	public string? DeviceId
 		{
 		get;
@@ -690,6 +720,7 @@ public sealed class DiscoveryResult
 	/// <summary>
 	/// Gets the advertised TPAP metadata, when present.
 	/// </summary>
+	/// <value>The advertised TPAP metadata, when present.</value>
 	public TpapDiscoveryMetadata? TpapMetadata
 		{
 		get;
@@ -698,6 +729,7 @@ public sealed class DiscoveryResult
 	/// <summary>
 	/// Gets the advertised protocol version, when present.
 	/// </summary>
+	/// <value>The advertised protocol version, when present.</value>
 	public int? ProtocolVersion
 		{
 		get;
@@ -706,6 +738,7 @@ public sealed class DiscoveryResult
 	/// <summary>
 	/// Gets a value indicating whether discovery marked TPAP as preferred.
 	/// </summary>
+	/// <value>A value indicating whether discovery marked TPAP as preferred.</value>
 	public bool? TpapPreferred
 		{
 		get;
@@ -737,6 +770,7 @@ public sealed class TpapDiscoveryMetadata
 	/// <summary>
 	/// Gets the TPAP-advertised port.
 	/// </summary>
+	/// <value>The TPAP-advertised port.</value>
 	public int? Port
 		{
 		get;
@@ -745,6 +779,7 @@ public sealed class TpapDiscoveryMetadata
 	/// <summary>
 	/// Gets the advertised PAKE modes.
 	/// </summary>
+	/// <value>The advertised PAKE modes.</value>
 	public IReadOnlyList<int>? PakeModes
 		{
 		get;
@@ -753,6 +788,7 @@ public sealed class TpapDiscoveryMetadata
 	/// <summary>
 	/// Gets the advertised TLS mode.
 	/// </summary>
+	/// <value>The advertised TLS mode.</value>
 	public int? Tls
 		{
 		get;
@@ -761,6 +797,7 @@ public sealed class TpapDiscoveryMetadata
 	/// <summary>
 	/// Gets the advertised DAC mode.
 	/// </summary>
+	/// <value>The advertised DAC mode.</value>
 	public int? Dac
 		{
 		get;
@@ -769,6 +806,7 @@ public sealed class TpapDiscoveryMetadata
 	/// <summary>
 	/// Gets the advertised NOC mode.
 	/// </summary>
+	/// <value>The advertised NOC mode.</value>
 	public int? Noc
 		{
 		get;
@@ -859,6 +897,7 @@ public sealed class DeviceFeature
 	/// <summary>
 	/// Gets the stable feature identifier.
 	/// </summary>
+	/// <value>The stable feature identifier.</value>
 	public string Id
 		{
 		get;
@@ -867,6 +906,7 @@ public sealed class DeviceFeature
 	/// <summary>
 	/// Gets the display name of the feature.
 	/// </summary>
+	/// <value>The display name of the feature.</value>
 	public string Name
 		{
 		get;
@@ -875,6 +915,7 @@ public sealed class DeviceFeature
 	/// <summary>
 	/// Gets the kind of feature.
 	/// </summary>
+	/// <value>The kind of feature.</value>
 	public FeatureKind Kind
 		{
 		get;
@@ -883,6 +924,7 @@ public sealed class DeviceFeature
 	/// <summary>
 	/// Gets the current feature value.
 	/// </summary>
+	/// <value>The current feature value.</value>
 	public object? Value
 		{
 		get;
@@ -891,6 +933,7 @@ public sealed class DeviceFeature
 	/// <summary>
 	/// Gets the optional unit associated with <see cref="Value" />.
 	/// </summary>
+	/// <value>The optional unit associated with <see cref="Value" />.</value>
 	public string? Unit
 		{
 		get;
@@ -899,6 +942,7 @@ public sealed class DeviceFeature
 	/// <summary>
 	/// Gets a value indicating whether the feature is read-only.
 	/// </summary>
+	/// <value>A value indicating whether the feature is read-only.</value>
 	public bool IsReadOnly
 		{
 		get;
@@ -907,6 +951,7 @@ public sealed class DeviceFeature
 	/// <summary>
 	/// Gets the optional minimum numeric value.
 	/// </summary>
+	/// <value>The optional minimum numeric value.</value>
 	public double? MinimumValue
 		{
 		get;
@@ -915,6 +960,7 @@ public sealed class DeviceFeature
 	/// <summary>
 	/// Gets the optional maximum numeric value.
 	/// </summary>
+	/// <value>The optional maximum numeric value.</value>
 	public double? MaximumValue
 		{
 		get;
@@ -923,6 +969,7 @@ public sealed class DeviceFeature
 	/// <summary>
 	/// Gets the optional allowed choice values.
 	/// </summary>
+	/// <value>The optional allowed choice values.</value>
 	public IReadOnlyList<string> Choices
 		{
 		get;
@@ -953,6 +1000,7 @@ public sealed class EnergyUsage
 	/// <summary>
 	/// Gets the current power draw in watts.
 	/// </summary>
+	/// <value>The current power draw in watts.</value>
 	public double? CurrentPowerWatts
 		{
 		get;
@@ -961,6 +1009,7 @@ public sealed class EnergyUsage
 	/// <summary>
 	/// Gets the line voltage in volts.
 	/// </summary>
+	/// <value>The line voltage in volts.</value>
 	public double? VoltageVolts
 		{
 		get;
@@ -969,6 +1018,7 @@ public sealed class EnergyUsage
 	/// <summary>
 	/// Gets the current draw in amps.
 	/// </summary>
+	/// <value>The current draw in amps.</value>
 	public double? CurrentAmps
 		{
 		get;
@@ -977,6 +1027,7 @@ public sealed class EnergyUsage
 	/// <summary>
 	/// Gets the total measured energy in kilowatt-hours.
 	/// </summary>
+	/// <value>The total measured energy in kilowatt-hours.</value>
 	public double? TotalKilowattHours
 		{
 		get;
@@ -985,6 +1036,7 @@ public sealed class EnergyUsage
 	/// <summary>
 	/// Gets today's measured energy in kilowatt-hours when periodic statistics are available.
 	/// </summary>
+	/// <value>Today's measured energy in kilowatt-hours when periodic statistics are available.</value>
 	public double? TodayKilowattHours
 		{
 		get;
@@ -993,6 +1045,7 @@ public sealed class EnergyUsage
 	/// <summary>
 	/// Gets this month's measured energy in kilowatt-hours when periodic statistics are available.
 	/// </summary>
+	/// <value>This month's measured energy in kilowatt-hours when periodic statistics are available.</value>
 	public double? MonthKilowattHours
 		{
 		get;
@@ -1027,6 +1080,7 @@ public sealed class ChildDeviceInfo
 	/// <summary>
 	/// Gets the child device identifier.
 	/// </summary>
+	/// <value>The child device identifier.</value>
 	public string Id
 		{
 		get;
@@ -1035,6 +1089,7 @@ public sealed class ChildDeviceInfo
 	/// <summary>
 	/// Gets the child device alias.
 	/// </summary>
+	/// <value>The child device alias.</value>
 	public string? Alias
 		{
 		get;
@@ -1043,6 +1098,7 @@ public sealed class ChildDeviceInfo
 	/// <summary>
 	/// Gets the child device model.
 	/// </summary>
+	/// <value>The child device model.</value>
 	public string? Model
 		{
 		get;
@@ -1051,6 +1107,7 @@ public sealed class ChildDeviceInfo
 	/// <summary>
 	/// Gets the inferred child device family.
 	/// </summary>
+	/// <value>The inferred child device family.</value>
 	public DeviceType DeviceType
 		{
 		get;
@@ -1059,6 +1116,7 @@ public sealed class ChildDeviceInfo
 	/// <summary>
 	/// Gets the python-kasa style child category when reported.
 	/// </summary>
+	/// <value>The python-kasa style child category when reported.</value>
 	public string? Category
 		{
 		get;
@@ -1067,6 +1125,7 @@ public sealed class ChildDeviceInfo
 	/// <summary>
 	/// Gets a value indicating whether the child device appears to be on.
 	/// </summary>
+	/// <value>A value indicating whether the child device appears to be on.</value>
 	public bool? IsOn
 		{
 		get;
@@ -1075,6 +1134,7 @@ public sealed class ChildDeviceInfo
 	/// <summary>
 	/// Gets the reported child component identifiers.
 	/// </summary>
+	/// <value>The reported child component identifiers.</value>
 	public IReadOnlyList<string> ComponentIds
 		{
 		get;
@@ -1083,6 +1143,7 @@ public sealed class ChildDeviceInfo
 	/// <summary>
 	/// Gets the normalized child features derived from the latest payload.
 	/// </summary>
+	/// <value>The normalized child features derived from the latest payload.</value>
 	public IReadOnlyList<DeviceFeature> Features
 		{
 		get;
@@ -1099,6 +1160,7 @@ public sealed record ChildTriggerLogState
 	/// <summary>
 	/// Gets the trigger log entries reported for the child device.
 	/// </summary>
+	/// <value>The trigger log entries reported for the child device.</value>
 	public IReadOnlyList<ChildTriggerLogEntry> Logs
 		{
 		get;
@@ -1121,6 +1183,7 @@ public sealed record ChildTriggerLogEntry
 	/// <summary>
 	/// Gets the numeric log identifier, when reported.
 	/// </summary>
+	/// <value>The numeric log identifier, when reported.</value>
 	public int? Id
 		{
 		get;
@@ -1129,6 +1192,7 @@ public sealed record ChildTriggerLogEntry
 	/// <summary>
 	/// Gets the device-reported event identifier.
 	/// </summary>
+	/// <value>The device-reported event identifier.</value>
 	public string? EventId
 		{
 		get;
@@ -1137,6 +1201,7 @@ public sealed record ChildTriggerLogEntry
 	/// <summary>
 	/// Gets the raw event timestamp value, when reported.
 	/// </summary>
+	/// <value>The raw event timestamp value, when reported.</value>
 	public long? Timestamp
 		{
 		get;
@@ -1145,6 +1210,7 @@ public sealed record ChildTriggerLogEntry
 	/// <summary>
 	/// Gets the event name such as a button click type.
 	/// </summary>
+	/// <value>The event name such as a button click type.</value>
 	public string? EventName
 		{
 		get;
@@ -1165,6 +1231,7 @@ public sealed record ChildBatterySensorState
 	/// <summary>
 	/// Gets the latest battery level percentage, when reported.
 	/// </summary>
+	/// <value>The latest battery level percentage, when reported.</value>
 	public int? BatteryLevel
 		{
 		get;
@@ -1173,6 +1240,7 @@ public sealed record ChildBatterySensorState
 	/// <summary>
 	/// Gets whether the child sensor reports a low battery condition.
 	/// </summary>
+	/// <value>Whether the child sensor reports a low battery condition.</value>
 	public bool? BatteryLow
 		{
 		get;
@@ -1189,6 +1257,7 @@ public sealed record ChildContactSensorState
 	/// <summary>
 	/// Gets whether the contact sensor is currently open.
 	/// </summary>
+	/// <value>Whether the contact sensor is currently open.</value>
 	public bool? IsOpen
 		{
 		get;
@@ -1205,6 +1274,7 @@ public sealed record ChildMotionSensorState
 	/// <summary>
 	/// Gets whether motion is currently detected.
 	/// </summary>
+	/// <value>Whether motion is currently detected.</value>
 	public bool? MotionDetected
 		{
 		get;
@@ -1226,6 +1296,7 @@ public sealed record ChildWaterLeakSensorState
 	/// <summary>
 	/// Gets the reported water leak status string.
 	/// </summary>
+	/// <value>The reported water leak status string.</value>
 	public string? Status
 		{
 		get;
@@ -1234,6 +1305,7 @@ public sealed record ChildWaterLeakSensorState
 	/// <summary>
 	/// Gets whether an alert is currently active.
 	/// </summary>
+	/// <value>Whether an alert is currently active.</value>
 	public bool? Alert
 		{
 		get;
@@ -1242,6 +1314,7 @@ public sealed record ChildWaterLeakSensorState
 	/// <summary>
 	/// Gets the raw timestamp of the latest alert, when reported.
 	/// </summary>
+	/// <value>The raw timestamp of the latest alert, when reported.</value>
 	public long? AlertTimestamp
 		{
 		get;
@@ -1265,6 +1338,7 @@ public sealed record ChildTemperatureSensorState
 	/// <summary>
 	/// Gets the latest reported temperature value.
 	/// </summary>
+	/// <value>The latest reported temperature value.</value>
 	public double? Temperature
 		{
 		get;
@@ -1273,6 +1347,7 @@ public sealed record ChildTemperatureSensorState
 	/// <summary>
 	/// Gets whether the child device reports a temperature warning.
 	/// </summary>
+	/// <value>Whether the child device reports a temperature warning.</value>
 	public bool? Warning
 		{
 		get;
@@ -1281,6 +1356,7 @@ public sealed record ChildTemperatureSensorState
 	/// <summary>
 	/// Gets the temperature unit such as celsius or fahrenheit.
 	/// </summary>
+	/// <value>The temperature unit such as celsius or fahrenheit.</value>
 	public string? Unit
 		{
 		get;
@@ -1289,6 +1365,7 @@ public sealed record ChildTemperatureSensorState
 	/// <summary>
 	/// Gets the minimum comfort temperature, when reported.
 	/// </summary>
+	/// <value>The minimum comfort temperature, when reported.</value>
 	public double? MinimumComfortTemperature
 		{
 		get;
@@ -1297,6 +1374,7 @@ public sealed record ChildTemperatureSensorState
 	/// <summary>
 	/// Gets the maximum comfort temperature, when reported.
 	/// </summary>
+	/// <value>The maximum comfort temperature, when reported.</value>
 	public double? MaximumComfortTemperature
 		{
 		get;
@@ -1319,6 +1397,7 @@ public sealed record ChildHumiditySensorState
 	/// <summary>
 	/// Gets the latest reported humidity percentage.
 	/// </summary>
+	/// <value>The latest reported humidity percentage.</value>
 	public int? Humidity
 		{
 		get;
@@ -1327,6 +1406,7 @@ public sealed record ChildHumiditySensorState
 	/// <summary>
 	/// Gets whether the child device reports a humidity warning.
 	/// </summary>
+	/// <value>Whether the child device reports a humidity warning.</value>
 	public bool? Warning
 		{
 		get;
@@ -1335,6 +1415,7 @@ public sealed record ChildHumiditySensorState
 	/// <summary>
 	/// Gets the minimum comfort humidity, when reported.
 	/// </summary>
+	/// <value>The minimum comfort humidity, when reported.</value>
 	public double? MinimumComfortHumidity
 		{
 		get;
@@ -1343,6 +1424,7 @@ public sealed record ChildHumiditySensorState
 	/// <summary>
 	/// Gets the maximum comfort humidity, when reported.
 	/// </summary>
+	/// <value>The maximum comfort humidity, when reported.</value>
 	public double? MaximumComfortHumidity
 		{
 		get;
@@ -1359,6 +1441,7 @@ public sealed record ChildReportModeState
 	/// <summary>
 	/// Gets the sensor report interval in seconds, when reported.
 	/// </summary>
+	/// <value>The sensor report interval in seconds, when reported.</value>
 	public int? ReportInterval
 		{
 		get;
@@ -1375,6 +1458,7 @@ public sealed record ChildDoubleClickState
 	/// <summary>
 	/// Gets whether double-click is enabled.
 	/// </summary>
+	/// <value>Whether double-click is enabled.</value>
 	public bool? Enabled
 		{
 		get;
@@ -1396,6 +1480,7 @@ public sealed class DetectedChildDevice
 	/// <summary>
 	/// Gets the detected device identifier.
 	/// </summary>
+	/// <value>The detected device identifier.</value>
 	public string DeviceId
 		{
 		get;
@@ -1404,6 +1489,7 @@ public sealed class DetectedChildDevice
 	/// <summary>
 	/// Gets the detected device model.
 	/// </summary>
+	/// <value>The detected device model.</value>
 	public string? Model
 		{
 		get;
@@ -1412,6 +1498,7 @@ public sealed class DetectedChildDevice
 	/// <summary>
 	/// Gets the detected device category.
 	/// </summary>
+	/// <value>The detected device category.</value>
 	public string? Category
 		{
 		get;
@@ -1432,6 +1519,7 @@ public sealed class ChildSetupScanResult
 	/// <summary>
 	/// Gets the supported child categories reported by the hub.
 	/// </summary>
+	/// <value>The supported child categories reported by the hub.</value>
 	public IReadOnlyList<string> SupportedCategories
 		{
 		get;
@@ -1440,6 +1528,7 @@ public sealed class ChildSetupScanResult
 	/// <summary>
 	/// Gets the detected child devices from the latest scan.
 	/// </summary>
+	/// <value>The detected child devices from the latest scan.</value>
 	public IReadOnlyList<DetectedChildDevice> DetectedDevices
 		{
 		get;
@@ -1461,6 +1550,7 @@ public sealed record ChildFrostProtectionState
 	/// <summary>
 	/// Gets whether frost protection is currently enabled.
 	/// </summary>
+	/// <value>Whether frost protection is currently enabled.</value>
 	public bool? Enabled
 		{
 		get;
@@ -1469,6 +1559,7 @@ public sealed record ChildFrostProtectionState
 	/// <summary>
 	/// Gets the minimum frost-protection temperature, when reported.
 	/// </summary>
+	/// <value>The minimum frost-protection temperature, when reported.</value>
 	public int? MinimumTemperature
 		{
 		get;
@@ -1477,6 +1568,7 @@ public sealed record ChildFrostProtectionState
 	/// <summary>
 	/// Gets the reported temperature unit.
 	/// </summary>
+	/// <value>The reported temperature unit.</value>
 	public string? Unit
 		{
 		get;
@@ -1493,6 +1585,7 @@ public sealed record ChildProtectionState
 	/// <summary>
 	/// Gets whether child protection is enabled.
 	/// </summary>
+	/// <value>Whether child protection is enabled.</value>
 	public bool? Enabled
 		{
 		get;
@@ -1523,6 +1616,7 @@ public sealed record ChildTemperatureControlState
 	/// <summary>
 	/// Gets whether temperature control is enabled.
 	/// </summary>
+	/// <value>Whether temperature control is enabled.</value>
 	public bool? Enabled
 		{
 		get;
@@ -1531,6 +1625,7 @@ public sealed record ChildTemperatureControlState
 	/// <summary>
 	/// Gets the target temperature, when reported.
 	/// </summary>
+	/// <value>The target temperature, when reported.</value>
 	public double? TargetTemperature
 		{
 		get;
@@ -1539,6 +1634,7 @@ public sealed record ChildTemperatureControlState
 	/// <summary>
 	/// Gets the minimum supported target temperature, when reported.
 	/// </summary>
+	/// <value>The minimum supported target temperature, when reported.</value>
 	public int? MinimumTargetTemperature
 		{
 		get;
@@ -1547,6 +1643,7 @@ public sealed record ChildTemperatureControlState
 	/// <summary>
 	/// Gets the maximum supported target temperature, when reported.
 	/// </summary>
+	/// <value>The maximum supported target temperature, when reported.</value>
 	public int? MaximumTargetTemperature
 		{
 		get;
@@ -1555,6 +1652,7 @@ public sealed record ChildTemperatureControlState
 	/// <summary>
 	/// Gets the temperature offset, when reported.
 	/// </summary>
+	/// <value>The temperature offset, when reported.</value>
 	public int? TemperatureOffset
 		{
 		get;
@@ -1563,6 +1661,7 @@ public sealed record ChildTemperatureControlState
 	/// <summary>
 	/// Gets the raw TRV state flags reported by the device.
 	/// </summary>
+	/// <value>The raw TRV state flags reported by the device.</value>
 	public IReadOnlyList<string> States
 		{
 		get;
@@ -1591,6 +1690,7 @@ public sealed record ChildThermostatState
 	/// <summary>
 	/// Gets whether the thermostat is enabled.
 	/// </summary>
+	/// <value>Whether the thermostat is enabled.</value>
 	public bool? Enabled
 		{
 		get;
@@ -1599,6 +1699,7 @@ public sealed record ChildThermostatState
 	/// <summary>
 	/// Gets the target temperature, when reported.
 	/// </summary>
+	/// <value>The target temperature, when reported.</value>
 	public double? TargetTemperature
 		{
 		get;
@@ -1607,6 +1708,7 @@ public sealed record ChildThermostatState
 	/// <summary>
 	/// Gets the current measured temperature, when reported.
 	/// </summary>
+	/// <value>The current measured temperature, when reported.</value>
 	public double? CurrentTemperature
 		{
 		get;
@@ -1615,6 +1717,7 @@ public sealed record ChildThermostatState
 	/// <summary>
 	/// Gets the reported temperature unit.
 	/// </summary>
+	/// <value>The reported temperature unit.</value>
 	public string? Unit
 		{
 		get;
@@ -1623,6 +1726,7 @@ public sealed record ChildThermostatState
 	/// <summary>
 	/// Gets the raw TRV state flags reported by the device.
 	/// </summary>
+	/// <value>The raw TRV state flags reported by the device.</value>
 	public IReadOnlyList<string> States
 		{
 		get;
@@ -1647,6 +1751,7 @@ public sealed record RuleModuleState
 	/// <summary>
 	/// Gets the current countdown timer state, when reported.
 	/// </summary>
+	/// <value>The current countdown timer state, when reported.</value>
 	public CountdownRuleState? Countdown
 		{
 		get;
@@ -1655,6 +1760,7 @@ public sealed record RuleModuleState
 	/// <summary>
 	/// Gets the configured schedule rules.
 	/// </summary>
+	/// <value>The configured schedule rules.</value>
 	public IReadOnlyList<ScheduledRule> Schedules
 		{
 		get;
@@ -1663,6 +1769,7 @@ public sealed record RuleModuleState
 	/// <summary>
 	/// Gets the configured antitheft rules.
 	/// </summary>
+	/// <value>The configured antitheft rules.</value>
 	public IReadOnlyList<ScheduledRule> AntitheftRules
 		{
 		get;
@@ -1685,6 +1792,7 @@ public sealed record CountdownRuleState
 	/// <summary>
 	/// Gets a value indicating whether the countdown feature is enabled.
 	/// </summary>
+	/// <value>A value indicating whether the countdown feature is enabled.</value>
 	public bool? IsEnabled
 		{
 		get;
@@ -1693,6 +1801,7 @@ public sealed record CountdownRuleState
 	/// <summary>
 	/// Gets a value indicating whether a countdown is currently active.
 	/// </summary>
+	/// <value>A value indicating whether a countdown is currently active.</value>
 	public bool? IsActive
 		{
 		get;
@@ -1701,6 +1810,7 @@ public sealed record CountdownRuleState
 	/// <summary>
 	/// Gets the configured countdown delay in seconds.
 	/// </summary>
+	/// <value>The configured countdown delay in seconds.</value>
 	public int? DelaySeconds
 		{
 		get;
@@ -1709,6 +1819,7 @@ public sealed record CountdownRuleState
 	/// <summary>
 	/// Gets a value indicating whether the countdown action turns the device on.
 	/// </summary>
+	/// <value>A value indicating whether the countdown action turns the device on.</value>
 	public bool? ActionTurnsOn
 		{
 		get;
@@ -1733,6 +1844,7 @@ public sealed class ScheduledRule
 	/// <summary>
 	/// Gets the stable rule identifier.
 	/// </summary>
+	/// <value>The stable rule identifier.</value>
 	public string Id
 		{
 		get;
@@ -1741,6 +1853,7 @@ public sealed class ScheduledRule
 	/// <summary>
 	/// Gets the optional rule name.
 	/// </summary>
+	/// <value>The optional rule name.</value>
 	public string? Name
 		{
 		get;
@@ -1749,6 +1862,7 @@ public sealed class ScheduledRule
 	/// <summary>
 	/// Gets a value indicating whether the rule is enabled.
 	/// </summary>
+	/// <value>A value indicating whether the rule is enabled.</value>
 	public bool? IsEnabled
 		{
 		get;
@@ -1757,6 +1871,7 @@ public sealed class ScheduledRule
 	/// <summary>
 	/// Gets a value indicating whether the rule action turns the device on.
 	/// </summary>
+	/// <value>A value indicating whether the rule action turns the device on.</value>
 	public bool? ActionTurnsOn
 		{
 		get;
@@ -1765,6 +1880,7 @@ public sealed class ScheduledRule
 	/// <summary>
 	/// Gets the start minute-of-day value when reported.
 	/// </summary>
+	/// <value>The start minute-of-day value when reported.</value>
 	public int? StartMinute
 		{
 		get;
@@ -1773,6 +1889,7 @@ public sealed class ScheduledRule
 	/// <summary>
 	/// Gets the end minute-of-day value when reported.
 	/// </summary>
+	/// <value>The end minute-of-day value when reported.</value>
 	public int? EndMinute
 		{
 		get;
@@ -1801,6 +1918,7 @@ public sealed record FirmwareState
 	/// <summary>
 	/// Gets the current firmware version reported by the device.
 	/// </summary>
+	/// <value>The current firmware version reported by the device.</value>
 	public string? CurrentFirmwareVersion
 		{
 		get;
@@ -1809,6 +1927,7 @@ public sealed record FirmwareState
 	/// <summary>
 	/// Gets the current hardware version reported by the device.
 	/// </summary>
+	/// <value>The current hardware version reported by the device.</value>
 	public string? CurrentHardwareVersion
 		{
 		get;
@@ -1817,6 +1936,7 @@ public sealed record FirmwareState
 	/// <summary>
 	/// Gets whether automatic firmware updates are enabled, when reported.
 	/// </summary>
+	/// <value>Whether automatic firmware updates are enabled, when reported.</value>
 	public bool? AutoUpdateEnabled
 		{
 		get;
@@ -1825,6 +1945,7 @@ public sealed record FirmwareState
 	/// <summary>
 	/// Gets the latest available firmware version, when requested and reported.
 	/// </summary>
+	/// <value>The latest available firmware version, when requested and reported.</value>
 	public string? AvailableFirmwareVersion
 		{
 		get;
@@ -1833,6 +1954,7 @@ public sealed record FirmwareState
 	/// <summary>
 	/// Gets whether a newer firmware version is available, when known.
 	/// </summary>
+	/// <value>Whether a newer firmware version is available, when known.</value>
 	public bool? UpdateAvailable
 		{
 		get;
@@ -1855,6 +1977,7 @@ public sealed record CloudConnectionState
 	/// <summary>
 	/// Gets whether the device reports an active cloud connection.
 	/// </summary>
+	/// <value>Whether the device reports an active cloud connection.</value>
 	public bool? IsConnected
 		{
 		get;
@@ -1863,6 +1986,7 @@ public sealed record CloudConnectionState
 	/// <summary>
 	/// Gets whether the device reports cloud provisioning, when available.
 	/// </summary>
+	/// <value>Whether the device reports cloud provisioning, when available.</value>
 	public bool? IsProvisioned
 		{
 		get;
@@ -1871,6 +1995,7 @@ public sealed record CloudConnectionState
 	/// <summary>
 	/// Gets the configured cloud server, when reported.
 	/// </summary>
+	/// <value>The configured cloud server, when reported.</value>
 	public string? Server
 		{
 		get;
@@ -1879,6 +2004,7 @@ public sealed record CloudConnectionState
 	/// <summary>
 	/// Gets the cloud account user name, when reported.
 	/// </summary>
+	/// <value>The cloud account user name, when reported.</value>
 	public string? UserName
 		{
 		get;
@@ -1900,6 +2026,7 @@ public sealed record DeviceTimeState
 	/// <summary>
 	/// Gets the local device time, when reported.
 	/// </summary>
+	/// <value>The local device time, when reported.</value>
 	public DateTime? LocalTime
 		{
 		get;
@@ -1908,6 +2035,7 @@ public sealed record DeviceTimeState
 	/// <summary>
 	/// Gets the reported timezone region, when available.
 	/// </summary>
+	/// <value>The reported timezone region, when available.</value>
 	public string? Region
 		{
 		get;
@@ -1916,6 +2044,7 @@ public sealed record DeviceTimeState
 	/// <summary>
 	/// Gets the reported UTC offset in minutes, when available.
 	/// </summary>
+	/// <value>The reported UTC offset in minutes, when available.</value>
 	public int? TimeDifferenceMinutes
 		{
 		get;
@@ -1936,6 +2065,7 @@ public sealed class MatterSetupInfo
 	/// <summary>
 	/// Gets the Matter setup code, when reported.
 	/// </summary>
+	/// <value>The Matter setup code, when reported.</value>
 	public string? SetupCode
 		{
 		get;
@@ -1944,6 +2074,7 @@ public sealed class MatterSetupInfo
 	/// <summary>
 	/// Gets the Matter setup payload, when reported.
 	/// </summary>
+	/// <value>The Matter setup payload, when reported.</value>
 	public string? SetupPayload
 		{
 		get;
@@ -1964,6 +2095,7 @@ public sealed class HomeKitSetupInfo
 	/// <summary>
 	/// Gets the HomeKit setup code, when reported.
 	/// </summary>
+	/// <value>The HomeKit setup code, when reported.</value>
 	public string? SetupCode
 		{
 		get;
@@ -1972,6 +2104,7 @@ public sealed class HomeKitSetupInfo
 	/// <summary>
 	/// Gets the HomeKit setup payload, when reported.
 	/// </summary>
+	/// <value>The HomeKit setup payload, when reported.</value>
 	public string? SetupPayload
 		{
 		get;
@@ -1994,6 +2127,7 @@ public sealed record AutoOffState
 	/// <summary>
 	/// Gets whether auto-off is enabled.
 	/// </summary>
+	/// <value>Whether auto-off is enabled.</value>
 	public bool? Enabled
 		{
 		get;
@@ -2002,6 +2136,7 @@ public sealed record AutoOffState
 	/// <summary>
 	/// Gets the configured auto-off delay in minutes, when reported.
 	/// </summary>
+	/// <value>The configured auto-off delay in minutes, when reported.</value>
 	public int? DelayMinutes
 		{
 		get;
@@ -2010,6 +2145,7 @@ public sealed record AutoOffState
 	/// <summary>
 	/// Gets whether an auto-off timer is currently active, when reported.
 	/// </summary>
+	/// <value>Whether an auto-off timer is currently active, when reported.</value>
 	public bool? TimerActive
 		{
 		get;
@@ -2018,6 +2154,7 @@ public sealed record AutoOffState
 	/// <summary>
 	/// Gets the local time when the device is expected to turn off automatically, when known.
 	/// </summary>
+	/// <value>The local time when the device is expected to turn off automatically, when known.</value>
 	public DateTime? AutoOffAt
 		{
 		get;
@@ -2041,6 +2178,7 @@ public sealed class LedNightModeSettings
 	/// <summary>
 	/// Gets the configured night-mode start minute, when reported.
 	/// </summary>
+	/// <value>The configured night-mode start minute, when reported.</value>
 	public int? StartMinute
 		{
 		get;
@@ -2049,6 +2187,7 @@ public sealed class LedNightModeSettings
 	/// <summary>
 	/// Gets the configured night-mode end minute, when reported.
 	/// </summary>
+	/// <value>The configured night-mode end minute, when reported.</value>
 	public int? EndMinute
 		{
 		get;
@@ -2057,6 +2196,7 @@ public sealed class LedNightModeSettings
 	/// <summary>
 	/// Gets the night-mode type, such as a scheduled or sunrise/sunset mode.
 	/// </summary>
+	/// <value>The night-mode type, such as a scheduled or sunrise/sunset mode.</value>
 	public string? ModeType
 		{
 		get;
@@ -2065,6 +2205,7 @@ public sealed class LedNightModeSettings
 	/// <summary>
 	/// Gets the configured sunrise offset in minutes, when reported.
 	/// </summary>
+	/// <value>The configured sunrise offset in minutes, when reported.</value>
 	public int? SunriseOffsetMinutes
 		{
 		get;
@@ -2073,6 +2214,7 @@ public sealed class LedNightModeSettings
 	/// <summary>
 	/// Gets the configured sunset offset in minutes, when reported.
 	/// </summary>
+	/// <value>The configured sunset offset in minutes, when reported.</value>
 	public int? SunsetOffsetMinutes
 		{
 		get;
@@ -2094,6 +2236,7 @@ public sealed record LedState
 	/// <summary>
 	/// Gets whether the device LED is enabled.
 	/// </summary>
+	/// <value>Whether the device LED is enabled.</value>
 	public bool? Enabled
 		{
 		get;
@@ -2102,6 +2245,7 @@ public sealed record LedState
 	/// <summary>
 	/// Gets the LED mode string, when reported.
 	/// </summary>
+	/// <value>The LED mode string, when reported.</value>
 	public string? Mode
 		{
 		get;
@@ -2110,6 +2254,7 @@ public sealed record LedState
 	/// <summary>
 	/// Gets the LED night-mode settings, when reported.
 	/// </summary>
+	/// <value>The LED night-mode settings, when reported.</value>
 	public LedNightModeSettings? NightModeSettings
 		{
 		get;
@@ -2129,6 +2274,7 @@ public sealed record ChildLockState
 	/// <summary>
 	/// Gets whether child lock is enabled.
 	/// </summary>
+	/// <value>Whether child lock is enabled.</value>
 	public bool? Enabled
 		{
 		get;
@@ -2153,6 +2299,7 @@ public sealed record AlarmState
 	/// <summary>
 	/// Gets whether the alarm is currently active.
 	/// </summary>
+	/// <value>Whether the alarm is currently active.</value>
 	public bool? IsActive
 		{
 		get;
@@ -2161,6 +2308,7 @@ public sealed record AlarmState
 	/// <summary>
 	/// Gets the alarm source, when reported.
 	/// </summary>
+	/// <value>The alarm source, when reported.</value>
 	public string? Source
 		{
 		get;
@@ -2169,6 +2317,7 @@ public sealed record AlarmState
 	/// <summary>
 	/// Gets the selected alarm sound, when reported.
 	/// </summary>
+	/// <value>The selected alarm sound, when reported.</value>
 	public string? Sound
 		{
 		get;
@@ -2177,6 +2326,7 @@ public sealed record AlarmState
 	/// <summary>
 	/// Gets the selected alarm volume label, when reported.
 	/// </summary>
+	/// <value>The selected alarm volume label, when reported.</value>
 	public string? Volume
 		{
 		get;
@@ -2185,6 +2335,7 @@ public sealed record AlarmState
 	/// <summary>
 	/// Gets the selected alarm volume level, when reported.
 	/// </summary>
+	/// <value>The selected alarm volume level, when reported.</value>
 	public int? VolumeLevel
 		{
 		get;
@@ -2193,6 +2344,7 @@ public sealed record AlarmState
 	/// <summary>
 	/// Gets the configured alarm duration in seconds, when reported.
 	/// </summary>
+	/// <value>The configured alarm duration in seconds, when reported.</value>
 	public int? DurationSeconds
 		{
 		get;
@@ -2212,6 +2364,7 @@ public sealed record OverheatProtectionState
 	/// <summary>
 	/// Gets whether the device reports an overheat condition.
 	/// </summary>
+	/// <value>Whether the device reports an overheat condition.</value>
 	public bool? Overheated
 		{
 		get;
@@ -2231,6 +2384,7 @@ public sealed record PowerProtectionState
 	/// <summary>
 	/// Gets whether power protection is active.
 	/// </summary>
+	/// <value>Whether power protection is active.</value>
 	public bool? ProtectionActive
 		{
 		get;
@@ -2250,6 +2404,7 @@ public sealed record FanState
 	/// <summary>
 	/// Gets whether the fan is on.
 	/// </summary>
+	/// <value>Whether the fan is on.</value>
 	public bool? IsOn
 		{
 		get;
@@ -2269,6 +2424,7 @@ public sealed record SpeakerState
 	/// <summary>
 	/// Gets whether speaker capability is available.
 	/// </summary>
+	/// <value>Whether speaker capability is available.</value>
 	public bool? IsAvailable
 		{
 		get;
@@ -2307,6 +2463,7 @@ public sealed record LightState
 	/// <summary>
 	/// Gets a value indicating whether the light is on.
 	/// </summary>
+	/// <value>A value indicating whether the light is on.</value>
 	public bool? IsOn
 		{
 		get;
@@ -2315,6 +2472,7 @@ public sealed record LightState
 	/// <summary>
 	/// Gets the brightness percentage.
 	/// </summary>
+	/// <value>The brightness percentage.</value>
 	public int? Brightness
 		{
 		get;
@@ -2323,6 +2481,7 @@ public sealed record LightState
 	/// <summary>
 	/// Gets the color temperature in kelvin.
 	/// </summary>
+	/// <value>The color temperature in kelvin.</value>
 	public int? ColorTemperature
 		{
 		get;
@@ -2331,6 +2490,7 @@ public sealed record LightState
 	/// <summary>
 	/// Gets the hue component.
 	/// </summary>
+	/// <value>The hue component.</value>
 	public int? Hue
 		{
 		get;
@@ -2339,6 +2499,7 @@ public sealed record LightState
 	/// <summary>
 	/// Gets the saturation component.
 	/// </summary>
+	/// <value>The saturation component.</value>
 	public int? Saturation
 		{
 		get;
@@ -2347,6 +2508,7 @@ public sealed record LightState
 	/// <summary>
 	/// Gets a value indicating whether the device reports light-effect capability.
 	/// </summary>
+	/// <value>A value indicating whether the device reports light-effect capability.</value>
 	public bool SupportsEffects
 		{
 		get;
@@ -2355,6 +2517,7 @@ public sealed record LightState
 	/// <summary>
 	/// Gets the normalized light effect state when the device exposes one.
 	/// </summary>
+	/// <value>The normalized light effect state when the device exposes one.</value>
 	public LightEffectState? Effect
 		{
 		get;
@@ -2363,6 +2526,7 @@ public sealed record LightState
 	/// <summary>
 	/// Gets the normalized HSV color when color information is available.
 	/// </summary>
+	/// <value>The normalized HSV color when color information is available.</value>
 	public HsvColor? Hsv
 		{
 		get;
@@ -2371,6 +2535,7 @@ public sealed record LightState
 	/// <summary>
 	/// Gets the named light presets reported by the device.
 	/// </summary>
+	/// <value>The named light presets reported by the device.</value>
 	public IReadOnlyList<LightPresetDefinition> AvailablePresets
 		{
 		get;
@@ -2379,6 +2544,7 @@ public sealed record LightState
 	/// <summary>
 	/// Gets the active light preset name when the current state matches one.
 	/// </summary>
+	/// <value>The active light preset name when the current state matches one.</value>
 	public string? ActivePreset
 		{
 		get;
@@ -2400,6 +2566,7 @@ public sealed class HsvColor
 	/// <summary>
 	/// Gets the hue component.
 	/// </summary>
+	/// <value>The hue component.</value>
 	public int Hue
 		{
 		get;
@@ -2408,6 +2575,7 @@ public sealed class HsvColor
 	/// <summary>
 	/// Gets the saturation component.
 	/// </summary>
+	/// <value>The saturation component.</value>
 	public int Saturation
 		{
 		get;
@@ -2416,6 +2584,7 @@ public sealed class HsvColor
 	/// <summary>
 	/// Gets the value component.
 	/// </summary>
+	/// <value>The value component.</value>
 	public int Value
 		{
 		get;
@@ -2439,6 +2608,7 @@ public sealed record LightEffectState
 	/// <summary>
 	/// Gets the device-specific effect identifier.
 	/// </summary>
+	/// <value>The device-specific effect identifier.</value>
 	public string? Identifier
 		{
 		get;
@@ -2447,6 +2617,7 @@ public sealed record LightEffectState
 	/// <summary>
 	/// Gets the user-visible effect name, when available.
 	/// </summary>
+	/// <value>The user-visible effect name, when available.</value>
 	public string? Name
 		{
 		get;
@@ -2455,6 +2626,7 @@ public sealed record LightEffectState
 	/// <summary>
 	/// Gets a value indicating whether the effect is currently enabled.
 	/// </summary>
+	/// <value>A value indicating whether the effect is currently enabled.</value>
 	public bool? IsEnabled
 		{
 		get;
@@ -2463,6 +2635,7 @@ public sealed record LightEffectState
 	/// <summary>
 	/// Gets the effect brightness when the device reports one.
 	/// </summary>
+	/// <value>The effect brightness when the device reports one.</value>
 	public int? Brightness
 		{
 		get;
@@ -2471,6 +2644,7 @@ public sealed record LightEffectState
 	/// <summary>
 	/// Gets the available effect definitions reported by the device.
 	/// </summary>
+	/// <value>The available effect definitions reported by the device.</value>
 	public IReadOnlyList<LightEffectDefinition> AvailableEffects
 		{
 		get;
@@ -2491,6 +2665,7 @@ public sealed class LightEffectDefinition
 	/// <summary>
 	/// Gets the device-specific effect identifier.
 	/// </summary>
+	/// <value>The device-specific effect identifier.</value>
 	public string Identifier
 		{
 		get;
@@ -2499,6 +2674,7 @@ public sealed class LightEffectDefinition
 	/// <summary>
 	/// Gets the user-visible effect name, when available.
 	/// </summary>
+	/// <value>The user-visible effect name, when available.</value>
 	public string? Name
 		{
 		get;
@@ -2522,6 +2698,7 @@ public sealed class LightPresetDefinition
 	/// <summary>
 	/// Gets the user-visible preset name.
 	/// </summary>
+	/// <value>The user-visible preset name.</value>
 	public string Name
 		{
 		get;
@@ -2530,6 +2707,7 @@ public sealed class LightPresetDefinition
 	/// <summary>
 	/// Gets the preset brightness percentage.
 	/// </summary>
+	/// <value>The preset brightness percentage.</value>
 	public int? Brightness
 		{
 		get;
@@ -2538,6 +2716,7 @@ public sealed class LightPresetDefinition
 	/// <summary>
 	/// Gets the preset color temperature in kelvin.
 	/// </summary>
+	/// <value>The preset color temperature in kelvin.</value>
 	public int? ColorTemperature
 		{
 		get;
@@ -2546,6 +2725,7 @@ public sealed class LightPresetDefinition
 	/// <summary>
 	/// Gets the preset hue component.
 	/// </summary>
+	/// <value>The preset hue component.</value>
 	public int? Hue
 		{
 		get;
@@ -2554,6 +2734,7 @@ public sealed class LightPresetDefinition
 	/// <summary>
 	/// Gets the preset saturation component.
 	/// </summary>
+	/// <value>The preset saturation component.</value>
 	public int? Saturation
 		{
 		get;
@@ -2574,6 +2755,7 @@ public sealed record LightPresetState
 	/// <summary>
 	/// Gets the presets reported by the device.
 	/// </summary>
+	/// <value>The presets reported by the device.</value>
 	public IReadOnlyList<LightPresetDefinition> Presets
 		{
 		get;
@@ -2582,6 +2764,7 @@ public sealed record LightPresetState
 	/// <summary>
 	/// Gets the active preset name when the current state matches one.
 	/// </summary>
+	/// <value>The active preset name when the current state matches one.</value>
 	public string? ActivePreset
 		{
 		get;
@@ -2616,11 +2799,13 @@ public sealed record LightTransitionState
 	/// <summary>
 	/// Gets whether fading between light settings is enabled, or <see langword="null" /> if not reported.
 	/// </summary>
+	/// <value>Whether fading between light settings is enabled, or <see langword="null" /> if not reported.</value>
 	public bool? IsChangeTransitionEnabled { get; }
 
 	/// <summary>
 	/// Gets a value indicating whether smooth transition behavior is enabled.
 	/// </summary>
+	/// <value>A value indicating whether smooth transition behavior is enabled.</value>
 	public bool? IsEnabled
 		{
 		get;
@@ -2629,6 +2814,7 @@ public sealed record LightTransitionState
 	/// <summary>
 	/// Gets a value indicating whether the turn-on transition is enabled.
 	/// </summary>
+	/// <value>A value indicating whether the turn-on transition is enabled.</value>
 	public bool? IsTransitionOnEnabled
 		{
 		get;
@@ -2637,11 +2823,13 @@ public sealed record LightTransitionState
 	/// <summary>
 	/// Gets the effective transition duration used when turning the light on, in seconds.
 	/// </summary>
+	/// <value>The effective transition duration used when turning the light on, in seconds.</value>
 	public int? TransitionOnSeconds => IsTransitionOnEnabled == false ? 0 : TransitionOnDurationSeconds;
 
 	/// <summary>
 	/// Gets the stored turn-on transition duration, in seconds.
 	/// </summary>
+	/// <value>The stored turn-on transition duration, in seconds.</value>
 	public int? TransitionOnDurationSeconds
 		{
 		get;
@@ -2650,6 +2838,7 @@ public sealed record LightTransitionState
 	/// <summary>
 	/// Gets the maximum supported turn-on transition duration, in seconds.
 	/// </summary>
+	/// <value>The maximum supported turn-on transition duration, in seconds.</value>
 	public int? TransitionOnMaximumDurationSeconds
 		{
 		get;
@@ -2658,6 +2847,7 @@ public sealed record LightTransitionState
 	/// <summary>
 	/// Gets a value indicating whether the turn-off transition is enabled.
 	/// </summary>
+	/// <value>A value indicating whether the turn-off transition is enabled.</value>
 	public bool? IsTransitionOffEnabled
 		{
 		get;
@@ -2666,11 +2856,13 @@ public sealed record LightTransitionState
 	/// <summary>
 	/// Gets the effective transition duration used when turning the light off, in seconds.
 	/// </summary>
+	/// <value>The effective transition duration used when turning the light off, in seconds.</value>
 	public int? TransitionOffSeconds => IsTransitionOffEnabled == false ? 0 : TransitionOffDurationSeconds;
 
 	/// <summary>
 	/// Gets the stored turn-off transition duration, in seconds.
 	/// </summary>
+	/// <value>The stored turn-off transition duration, in seconds.</value>
 	public int? TransitionOffDurationSeconds
 		{
 		get;
@@ -2679,6 +2871,7 @@ public sealed record LightTransitionState
 	/// <summary>
 	/// Gets the maximum supported turn-off transition duration, in seconds.
 	/// </summary>
+	/// <value>The maximum supported turn-off transition duration, in seconds.</value>
 	public int? TransitionOffMaximumDurationSeconds
 		{
 		get;
@@ -2699,6 +2892,7 @@ public sealed record LightStripEffectState
 	/// <summary>
 	/// Gets the active effect state.
 	/// </summary>
+	/// <value>The active effect state.</value>
 	public LightEffectState? Effect
 		{
 		get;
@@ -2707,6 +2901,7 @@ public sealed record LightStripEffectState
 	/// <summary>
 	/// Gets the effects reported by the strip.
 	/// </summary>
+	/// <value>The effects reported by the strip.</value>
 	public IReadOnlyList<LightEffectDefinition> AvailableEffects
 		{
 		get;
@@ -2751,6 +2946,7 @@ public sealed class DeviceSystemInfo
 	/// <summary>
 	/// Gets the user-visible alias.
 	/// </summary>
+	/// <value>The user-visible alias.</value>
 	public string Alias
 		{
 		get;
@@ -2759,6 +2955,7 @@ public sealed class DeviceSystemInfo
 	/// <summary>
 	/// Gets the model identifier, when available.
 	/// </summary>
+	/// <value>The model identifier, when available.</value>
 	public string? Model
 		{
 		get;
@@ -2767,6 +2964,7 @@ public sealed class DeviceSystemInfo
 	/// <summary>
 	/// Gets the device identifier, when available.
 	/// </summary>
+	/// <value>The device identifier, when available.</value>
 	public string? DeviceId
 		{
 		get;
@@ -2775,6 +2973,7 @@ public sealed class DeviceSystemInfo
 	/// <summary>
 	/// Gets the MAC address, when available.
 	/// </summary>
+	/// <value>The MAC address, when available.</value>
 	public string? MacAddress
 		{
 		get;
@@ -2783,6 +2982,7 @@ public sealed class DeviceSystemInfo
 	/// <summary>
 	/// Gets the hardware version, when available.
 	/// </summary>
+	/// <value>The hardware version, when available.</value>
 	public string? HardwareVersion
 		{
 		get;
@@ -2791,6 +2991,7 @@ public sealed class DeviceSystemInfo
 	/// <summary>
 	/// Gets the software version, when available.
 	/// </summary>
+	/// <value>The software version, when available.</value>
 	public string? SoftwareVersion
 		{
 		get;
@@ -2799,6 +3000,7 @@ public sealed class DeviceSystemInfo
 	/// <summary>
 	/// Gets the reported Wi-Fi signal level, when available.
 	/// </summary>
+	/// <value>The reported Wi-Fi signal level, when available.</value>
 	public int? SignalLevel
 		{
 		get;
@@ -2807,6 +3009,7 @@ public sealed class DeviceSystemInfo
 	/// <summary>
 	/// Gets the reported RSSI in dBm, when available.
 	/// </summary>
+	/// <value>The reported RSSI in dBm, when available.</value>
 	public int? Rssi
 		{
 		get;
@@ -2815,6 +3018,7 @@ public sealed class DeviceSystemInfo
 	/// <summary>
 	/// Gets the reported SSID, when available.
 	/// </summary>
+	/// <value>The reported SSID, when available.</value>
 	public string? Ssid
 		{
 		get;
@@ -2823,6 +3027,7 @@ public sealed class DeviceSystemInfo
 	/// <summary>
 	/// Gets the inferred device family.
 	/// </summary>
+	/// <value>The inferred device family.</value>
 	public DeviceType DeviceType
 		{
 		get;
@@ -2831,6 +3036,7 @@ public sealed class DeviceSystemInfo
 	/// <summary>
 	/// Gets a value indicating whether the device appears to be on.
 	/// </summary>
+	/// <value>A value indicating whether the device appears to be on.</value>
 	public bool? IsOn
 		{
 		get;
@@ -2839,6 +3045,7 @@ public sealed class DeviceSystemInfo
 	/// <summary>
 	/// Gets the reported on-time duration when the device exposes it.
 	/// </summary>
+	/// <value>The reported on-time duration when the device exposes it.</value>
 	public TimeSpan? OnTime
 		{
 		get;
@@ -2847,6 +3054,7 @@ public sealed class DeviceSystemInfo
 	/// <summary>
 	/// Gets the child devices reported by the device.
 	/// </summary>
+	/// <value>The child devices reported by the device.</value>
 	public IReadOnlyList<ChildDeviceInfo> Children
 		{
 		get;

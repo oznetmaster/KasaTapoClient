@@ -1,0 +1,18 @@
+name: Strict XML documentation
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  xml-documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Verify every production API configuration
+        shell: pwsh
+        run: ./build/Invoke.ps1 -Task xml-documentation

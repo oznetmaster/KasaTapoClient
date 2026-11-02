@@ -14,6 +14,7 @@ public sealed partial class KasaDevice
 	/// <summary>
 	/// Gets access to the configured physical light-strip length, when supported.
 	/// </summary>
+	/// <value>Access to the configured physical light-strip length, when supported.</value>
 	public LightStripSegmentModule LightStripSegment
 		{
 		get;
@@ -22,6 +23,7 @@ public sealed partial class KasaDevice
 	/// <summary>
 	/// Gets the last reported strip length, or <see langword="null" /> when unavailable.
 	/// </summary>
+	/// <value>The last reported strip length, or <see langword="null" /> when unavailable.</value>
 	public LightStripSegmentState? LightStripSegmentState
 		{
 		get; private set;
@@ -98,6 +100,7 @@ public sealed record LightStripSegmentState
 	/// <summary>
 	/// Gets the reported number of 10 cm segments per run, independent of lighting-effect segments.
 	/// </summary>
+	/// <value>The reported number of 10 cm segments per run, independent of lighting-effect segments.</value>
 	public int SegmentCount
 		{
 		get;
@@ -116,16 +119,19 @@ public sealed class LightStripSegmentModule
 	/// <summary>
 	/// Gets the latest reported length, or <see langword="null" /> when unavailable.
 	/// </summary>
+	/// <value>The latest reported length, or <see langword="null" /> when unavailable.</value>
 	public LightStripSegmentState? State => _device.LightStripSegmentState;
 
 	/// <summary>
 	/// Gets the reported count of 10 cm segments per run, or <see langword="null" /> when unavailable.
 	/// </summary>
+	/// <value>The reported count of 10 cm segments per run, or <see langword="null" /> when unavailable.</value>
 	public int? SegmentCount => State?.SegmentCount;
 
 	/// <summary>
 	/// Gets whether the device advertises the segment component and has returned segment state.
 	/// </summary>
+	/// <value>Whether the device advertises the segment component and has returned segment state.</value>
 	public bool IsAvailable => State is not null;
 
 	/// <summary>

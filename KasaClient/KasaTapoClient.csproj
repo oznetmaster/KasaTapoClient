@@ -164,4 +164,9 @@ Both new setters check reported capabilities, honor cancellation, report device 
 		<Exec Command="&quot;$(DocfxExe)&quot; build &quot;$(DocfxConfig)&quot; --output &quot;$(DocsDir)&quot; --logLevel Error --noLangKeyword true --markdownEngineName markdig" ContinueOnError="true" IgnoreExitCode="true" Condition="'$(DocfxExe)' != '' and Exists('$(DocfxConfig)')" />
 
 	</Target>
+  <!-- Shared strict XML documentation policy: all configurations and target frameworks. -->
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <WarningsAsErrors>$(WarningsAsErrors);CS1591;CS1570;CS1571;CS1572;CS1573;CS1574;CS1580;CS1581;CS1584;CS1587;CS1658;CS1710;CS1711;CS1712</WarningsAsErrors>
+  </PropertyGroup>
 </Project>

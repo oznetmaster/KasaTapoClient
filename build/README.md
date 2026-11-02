@@ -1,6 +1,6 @@
 # Build and test
 
-This repository uses [the shared Cake build component](https://github.com/oznetmaster/BuildAutomation/tree/c0a215e202dc1e05a37707720ab12032be610518) pinned in `component.json`. It is build tooling only; product dependencies and versions are unchanged.
+This repository uses [the shared Cake build component](https://github.com/oznetmaster/BuildAutomation/tree/cb36bb30b23e58aff85435f23ad0c8428d86ecdd) pinned in `component.json`. It is build tooling only; product dependencies and versions are unchanged.
 
 The CI workflow retains its jobs, framework matrix, filters, prerequisites and artifact upload rules. Repository-owned recipes preserve the build/test/package commands. Publication, validation reuse, approvals, runner selection and hardware reservations remain in GitHub Actions.
 
@@ -20,4 +20,10 @@ The shared component rejects missing/stale/empty/failed declared TRX results and
 
 ## Pages documentation
 
-`documentation` builds the repository site and checks [the common Pages standard](https://github.com/oznetmaster/BuildAutomation/blob/c0a215e202dc1e05a37707720ab12032be610518/DOCUMENTATION-STANDARD.md): Home, Guides, API Reference, GitHub and NuGet navigation, modern theme, consistent title/footer, searchable content and every API output group. DocFX is locally pinned to 2.81.0. Existing project-specific generation and coverage checks remain in the recipe. GitHub Actions uploads/deploys the verified site; local builds publish nothing.
+`documentation` builds the repository site and checks [the common Pages standard](https://github.com/oznetmaster/BuildAutomation/blob/cb36bb30b23e58aff85435f23ad0c8428d86ecdd/DOCUMENTATION-STANDARD.md): Home, Guides, API Reference, GitHub and NuGet navigation, modern theme, consistent title/footer, searchable content and every API output group. DocFX is locally pinned to 2.81.0. Existing project-specific generation and coverage checks remain in the recipe. GitHub Actions uploads/deploys the verified site; local builds publish nothing.
+
+## Strict XML documentation
+
+Every shared Cake task first checks the public and protected API documentation in the production projects listed in `recipe.json`. The check evaluates the actual Compile items and compiler symbols for every target framework in Debug and Release. Summaries, parameter and type-parameter descriptions, non-void return descriptions, and property/indexer `<value>` descriptions must be present and non-empty. Explicit inheritance is accepted; undocumented overrides are rejected. Compiler XML diagnostics are errors in every production build.
+
+Run `./build/Invoke.ps1 -Task xml-documentation` to check documentation without running the test suites. The dedicated CI workflow and the unconditional gate in every publishing job use the same check, including when recent test evidence is reused. Existing repository-specific documentation checks remain in place.

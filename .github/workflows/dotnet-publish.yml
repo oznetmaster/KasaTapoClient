@@ -88,6 +88,10 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Verify strict XML documentation before publication
+        shell: pwsh
+        run: ./build/Invoke.ps1 -Task xml-documentation
+
       - name: Determine package version
         id: version
         shell: pwsh
@@ -204,6 +208,10 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.401
+      - name: Verify strict XML documentation before publication
+        shell: pwsh
+        run: ./build/Invoke.ps1 -Task xml-documentation
+
       - name: Build and verify documentation-only package
         shell: pwsh
         run: ./tools/New-NuGetDocumentationPatch.ps1
