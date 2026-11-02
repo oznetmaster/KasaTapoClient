@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "tasks": {
+    "unit-tests-test-run-unit-tests": {
+      "commands": [
+        {
+          "executable": "dotnet",
+          "arguments": [
+            "test",
+            "${env:BUILD_INPUT_0}",
+            "-c",
+            "Release",
+            "-f",
+            "${env:BUILD_INPUT_1}",
+            "--filter",
+            "TestCategory!=Live",
+            "--logger",
+            "trx;LogFileName=tests.trx",
+            "--results-directory",
+            "TestResults"
+          ]
+        }
+      ],
+      "results": [
+        "TestResults/**/*.trx"
+      ]
+    }
+  }
+}

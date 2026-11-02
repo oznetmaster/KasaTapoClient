@@ -382,3 +382,7 @@ KasaClient/docfx/xrefmap.yml
 # Local scratch and temporary investigation assets
 Scratch/
 temp-discovery-dump.cs
+
+# Shared Cake build downloads and invocation receipts
+/artifacts/build-components/
+/artifacts/build-automation/
