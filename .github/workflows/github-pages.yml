@@ -12,20 +12,11 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+    - name: Build, verify and retain standard documentation
+      uses: oznetmaster/BuildAutomation/.github/actions/documentation-build@c650afeb23c584d68580440ef0f7baaf737cdfd0
       with:
-        dotnet-version: 10.0.x
-    - name: Build and verify standard documentation
-      uses: oznetmaster/BuildAutomation@cb36bb30b23e58aff85435f23ad0c8428d86ecdd
-      with:
-        task: documentation
-    - name: Configure Pages
-      uses: actions/configure-pages@v5
-    - name: Upload Pages artifact
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: KasaClient/docfx/_site
+        site: KasaClient/docfx/_site
+        configure-pages: 'true'
   deploy:
     environment:
       name: github-pages
@@ -33,9 +24,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
-    - name: Deploy to GitHub Pages
+    - name: Deploy documentation
       id: deployment
-      uses: actions/deploy-pages@v4
+      uses: oznetmaster/BuildAutomation/.github/actions/documentation-deploy@c650afeb23c584d68580440ef0f7baaf737cdfd0
+      with:
+        attempts: '1'
 'on':
   push:
     branches:
