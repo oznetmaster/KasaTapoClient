@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "repository": "https://github.com/oznetmaster/BuildAutomation.git",
+  "commit": "0a1b4244bed9fc07a6838e80f431fda6381349de",
+  "directory": "NuGetArtifacts",
+  "files": {
+    "Test-NuGetDocumentation.ps1": "0ac2d10826ba5f0a970fe5edf324263a04d6f6683ead03e46dc172ceb5fe6043",
+    "New-NuGetDocumentationPatch.ps1": "8a2dd7caa0d902ef729a97b8fd93cddead76837a1a73f31de4ba5ec7ae20c102",
+    "Test-NuGetArtifacts.ps1": "8e5a4cb4ec0edf6291982ee9795cead26922dcf11766882dc4b867422f6fd30b",
+    "README.md": "f555c960f59e1a85c91d2dced1930660543cdb73c145a3c7586a7fbf73f9cb1b",
+    "LICENSE": "0410c5e1e4a1e1001d87ec0c9895f2c76327529efd7e88504dc142b204372ada"
+  }
+}
