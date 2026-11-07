@@ -103,6 +103,8 @@ Validated newly packed local archives; the original defective published archives
 
 ## 7 November 2026 — credential recovery for 2.2.0 publication
 
+- Recovery run 42413428528 successfully published GitHub and NuGet 2.2.0 using the newly approved exact-package Trusted Publishing policy. Public NuGet DLL/XML payloads match all four GitHub assets; the NuGet repository commit remains immutable release source `a03166dd77979af900f9026d32546225f6292b71`. Public readback completed before the dependent driver's restore.
+
 - Processor check `Processor tests / kasaclient_library` passed for immutable release source `a03166dd77979af900f9026d32546225f6292b71` through private orchestration run 42403746298. APICompat also passed against public 2.1.0 on both supported targets, with attribute and parameter-name checks enabled.
 - Initial publisher run 42403262522 passed validation/build/package checks, then NuGet rejected the expired API key before publication. Replaced permanent-key publication with scoped GitHub OIDC Trusted Publishing. Manual recovery checks out the existing version tag while using the corrected workflow definition; the release tag and runtime source remain unchanged.
 - Manual publication can now create the GitHub release as well as publish NuGet, and retains the verified NuGet package as a workflow artifact. No processor or customer evidence is uploaded.
