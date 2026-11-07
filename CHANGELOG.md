@@ -6,6 +6,12 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 Dated entries record shipped features, fixes, compatibility and runtime dependency changes; an Unreleased entry describes the next prepared version. See [development and validation history](DEVELOPMENT-HISTORY.md) for tests, CI, build tooling and work not yet released.
 
+## [2.2.0](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v2.2.0) — 2026-11-07
+
+- Add typed standalone outlet state-only reads and serialized relay-write/readback operations, allowing applications to schedule frequent state checks separately from full energy refreshes.
+- Add legacy strip state refresh through system information; SMART strips retain their existing full refresh behavior.
+- Preserve full-refresh snapshots, cancellation, per-device serialization, existing lighting features, target frameworks and runtime dependencies.
+
 ## [2.1.0](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v2.1.0) — 2026-10-18
 
 **Optional lighting configuration and legacy KLAP v2 compatibility**

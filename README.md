@@ -11,14 +11,23 @@ TP-Link, Kasa, and Tapo are trademarks of their respective owners. This project 
 
 See [CHANGELOG.md](https://github.com/oznetmaster/KasaTapoClient/blob/main/CHANGELOG.md) for a summary of all release history, or the [GitHub releases](https://github.com/oznetmaster/KasaTapoClient/releases) page for full per-version details and build assets.
 
-## Changes in 2.1.0
+## Changes in 2.2.0
 
-- Typed physical light-strip length configuration through `LightStripSegment` on supported devices.
-- Optional fading between light settings through `LightTransition.ChangeTransitionEnabled` and `SetChangeTransitionEnabledAsync`, preserving existing turn-on/off settings.
-- KLAP v2 authentication for updated legacy devices advertising login version 2 or later.
-- Corresponding console commands and status output, with existing public APIs, command abbreviations, target frameworks and runtime dependencies preserved.
+- Typed standalone plug state reads without refreshing energy or other modules.
+- Serialized standalone relay writes followed by actual device-state readback.
+- Legacy strip socket-state refresh through system information; SMART strips retain their full child-list refresh.
+- Existing 2.1.0 lighting configuration, legacy KLAP v2 support, public APIs and target frameworks are retained.
 
-See the [2.1.0 release notes](https://github.com/oznetmaster/KasaTapoClient/blob/main/RELEASE_NOTES.md) for capability requirements and validation scope, and the [lighting examples below](#optional-lighting-configuration) for usage.
+See the [2.2.0 release notes](https://github.com/oznetmaster/KasaTapoClient/blob/main/RELEASE_NOTES.md) for compatibility and validation scope.
+
+### Separate outlet state and energy refresh
+
+```csharp
+bool? isOn = await device.ReadOutletStateAsync(cancellationToken);
+bool? confirmed = await device.SetOutletStateAndReadBackAsync(true, cancellationToken);
+```
+
+Use these operations for standalone plugs. Handle a missing state (`null`) as unknown, and use the returned state rather than assuming a requested command succeeded. These reads do not update the full device or energy snapshots; call `UpdateAsync` when those are needed. Applications own polling intervals, staggering and concurrency limits. For strips, use `RefreshStripOutletStatesAsync`; only the legacy path avoids the existing full refresh.
 
 ## Supported Platforms
 

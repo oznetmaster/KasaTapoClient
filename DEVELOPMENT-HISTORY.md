@@ -94,3 +94,10 @@ See the [product changelog](CHANGELOG.md) for shipped changes. This document pre
 Audited the downloaded public NuGet archive rather than relying on the GitHub release page. Package README links now use absolute repository URLs where needed. Release packaging requires nonempty NuGet release-notes metadata and checks the finished archive for missing README content, relative links and malformed URLs before publication. Driver manual releases fall back to the checked-in release notes.
 
 Validated newly packed local archives; the original defective published archives fail the new gate. This changes documentation and packaging only. These validation archives were not published and existing NuGet versions remain unchanged. Runtime/hardware tests were not repeated for this metadata change.
+
+## 7 November 2026 — outlet polling API release validation
+
+- Integrated the exact private outlet API commit 3078b546971654609e656a05db670ff1443e75ed onto the maintained 2.1.0 baseline, preserving its lighting features and shared build/documentation gates.
+- All 173 non-live tests passed on .NET 10 and .NET Framework 4.7.2, with zero failures or skips. Shared strict XML documentation validation passed.
+- The customer test driver using these APIs previously passed the two-real-plus-eighteen-simulated outlet protocol on workstation and processor; customer CP4-R feedback subsequently confirmed working tile feedback and substantially reduced logging. These observations do not establish results for twenty physical devices.
+
