@@ -42,6 +42,7 @@ permissions:
   actions: read
   checks: read
   contents: write
+  id-token: write
 
 concurrency:
   group: public-release
@@ -61,6 +62,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # Manual credential-recovery runs keep the immutable, already tested release source.
+          ref: ${{ github.event_name == 'workflow_dispatch' && (startsWith(inputs.version, 'v') && inputs.version || format('v{0}', inputs.version)) || github.ref }}
 
       - name: Verify configured release checks
         shell: pwsh
@@ -138,16 +141,32 @@ jobs:
           if ($packages.Count -ne 1) { throw 'Expected exactly one NuGet package.' }
           ./tools/Test-NuGetDocumentation.ps1 -PackagePath $packages[0].FullName
 
+      - name: Authenticate to NuGet with GitHub OIDC
+        id: nuget-login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
+        with:
+          user: oznetmaster
+
+      - name: Retain verified NuGet package
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-nuget-package
+          path: ${{ env.ARTIFACT_DIR }}/nuget/*.nupkg
+          if-no-files-found: error
+
       - name: Publish package
         shell: pwsh
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: |
           $packages = Get-ChildItem -Path "${{ env.ARTIFACT_DIR }}/nuget" -Filter '*.nupkg' | Where-Object { $_.Name -notlike '*.symbols.nupkg' }
           if (-not $packages) {
               throw 'No NuGet package was produced.'
           }
 
+          if ([string]::IsNullOrWhiteSpace($env:NUGET_API_KEY)) { throw 'NuGet Trusted Publishing did not provide a temporary credential.' }
           foreach ($package in $packages) {
-              dotnet nuget push $package.FullName --api-key "${{ secrets.NUGET_API_KEY }}" --source "https://api.nuget.org/v3/index.json" --skip-duplicate
+              dotnet nuget push $package.FullName --api-key $env:NUGET_API_KEY --source "https://api.nuget.org/v3/index.json" --skip-duplicate
           }
 
       - name: Collect release assets
@@ -186,10 +205,10 @@ jobs:
           "notes_path=$notesPath" >> $env:GITHUB_OUTPUT
 
       - name: Create GitHub release from tag
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.raw_version }}
+          tag_name: v${{ steps.version.outputs.package_version }}
           name: ${{ steps.version.outputs.raw_version }}
           body_path: ${{ steps.notes.outputs.notes_path }}
           generate_release_notes: true
@@ -221,10 +240,16 @@ jobs:
           path: artifacts/nuget-documentation/*
           if-no-files-found: error
 
+      - name: Authenticate to NuGet with GitHub OIDC
+        id: nuget-login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
+        with:
+          user: oznetmaster
+
       - name: Publish verified NuGet documentation patch
         shell: pwsh
         env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: |
           $packages = @(Get-ChildItem artifacts/nuget-documentation -Filter *.nupkg -File)
           if ($packages.Count -ne 1) { throw 'Expected exactly one verified package.' }

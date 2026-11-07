@@ -101,3 +101,8 @@ Validated newly packed local archives; the original defective published archives
 - All 173 non-live tests passed on .NET 10 and .NET Framework 4.7.2, with zero failures or skips. Shared strict XML documentation validation passed.
 - The customer test driver using these APIs previously passed the two-real-plus-eighteen-simulated outlet protocol on workstation and processor; customer CP4-R feedback subsequently confirmed working tile feedback and substantially reduced logging. These observations do not establish results for twenty physical devices.
 
+## 7 November 2026 — credential recovery for 2.2.0 publication
+
+- Processor check `Processor tests / kasaclient_library` passed for immutable release source `a03166dd77979af900f9026d32546225f6292b71` through private orchestration run 42403746298. APICompat also passed against public 2.1.0 on both supported targets, with attribute and parameter-name checks enabled.
+- Initial publisher run 42403262522 passed validation/build/package checks, then NuGet rejected the expired API key before publication. Replaced permanent-key publication with scoped GitHub OIDC Trusted Publishing. Manual recovery checks out the existing version tag while using the corrected workflow definition; the release tag and runtime source remain unchanged.
+- Manual publication can now create the GitHub release as well as publish NuGet, and retains the verified NuGet package as a workflow artifact. No processor or customer evidence is uploaded.
