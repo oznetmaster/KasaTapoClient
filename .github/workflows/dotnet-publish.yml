@@ -8,6 +8,12 @@ on:
         description: Three-part public version
         required: true
         type: string
+      artifact_run_id:
+        description: Original successful build run for frozen-artifact recovery (no rebuild)
+        type: string
+      source_commit:
+        description: Exact original 40-character source commit required for recovery
+        type: string
       skip_desktop_checks:
         description: Reuse reviewed workstation validation
         type: boolean
@@ -37,7 +43,7 @@ concurrency:
   queue: max
 jobs:
   build:
-    if: inputs.documentation_patch != true
+    if: inputs.artifact_run_id == '' && inputs.documentation_patch != true
     runs-on: windows-latest
     timeout-minutes: 45
     permissions:
@@ -67,7 +73,7 @@ jobs:
           $version = $version -creplace '^v', ''
           if ($version -cnotmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') { throw 'Use a canonical three-part stable public version.' }
           "version=$version" >> $env:GITHUB_OUTPUT
-      - uses: oznetmaster/BuildAutomation/.github/actions/release-prepare@5d8006f140a59c8d1dd92ab70723fe8338650bd2
+      - uses: oznetmaster/BuildAutomation/.github/actions/release-prepare@a227d55b6f4cf95948b01d2f51c152ec0171cea6
         with:
           version: ${{ steps.version.outputs.version }}
       - name: Verify shared validation policy
@@ -81,12 +87,12 @@ jobs:
           hardware-skip-reason: ${{ inputs.hardware_skip_reason }}
           validation-commit: ${{ inputs.validation_commit }}
       - name: Stage packages and companion applications through Cake
-        uses: oznetmaster/BuildAutomation@5d8006f140a59c8d1dd92ab70723fe8338650bd2
+        uses: oznetmaster/BuildAutomation@a227d55b6f4cf95948b01d2f51c152ec0171cea6
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         with:
           task: release-assets
-      - uses: oznetmaster/BuildAutomation/.github/actions/release-freeze@5d8006f140a59c8d1dd92ab70723fe8338650bd2
+      - uses: oznetmaster/BuildAutomation/.github/actions/release-freeze@a227d55b6f4cf95948b01d2f51c152ec0171cea6
         with:
           version: ${{ steps.version.outputs.version }}
   publish:
@@ -95,6 +101,7 @@ jobs:
     timeout-minutes: 30
 
     permissions:
+      actions: read
       contents: write
       id-token: write
     steps:
@@ -105,14 +112,14 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - uses: oznetmaster/BuildAutomation/.github/actions/release-publish@5d8006f140a59c8d1dd92ab70723fe8338650bd2
+      - uses: oznetmaster/BuildAutomation/.github/actions/release-publish@a227d55b6f4cf95948b01d2f51c152ec0171cea6
         with:
           version: ${{ needs.build.outputs.version }}
   nuget-documentation:
     permissions:
       contents: read
       id-token: write
-    if: github.event_name == 'workflow_dispatch' && inputs.documentation_patch == true
+    if: github.event_name == 'workflow_dispatch' && inputs.artifact_run_id == '' && inputs.documentation_patch == true
     runs-on: windows-latest
     timeout-minutes: 15
 
@@ -149,3 +156,35 @@ jobs:
           if ($packages.Count -ne 1) { throw 'Expected exactly one verified package.' }
           dotnet nuget push $packages[0].FullName --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json
           if ($LASTEXITCODE -ne 0) { throw 'NuGet documentation patch publication failed.' }
+  recover:
+    if: github.event_name == 'workflow_dispatch' && inputs.artifact_run_id != '' && inputs.documentation_patch != true
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    permissions:
+      actions: read
+      contents: write
+      id-token: write
+    steps:
+      - name: Validate frozen-artifact recovery inputs
+        shell: pwsh
+        env:
+          ORIGINAL_RUN: ${{ inputs.artifact_run_id }}
+          ORIGINAL_COMMIT: ${{ inputs.source_commit }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          if ($env:ORIGINAL_RUN -cnotmatch '^[1-9][0-9]*$') { throw 'An original build run ID is required.' }
+          if ($env:ORIGINAL_COMMIT -cnotmatch '^[a-f0-9]{40}$') { throw 'An exact original source commit is required.' }
+          if ($env:RELEASE_VERSION -cnotmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') { throw 'Use a canonical three-part stable version.' }
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_commit }}
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: oznetmaster/BuildAutomation/.github/actions/release-publish@a227d55b6f4cf95948b01d2f51c152ec0171cea6
+        with:
+          version: ${{ inputs.version }}
+          source-run-id: ${{ inputs.artifact_run_id }}
+          source-commit: ${{ inputs.source_commit }}
