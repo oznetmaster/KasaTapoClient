@@ -49,16 +49,12 @@ See [the changelog](https://github.com/oznetmaster/KasaTapoClient/blob/v2.2.1/CH
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
-		<DebugType>portable</DebugType>
-		<DebugSymbols>true</DebugSymbols>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		<CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)' == 'Release'">
-		<DebugType>none</DebugType>
-		<DebugSymbols>false</DebugSymbols>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<DocumentationFile>$(OutputPath)$(AssemblyName).xml</DocumentationFile>
 		<!-- Treat missing XML docs as errors in Release -->
@@ -156,4 +152,5 @@ See [the changelog](https://github.com/oznetmaster/KasaTapoClient/blob/v2.2.1/CH
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <WarningsAsErrors>$(WarningsAsErrors);CS1591;CS1570;CS1571;CS1572;CS1573;CS1574;CS1580;CS1581;CS1584;CS1587;CS1658;CS1710;CS1711;CS1712</WarningsAsErrors>
   </PropertyGroup>
+  <Import Project="../build/LibrarySymbols.props" />
 </Project>

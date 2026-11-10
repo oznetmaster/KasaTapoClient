@@ -1,0 +1,12 @@
+<Project>
+  <!-- Copyright (c) 2026 Neil Colvin. MIT License; see LICENSE. -->
+  <!-- Imported last by published binary library projects; no build-tool download is required. -->
+  <PropertyGroup>
+    <DebugType>portable</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+</Project>

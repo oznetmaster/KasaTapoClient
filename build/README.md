@@ -1,6 +1,6 @@
 # Build and test
 
-This repository uses [the shared Cake build component](https://github.com/oznetmaster/BuildAutomation/tree/38d25666f55186e6ddbb73d256ac26524c1054bd) pinned in `component.json`. It is build tooling only; product dependencies and versions are unchanged.
+This repository uses [the shared Cake build component](https://github.com/oznetmaster/BuildAutomation/tree/dd6056146da4424c996c0c3a0f98651e16209098) pinned in `component.json`. It is build tooling only; product dependencies and versions are unchanged.
 
 The CI workflow retains its jobs, framework matrix, filters, prerequisites and artifact upload rules. Repository-owned recipes preserve the build/test/package commands. Publication, validation reuse, approvals, runner selection and hardware reservations remain in GitHub Actions.
 
@@ -20,7 +20,7 @@ The shared component rejects missing/stale/empty/failed declared TRX results and
 
 ## Pages documentation
 
-`documentation` builds the repository site and checks [the common Pages standard](https://github.com/oznetmaster/BuildAutomation/blob/38d25666f55186e6ddbb73d256ac26524c1054bd/DOCUMENTATION-STANDARD.md): Home, Guides, API Reference, GitHub and NuGet navigation, modern theme, consistent title/footer, searchable content and every API output group. DocFX is locally pinned to 2.81.0. Existing project-specific generation and coverage checks remain in the recipe. GitHub Actions uploads/deploys the verified site; local builds publish nothing.
+`documentation` builds the repository site and checks [the common Pages standard](https://github.com/oznetmaster/BuildAutomation/blob/dd6056146da4424c996c0c3a0f98651e16209098/DOCUMENTATION-STANDARD.md): Home, Guides, API Reference, GitHub and NuGet navigation, modern theme, consistent title/footer, searchable content and every API output group. DocFX is locally pinned to 2.81.0. Existing project-specific generation and coverage checks remain in the recipe. GitHub Actions uploads/deploys the verified site; local builds publish nothing.
 
 ## Strict XML documentation
 
@@ -31,6 +31,10 @@ Run `./build/Invoke.ps1 -Task xml-documentation` to check documentation without 
 
 ## Public library publication
 
-The common Cake task `release-assets` runs the configured package and app preparation. See `build/release.json` and the [shared publication protocol](https://github.com/oznetmaster/BuildAutomation/blob/38d25666f55186e6ddbb73d256ac26524c1054bd/ReleasePublishing/README.md). Publication runs in a separate job from retained, hash-verified artifacts. Keep the original run when retrying; use Re-run failed jobs so existing NuGet payloads can be verified against the same bytes.
+The common Cake task `release-assets` runs the configured package and app preparation. See `build/release.json` and the [shared publication protocol](https://github.com/oznetmaster/BuildAutomation/blob/dd6056146da4424c996c0c3a0f98651e16209098/ReleasePublishing/README.md). Publication runs in a separate job from retained, hash-verified artifacts. Keep the original run when retrying; use Re-run failed jobs so existing NuGet payloads can be verified against the same bytes.
 
 If the publisher itself needs correction, dispatch this workflow from the default branch with the original `artifact_run_id` and exact `source_commit`. The recovery job verifies that successful build and publishes its frozen assets without rebuilding. Publication uses no GitHub environment binding, matching the shared standard and its package-scoped NuGet policy. No environment or deployment restriction setup is required.
+
+## Symbol packages
+
+All published binary library packages produce portable PDBs in a separate `.snupkg` from the same optimized Release build. The symbol package is retained with the GitHub assets and published to NuGet's symbol server for optional debugger downloads. Publication verifies that each PDB matches its DLL and framework. Dependency-only metapackages contain no DLLs and need no symbol package. `LibrarySymbols.props` is checked in and imported by the library projects, so normal clone/IDE builds need no additional tooling download. Existing releases and public versions are unchanged; this policy applies to subsequent releases.

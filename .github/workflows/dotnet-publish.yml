@@ -73,7 +73,7 @@ jobs:
           $version = $version -creplace '^v', ''
           if ($version -cnotmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') { throw 'Use a canonical three-part stable public version.' }
           "version=$version" >> $env:GITHUB_OUTPUT
-      - uses: oznetmaster/BuildAutomation/.github/actions/release-prepare@38d25666f55186e6ddbb73d256ac26524c1054bd
+      - uses: oznetmaster/BuildAutomation/.github/actions/release-prepare@dd6056146da4424c996c0c3a0f98651e16209098
         with:
           version: ${{ steps.version.outputs.version }}
       - name: Verify shared validation policy
@@ -87,12 +87,12 @@ jobs:
           hardware-skip-reason: ${{ inputs.hardware_skip_reason }}
           validation-commit: ${{ inputs.validation_commit }}
       - name: Stage packages and companion applications through Cake
-        uses: oznetmaster/BuildAutomation@38d25666f55186e6ddbb73d256ac26524c1054bd
+        uses: oznetmaster/BuildAutomation@dd6056146da4424c996c0c3a0f98651e16209098
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         with:
           task: release-assets
-      - uses: oznetmaster/BuildAutomation/.github/actions/release-freeze@38d25666f55186e6ddbb73d256ac26524c1054bd
+      - uses: oznetmaster/BuildAutomation/.github/actions/release-freeze@dd6056146da4424c996c0c3a0f98651e16209098
         with:
           version: ${{ steps.version.outputs.version }}
   publish:
@@ -112,7 +112,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - uses: oznetmaster/BuildAutomation/.github/actions/release-publish@38d25666f55186e6ddbb73d256ac26524c1054bd
+      - uses: oznetmaster/BuildAutomation/.github/actions/release-publish@dd6056146da4424c996c0c3a0f98651e16209098
         with:
           version: ${{ needs.build.outputs.version }}
   nuget-documentation:
@@ -183,7 +183,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - uses: oznetmaster/BuildAutomation/.github/actions/release-publish@38d25666f55186e6ddbb73d256ac26524c1054bd
+      - uses: oznetmaster/BuildAutomation/.github/actions/release-publish@dd6056146da4424c996c0c3a0f98651e16209098
         with:
           version: ${{ inputs.version }}
           source-run-id: ${{ inputs.artifact_run_id }}
