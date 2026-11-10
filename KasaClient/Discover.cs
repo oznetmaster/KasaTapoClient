@@ -174,22 +174,22 @@ public static class Discover
 
 		try
 			{
-				IReadOnlyList<DiscoveryResult> discoveryResults = await DiscoverAsync (timeout, host, cancellationToken).ConfigureAwait (false);
-				foreach (DiscoveryResult discoveryResult in discoveryResults)
+			IReadOnlyList<DiscoveryResult> discoveryResults = await DiscoverAsync (timeout, host, cancellationToken).ConfigureAwait (false);
+			foreach (DiscoveryResult discoveryResult in discoveryResults)
+				{
+				if (!string.Equals (discoveryResult.Host, host, StringComparison.OrdinalIgnoreCase))
 					{
-					if (!string.Equals (discoveryResult.Host, host, StringComparison.OrdinalIgnoreCase))
-						{
-						continue;
-						}
-
-					DeviceConfiguration discoveredConfiguration = CreateConfigurationFromDiscoveryResult (discoveryResult, credentials, timeout);
-					return await ConnectAsync (discoveredConfiguration, cancellationToken).ConfigureAwait (false);
+					continue;
 					}
+
+				DeviceConfiguration discoveredConfiguration = CreateConfigurationFromDiscoveryResult (discoveryResult, credentials, timeout);
+				return await ConnectAsync (discoveredConfiguration, cancellationToken).ConfigureAwait (false);
 				}
+			}
 		catch
 			{
-				throw;
-				}
+			throw;
+			}
 
 		throw new TimeoutException ($"Discovery did not return a device configuration for '{host}'. Automatic fallback to legacy transport was suppressed to avoid forcing an incorrect 9999 connection.");
 		}
@@ -228,9 +228,13 @@ public static class Discover
 	/// materially different configuration than the in-flight connect for that identity, receives
 	/// its own new, independently owned <see cref="KasaDevice"/> instance, which the caller is
 	/// responsible for disposing when done.
+	/// A caller that can cancel may join an existing uncancellable shared attempt,
+	/// but otherwise initiates an independently owned attempt. Its cancellation can
+	/// therefore never cancel a different caller's connection.
 	/// </remarks>
 	public static Task<KasaDevice> ConnectAsync (DeviceConfiguration configuration, bool updateState, CancellationToken cancellationToken = default)
 		{
+		cancellationToken.ThrowIfCancellationRequested ();
 		string key = CreateConnectKey (configuration);
 
 		// Fast path: join an in-flight connect for the same device identity instead of starting
@@ -245,6 +249,8 @@ public static class Discover
 			}
 
 		var connectCompletionSource = new TaskCompletionSource<KasaDevice> (TaskCreationOptions.RunContinuationsAsynchronously);
+		if (cancellationToken.CanBeCanceled)
+			return ConnectCoreAsync (configuration, updateState, cancellationToken);
 		(DeviceConfiguration Configuration, Task<KasaDevice> Connect) registeredConnect = _pendingConnects.GetOrAdd (key, (configuration, connectCompletionSource.Task));
 
 		if (!ReferenceEquals (registeredConnect.Connect, connectCompletionSource.Task))
@@ -299,7 +305,7 @@ public static class Discover
 			// attempted on the next call after this one completes (success or failure) - the
 			// dictionary exists purely to de-duplicate concurrent in-flight connects, not to
 			// cache devices indefinitely (that remains the caller's own responsibility).
-			((ICollection<KeyValuePair<string, (DeviceConfiguration Configuration, Task<KasaDevice> Connect)>>) _pendingConnects).Remove (
+			((ICollection<KeyValuePair<string, (DeviceConfiguration Configuration, Task<KasaDevice> Connect)>>)_pendingConnects).Remove (
 				new KeyValuePair<string, (DeviceConfiguration Configuration, Task<KasaDevice> Connect)> (key, (configuration, connectCompletionSource.Task)));
 			}
 		}
@@ -317,7 +323,7 @@ public static class Discover
 			}
 
 		var cancellationCompletionSource = new TaskCompletionSource<bool> (TaskCreationOptions.RunContinuationsAsynchronously);
-		using (cancellationToken.Register (static state => ((TaskCompletionSource<bool>) state!).TrySetResult (true), cancellationCompletionSource))
+		using (cancellationToken.Register (static state => ((TaskCompletionSource<bool>)state!).TrySetResult (true), cancellationCompletionSource))
 			{
 			Task completedTask = await Task.WhenAny (sharedConnect, cancellationCompletionSource.Task).ConfigureAwait (false);
 			if (completedTask == cancellationCompletionSource.Task)
@@ -333,21 +339,22 @@ public static class Discover
 		{
 		if (configuration.ConnectionOptions.TransportKind == DeviceTransportKind.Auto)
 			{
-			DeviceConfiguration resolvedConfiguration = await ResolveAutoConfigurationAsync (configuration, cancellationToken).ConfigureAwait (false);
-			var resolvedDevice = new KasaDevice (resolvedConfiguration);
-			if (updateState)
-				{
-				await resolvedDevice.UpdateAsync (cancellationToken).ConfigureAwait (false);
-				}
-			return resolvedDevice;
+			configuration = await ResolveAutoConfigurationAsync (configuration, cancellationToken).ConfigureAwait (false);
 			}
 
 		var device = new KasaDevice (configuration);
-		if (updateState)
+		try
 			{
-			await device.UpdateAsync (cancellationToken).ConfigureAwait (false);
+			if (updateState)
+				await device.UpdateAsync (cancellationToken).ConfigureAwait (false);
+			cancellationToken.ThrowIfCancellationRequested ();
+			return device;
 			}
-		return device;
+		catch
+			{
+			device.Dispose ();
+			throw;
+			}
 		}
 
 	/// <summary>
@@ -360,7 +367,7 @@ public static class Discover
 	/// <param name="cancellationToken">The cancellation token for the operation.</param>
 	/// <returns>A connected device instance.</returns>
 	/// <exception cref="ArgumentNullException">Thrown when <paramref name="discoveryResult" /> is <see langword="null" />.</exception>
-	#pragma warning disable CA1510
+#pragma warning disable CA1510
 	public static Task<KasaDevice> ConnectAsync (
 		DiscoveryResult discoveryResult,
 		bool updateState = true,
@@ -376,7 +383,7 @@ public static class Discover
 		DeviceConfiguration configuration = CreateConfigurationFromDiscoveryResult (discoveryResult, credentials, timeout);
 		return ConnectAsync (configuration, updateState, cancellationToken);
 		}
-	#pragma warning restore CA1510
+#pragma warning restore CA1510
 
 	/// <summary>
 	/// Returns a long-lived <see cref="KasaDevice"/> instance shared by every caller that requests
@@ -464,7 +471,7 @@ public static class Discover
 	/// <param name="timeout">The per-operation timeout. If <see langword="null" />, a five second timeout is used.</param>
 	/// <returns>A device configuration derived from the discovery metadata.</returns>
 	/// <exception cref="ArgumentNullException">Thrown when <paramref name="discoveryResult" /> is <see langword="null" />.</exception>
-	#pragma warning disable CA1510
+#pragma warning disable CA1510
 	public static DeviceConfiguration CreateConfiguration (DiscoveryResult discoveryResult, DeviceCredentials? credentials = null, TimeSpan? timeout = null)
 		{
 		if (discoveryResult is null)
@@ -474,17 +481,17 @@ public static class Discover
 
 		return CreateConfigurationFromDiscoveryResult (discoveryResult, credentials, timeout);
 		}
-	#pragma warning restore CA1510
+#pragma warning restore CA1510
 
 	private static async Task<DeviceConfiguration> ResolveAutoConfigurationAsync (DeviceConfiguration configuration, CancellationToken cancellationToken)
 		{
 		IReadOnlyList<DiscoveryResult> discoveryResults = await DiscoverAsync (configuration.Timeout, configuration.Host, cancellationToken).ConfigureAwait (false);
 		foreach (DiscoveryResult discoveryResult in discoveryResults)
 			{
-				if (string.Equals (discoveryResult.Host, configuration.Host, StringComparison.OrdinalIgnoreCase))
-					{
-					return CreateConfigurationFromDiscoveryResult (discoveryResult, configuration.Credentials, configuration.Timeout);
-					}
+			if (string.Equals (discoveryResult.Host, configuration.Host, StringComparison.OrdinalIgnoreCase))
+				{
+				return CreateConfigurationFromDiscoveryResult (discoveryResult, configuration.Credentials, configuration.Timeout);
+				}
 			}
 
 		throw new TimeoutException ($"Discovery did not return a device configuration for '{configuration.Host}'. Automatic fallback to legacy transport was suppressed to avoid forcing an incorrect 9999 connection.");

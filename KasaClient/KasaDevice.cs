@@ -20,10 +20,9 @@ public sealed partial class KasaDevice : IDisposable
 	{
 	private readonly IDeviceTransport _transport;
 	private KasaResponseParser.SmartParsedResponse? _smartResponse;
-	private readonly SemaphoreSlim _operationLock = new (1, 1);
+	private readonly AsyncOperationGate _operations;
 	private const int SMART_UNKNOWN_METHOD_ERROR = -1002;
 	private const int SMART_PARAMETERS_ERROR = -1008;
-	private bool _disposed;
 	private IReadOnlyList<DeviceFeature> _features = Array.Empty<DeviceFeature> ();
 	private IReadOnlyDictionary<string, int> _smartComponentVersions = new Dictionary<string, int> (StringComparer.Ordinal);
 	private static readonly IReadOnlyList<SmartRefreshContribution> SMART_PARENT_REFRESH_DEFINITIONS =
@@ -64,6 +63,11 @@ public sealed partial class KasaDevice : IDisposable
 		{
 		Configuration = configuration;
 		_transport = transport ?? DeviceTransportFactory.Create (configuration);
+		_operations = new (typeof (KasaDevice), () =>
+			{
+				if (_transport is IDisposableDeviceTransport disposableTransport)
+					disposableTransport.Dispose ();
+			});
 		System = new SystemModule (this);
 		Firmware = new FirmwareModule (this);
 		Cloud = new CloudModule (this);
@@ -579,26 +583,14 @@ public sealed partial class KasaDevice : IDisposable
 	/// that it is no longer usable without having to catch <see cref="ObjectDisposedException"/>.
 	/// </remarks>
 	/// <value>A value indicating whether <see cref="Dispose"/> has already been called on this instance.</value>
-	public bool IsDisposed => _disposed;
+	public bool IsDisposed => _operations.IsDisposed;
 
 	/// <summary>
 	/// Releases transport resources owned by the device.
 	/// </summary>
 	public void Dispose ()
 		{
-		if (_disposed)
-			{
-			return;
-			}
-
-		_disposed = true;
-
-		if (_transport is IDisposableDeviceTransport disposableTransport)
-			{
-			disposableTransport.Dispose ();
-			}
-
-		_operationLock.Dispose ();
+		_operations.Dispose ();
 		}
 
 	/// <summary>
@@ -1233,13 +1225,13 @@ public sealed partial class KasaDevice : IDisposable
 		return RunDeviceOperationAsync (
 			async ct =>
 				{
-				string response = await ExecuteCommandCoreAsync (commandJson, ct).ConfigureAwait (false);
-				if (updateMode == DeviceStateUpdateMode.UpdateAfterCommand)
-					{
-					await UpdateCoreAsync (ct).ConfigureAwait (false);
-					}
+					string response = await ExecuteCommandCoreAsync (commandJson, ct).ConfigureAwait (false);
+					if (updateMode == DeviceStateUpdateMode.UpdateAfterCommand)
+						{
+						await UpdateCoreAsync (ct).ConfigureAwait (false);
+						}
 
-				return response;
+					return response;
 				},
 			cancellationToken);
 		}
@@ -1281,28 +1273,17 @@ public sealed partial class KasaDevice : IDisposable
 
 	private async Task RunDeviceOperationAsync (Func<CancellationToken, Task> operation, CancellationToken cancellationToken)
 		{
-		await _operationLock.WaitAsync (cancellationToken).ConfigureAwait (false);
-		try
-			{
-			await operation (cancellationToken).ConfigureAwait (false);
-			}
-		finally
-			{
-			_operationLock.Release ();
-			}
+		using AsyncOperationGate.Operation admission = await _operations.EnterAsync (cancellationToken).ConfigureAwait (false);
+		await operation (admission.Token).ConfigureAwait (false);
+		admission.Token.ThrowIfCancellationRequested ();
 		}
 
 	private async Task<T> RunDeviceOperationAsync<T> (Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken)
 		{
-		await _operationLock.WaitAsync (cancellationToken).ConfigureAwait (false);
-		try
-			{
-			return await operation (cancellationToken).ConfigureAwait (false);
-			}
-		finally
-			{
-			_operationLock.Release ();
-			}
+		using AsyncOperationGate.Operation admission = await _operations.EnterAsync (cancellationToken).ConfigureAwait (false);
+		T result = await operation (admission.Token).ConfigureAwait (false);
+		admission.Token.ThrowIfCancellationRequested ();
+		return result;
 		}
 
 
@@ -1325,9 +1306,18 @@ public sealed partial class KasaDevice : IDisposable
 			ResponsePropertyName = responsePropertyName ?? method;
 			}
 
-		internal string Method { get; }
-		internal Func<object?> CreateParameters { get; }
-		internal string ResponsePropertyName { get; }
+		internal string Method
+			{
+			get;
+			}
+		internal Func<object?> CreateParameters
+			{
+			get;
+			}
+		internal string ResponsePropertyName
+			{
+			get;
+			}
 		}
 
 	private sealed class SmartRefreshContribution
@@ -1340,10 +1330,22 @@ public sealed partial class KasaDevice : IDisposable
 			MinimumSupportedVersion = minimumSupportedVersion;
 			}
 
-		internal string RequiredComponent { get; }
-		internal string Method { get; }
-		internal Func<object?> CreateParameters { get; }
-		internal int? MinimumSupportedVersion { get; }
+		internal string RequiredComponent
+			{
+			get;
+			}
+		internal string Method
+			{
+			get;
+			}
+		internal Func<object?> CreateParameters
+			{
+			get;
+			}
+		internal int? MinimumSupportedVersion
+			{
+			get;
+			}
 		}
 
 	}

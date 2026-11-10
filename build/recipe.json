@@ -110,6 +110,22 @@
           ]
         }
       ]
+    },
+    "release-assets": {
+      "commands": [
+        {
+          "arguments": [
+            "-NoProfile",
+            "-File",
+            "${env:BUILD_AUTOMATION_COMPONENT_ROOT}/ReleasePublishing/Stage-Release.ps1",
+            "-Root",
+            ".",
+            "-Version",
+            "${env:RELEASE_VERSION}"
+          ],
+          "executable": "pwsh"
+        }
+      ]
     }
   },
   "xmlDocumentation": {

@@ -94,8 +94,12 @@ public sealed partial class KasaDevice
 			}
 		parsedResponse = await EnrichSmartModuleResultsAsync (parsedResponse, cancellationToken).ConfigureAwait (false);
 		parsedResponse = await EnrichSmartChildResponseAsync (parsedResponse, cancellationToken).ConfigureAwait (false);
-		_smartComponentVersions = parsedResponse.ComponentVersions;
-		ApplyParsedState (KasaResponseParser.ParseSmartDeviceState (parsedResponse));
+		KasaResponseParser.ParsedDeviceState state = KasaResponseParser.ParseSmartDeviceState (parsedResponse);
+		_operations.Commit (() =>
+			{
+				_smartComponentVersions = parsedResponse.ComponentVersions;
+				ApplyParsedStateCore (state);
+			});
 		_smartResponse = parsedResponse;
 		}
 
@@ -141,6 +145,9 @@ public sealed partial class KasaDevice
 		}
 
 	private void ApplyParsedState (KasaResponseParser.ParsedDeviceState parsed)
+		=> _operations.Commit (() => ApplyParsedStateCore (parsed));
+
+	private void ApplyParsedStateCore (KasaResponseParser.ParsedDeviceState parsed)
 		{
 		SystemInfo = parsed.SystemInfo;
 		EnergyUsage = parsed.EnergyUsage;

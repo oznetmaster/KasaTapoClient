@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+
 using KasaTapoClient.Internal;
 
 namespace KasaTapoClient;
@@ -23,13 +24,14 @@ public sealed partial class KasaDevice
 	public Task RefreshStripOutletStatesAsync (CancellationToken cancellationToken = default) =>
 		RunDeviceOperationAsync (async ct =>
 			{
-			if (UsesSmartProtocol ())
-				{
-				await UpdateCoreAsync (ct).ConfigureAwait (false);
-				return;
-				}
-			string response = await _transport.SendAsync (KasaCommands.GET_SYSTEM_INFO, ct).ConfigureAwait (false);
-			SystemInfo = KasaResponseParser.ParseSystemInfo (KasaResponseParser.ParseResponse (response));
+				if (UsesSmartProtocol ())
+					{
+					await UpdateCoreAsync (ct).ConfigureAwait (false);
+					return;
+					}
+				string response = await _transport.SendAsync (KasaCommands.GET_SYSTEM_INFO, ct).ConfigureAwait (false);
+				DeviceSystemInfo systemInfo = KasaResponseParser.ParseSystemInfo (KasaResponseParser.ParseResponse (response));
+				_operations.Commit (() => SystemInfo = systemInfo);
 			}, cancellationToken);
 
 	/// <summary>Sets a standalone outlet relay and reads back its actual state without refreshing other modules.</summary>
@@ -40,11 +42,11 @@ public sealed partial class KasaDevice
 	public Task<bool?> SetOutletStateAndReadBackAsync (bool isOn, CancellationToken cancellationToken = default) =>
 		RunDeviceOperationAsync (async ct =>
 			{
-			string request = UsesSmartProtocol ()
-				? KasaCommands.CreateSmartRequest ("set_device_info", new SmartDeviceSettingsDto { DeviceOn = isOn })
-				: KasaCommands.CreateSetRelayStateCommand (isOn);
-			await ExecuteCommandCoreAsync (request, ct).ConfigureAwait (false);
-			return await ReadOutletStateCoreAsync (ct).ConfigureAwait (false);
+				string request = UsesSmartProtocol ()
+					? KasaCommands.CreateSmartRequest ("set_device_info", new SmartDeviceSettingsDto { DeviceOn = isOn })
+					: KasaCommands.CreateSetRelayStateCommand (isOn);
+				await ExecuteCommandCoreAsync (request, ct).ConfigureAwait (false);
+				return await ReadOutletStateCoreAsync (ct).ConfigureAwait (false);
 			}, cancellationToken);
 
 	private async Task<bool?> ReadOutletStateCoreAsync (CancellationToken cancellationToken)

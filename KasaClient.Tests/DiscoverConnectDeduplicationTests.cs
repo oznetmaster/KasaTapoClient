@@ -17,6 +17,34 @@ namespace KasaClient.Tests;
 [TestFixture]
 public sealed class DiscoverConnectDeduplicationTests
 	{
+	[Test]
+	public async Task CancellingAnInitiatorDoesNotCancelAnIndependentFollower ()
+		{
+		var listener = new TcpListener (IPAddress.Loopback, 0);
+		listener.Start ();
+		using var cancellation = new CancellationTokenSource (TimeSpan.FromSeconds (10));
+		try
+			{
+			var configuration = new DeviceConfiguration ("127.0.0.1", ((IPEndPoint)listener.LocalEndpoint).Port,
+				connectionOptions: new (DeviceTransportKind.LegacyXor), timeout: TimeSpan.FromSeconds (5));
+			Task<KasaDevice> first = Discover.ConnectAsync (configuration, true, cancellation.Token);
+			using TcpClient held = await listener.AcceptTcpClientAsync ();
+			_ = await held.GetStream ().ReadAsync (new byte[4096], 0, 4096, cancellation.Token);
+			Task<KasaDevice> second = Discover.ConnectAsync (configuration, true);
+			Task<TcpClient> accepting = listener.AcceptTcpClientAsync ();
+			cancellation.Cancel ();
+			Assert.That (await ConnectAndExpectFailureAsync (first), Is.True);
+			Assert.That (await Task.WhenAny (accepting, Task.Delay (TimeSpan.FromSeconds (10))), Is.SameAs (accepting));
+			using TcpClient responding = await accepting;
+			Task server = ServeSequencedLegacyRequestsAsync (responding,
+				["{\"system\":{\"get_sysinfo\":{\"model\":\"HS100\",\"alias\":\"fake\",\"deviceId\":\"fake\",\"relay_state\":1,\"err_code\":0}}}", "{}"], CancellationToken.None);
+			using (KasaDevice device = await second)
+				Assert.That (device.IsOn, Is.True);
+			await server;
+			}
+		finally { listener.Stop (); }
+		}
+
 	private static async Task<bool> ConnectAndExpectFailureAsync (Task<KasaDevice> connectTask)
 		{
 		try

@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "version": "2.2.1",
+  "completedUtc": "2026-11-09T23:12:44.6184403Z",
+  "workstation": [
+    {
+      "configurations": [
+        "Debug",
+        "Release"
+      ],
+      "passed": 175,
+      "suite": "Kasa",
+      "failed": 0,
+      "framework": "net10.0",
+      "skipped": 0
+    },
+    {
+      "configurations": [
+        "Debug",
+        "Release"
+      ],
+      "passed": 175,
+      "suite": "Kasa",
+      "failed": 0,
+      "framework": "net472",
+      "skipped": 0
+    }
+  ],
+  "processor": {
+    "selectedPassed": 11.0,
+    "aggregatePassed": 374,
+    "scope": "Merged offline host with recorded resolved dependencies; fake services and credentials only",
+    "runtime": "Mono 6.12.0.107, 32-bit",
+    "firmware": "4.013.0134",
+    "failed": 0,
+    "skipped": 0
+  },
+  "validatedSourceFiles": [
+    {
+      "Path": "KasaClient.Tests/DeviceLifetimeTests.cs",
+      "Sha256": "3038C2071EA9A731B08F876E0A1965A859F6DE18D38859FAA19A1EB52C9CEFA7"
+    },
+    {
+      "Path": "KasaClient.Tests/DiscoverConnectDeduplicationTests.cs",
+      "Sha256": "862565EF3C8A8B87BD98758D6C89D24794CA24147179DCC4742170496A68ECB0"
+    },
+    {
+      "Path": "KasaClient/Discover.cs",
+      "Sha256": "26F5E888937DC1C0A952936FF93D0C48E95F071CCB278EB3D813A55D77A5C7D7"
+    },
+    {
+      "Path": "KasaClient/Internal/AsyncOperationGate.cs",
+      "Sha256": "4702D550FD7CCA872227B44632ED84D14336AF6E3B90CA44C0D79BC59C1810A6"
+    },
+    {
+      "Path": "KasaClient/KasaDevice.cs",
+      "Sha256": "8B94DC0B6342C55724E1DAC46D40B4E529E1B95FDECD6C4CCD0F7E7FF191BC62"
+    },
+    {
+      "Path": "KasaClient/KasaDevice.OutletState.cs",
+      "Sha256": "003C7A4F1BD34B71A750525313FC4B0EEA24249AB3291F3379950386917C540A"
+    },
+    {
+      "Path": "KasaClient/KasaDevice.Refresh.cs",
+      "Sha256": "8A3D9BEAA8D6D275DDADAA09F42EB2F41A2003208926D4092930944AAC4EC1D9"
+    }
+  ],
+  "publicationChanges": "Version metadata, documentation and shared publication tooling added after validation; runtime source hashes retained."
+}

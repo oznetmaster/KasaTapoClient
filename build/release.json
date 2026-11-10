@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "name": "KasaTapoClient",
+  "versionFile": "KasaClient/KasaTapoClient.csproj",
+  "versionXPath": "/Project/PropertyGroup/Version",
+  "notesFile": "release-notes/v{version}.md",
+  "packages": [
+    {
+      "id": "KasaTapoClient",
+      "frameworks": [
+        "net472",
+        "net10.0"
+      ],
+      "project": "KasaClient/KasaTapoClient.csproj"
+    }
+  ],
+  "applications": [],
+  "documents": [
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "ATTRIBUTIONS.md"
+  ],
+  "rawLibraries": true,
+  "libraryArchive": false
+}

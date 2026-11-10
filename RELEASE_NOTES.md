@@ -1,23 +1,14 @@
-# KasaTapoClient 2.2.0
+# KasaTapoClient 2.2.1
 
-This minor release adds typed outlet reads and confirmed relay writes so consumers can refresh switch state frequently without fetching every energy module. Existing APIs and full-refresh behavior remain available.
+This patch corrects the audited reliability issues while retaining the existing public API and supported frameworks.
 
-## Added
-
-- `ReadOutletStateAsync` returns the current standalone plug relay state without refreshing energy or other modules. A missing state is returned as `null`; callers must not turn that into an invented off state.
-- `SetOutletStateAndReadBackAsync` serializes a standalone relay write and its actual readback. The returned value is device feedback, rather than the requested state.
-- `RefreshStripOutletStatesAsync` refreshes legacy strip sockets through system information. SMART strips retain their full child-list refresh; this API does not promise a lightweight SMART-strip energy read.
-
-These operations use the existing typed protocol models and per-device serialization. State-only reads return their own result and do not replace the full `SystemInfo` or energy snapshots supplied by `UpdateAsync`. Applications choose their scheduling and concurrency limits; the library does not create a background poller.
-
-## Compatibility
-
-- Public 2.1.0 lighting features and legacy KLAP v2 support are retained. No public member was removed or changed.
-- Targets remain .NET 10 and .NET Framework 4.7.2; runtime dependencies are unchanged.
-- The APIs are for supported standalone plugs or the explicitly documented strip operation. They do not replace bulb/dimmer power control or individual strip-socket commands.
+- Device disposal closes admission, cancels queued work and prevents late state publication. Owned transports are released after admitted work exits. Cancellable connection initiators use independently owned attempts unless they can join an existing uncancellable attempt; cancelling one caller cannot cancel another connection. Failed connection initialization releases its transport.
 
 ## Validation
 
-The public 2.2.0 source passed all 173 non-live tests on each supported runtime and the shared strict XML documentation gate.
+- Offline workstation tests passed in Debug and Release on .NET 10 and .NET Framework 4.7.2: Kasa net10.0: 175; Kasa net472: 175. No failures or skips.
+- 11 selected tests passed in the shared 374-case processor run on Mono 6.12.0.107 (32-bit), with no failures or skips. The merged host's resolved dependency graph was tested; these are not eight independent release-package tests.
+- Fake transports and credentials exercised ordering, cancellation, shutdown and failure recovery. No new household-device or cloud control was performed. Pairing storage is unchanged.
+- Strict XML, formatting and style checks passed. Package and companion-app preparation is verified separately by the shared release pipeline.
 
-The customer test driver used these polling APIs with two real outlets plus eighteen simulated endpoints on workstation and processor. Its customer subsequently confirmed working outlet-tile feedback and substantially reduced log activity on CP4-R. These are attributed customer observations and mixed-load test results, not a claim of twenty physical outlets or a measured customer processor-load reduction. Final public-source test results are recorded in the release validation history.
+See [the changelog](https://github.com/oznetmaster/KasaTapoClient/blob/v2.2.1/CHANGELOG.md) and [validation provenance](https://github.com/oznetmaster/KasaTapoClient/blob/v2.2.1/release-validation/v2.2.1.json).

@@ -18,7 +18,7 @@ See [CHANGELOG.md](https://github.com/oznetmaster/KasaTapoClient/blob/main/CHANG
 - Legacy strip socket-state refresh through system information; SMART strips retain their full child-list refresh.
 - Existing 2.1.0 lighting configuration, legacy KLAP v2 support, public APIs and target frameworks are retained.
 
-See the [2.2.0 release notes](https://github.com/oznetmaster/KasaTapoClient/blob/main/RELEASE_NOTES.md) for compatibility and validation scope.
+See the [2.2.0 release notes](https://github.com/oznetmaster/KasaTapoClient/blob/v2.2.0/RELEASE_NOTES.md) for compatibility and validation scope.
 
 ### Separate outlet state and energy refresh
 
@@ -440,3 +440,9 @@ All maintained NUnit suites use the official NUnit 5.0.0 framework. Async except
 Test package **1.1.0** uses **NUnit 5.0.0**. It is independent of the product version. [Download package](https://github.com/oznetmaster/KasaTapoClient/releases/download/v2.0.1/KasaClient.ProcessorTests-1.1.0.pkg), [documentation](https://github.com/oznetmaster/KasaTapoClient/releases/download/v2.0.1/KasaClient.ProcessorTests-1.1.0-Documentation.zip), [validation](https://github.com/oznetmaster/KasaTapoClient/releases/download/v2.0.1/KasaClient.ProcessorTests-1.1.0.validation.json), [exact source revisions](https://github.com/oznetmaster/KasaTapoClient/releases/download/v2.0.1/KasaClient.ProcessorTests-1.1.0.sources.json), and [SHA-256 checksums](https://github.com/oznetmaster/KasaTapoClient/releases/download/v2.0.1/KasaClient.ProcessorTests-1.1.0-SHA256SUMS.txt) are attached to the existing product release. No product binary or NuGet version changed for this test update.
 
 Validated on 1 October 2026: 132 offline cases passed in each of two runs from the packaged assembly on Windows. All suite identities were checked against source discovery. Live/manual tests and execution on the processor were not repeated during this migration; earlier hardware results do not certify this new package.
+
+## Changes in 2.2.1
+
+Device disposal closes admission, cancels queued work and prevents late state publication. Owned transports are released after admitted work exits. Cancellable connection initiators use independently owned attempts unless they can join an existing uncancellable attempt; cancelling one caller cannot cancel another connection. Failed connection initialization releases its transport.
+
+Release packaging and publication use the [shared publication component](https://github.com/oznetmaster/BuildAutomation/tree/5d8006f140a59c8d1dd92ab70723fe8338650bd2/ReleasePublishing). Set `RELEASE_VERSION=2.2.1` and run `./build/Invoke.ps1 -Task release-assets` for local preparation; it publishes nothing. GitHub publication reuses retained, hash-verified artifacts and the repository's existing NuGet trust identity.

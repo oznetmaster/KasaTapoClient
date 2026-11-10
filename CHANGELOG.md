@@ -6,6 +6,10 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 Dated entries record shipped features, fixes, compatibility and runtime dependency changes; an Unreleased entry describes the next prepared version. See [development and validation history](DEVELOPMENT-HISTORY.md) for tests, CI, build tooling and work not yet released.
 
+## [2.2.1](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v2.2.1) — 2026-11-10
+
+- Device disposal closes admission, cancels queued work and prevents late state publication. Owned transports are released after admitted work exits. Cancellable connection initiators use independently owned attempts unless they can join an existing uncancellable attempt; cancelling one caller cannot cancel another connection. Failed connection initialization releases its transport.
+
 ## [2.2.0](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v2.2.0) — 2026-11-07
 
 - Add typed standalone outlet state-only reads and serialized relay-write/readback operations, allowing applications to schedule frequent state checks separately from full energy refreshes.

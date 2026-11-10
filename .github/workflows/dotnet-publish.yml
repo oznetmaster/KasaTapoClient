@@ -1,223 +1,117 @@
-name: Publish .NET Package
-
+name: Publish public library release
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
   workflow_dispatch:
     inputs:
+      version:
+        description: Three-part public version
+        required: true
+        type: string
       skip_desktop_checks:
-        description: Reuse reviewed desktop results; package integrity checks still run
-        required: false
+        description: Reuse reviewed workstation validation
         type: boolean
         default: false
       desktop_skip_reason:
-        description: Tested source, completion time, frameworks, counts and evidence
-        required: false
-        type: string
-      validation_commit:
-        description: Reuse recent CI from an ancestor SHA with only docs or release-automation changes
-        required: false
-        type: string
-      documentation_patch:
-        description: Publish only the reviewed NuGet documentation patch; preserve existing runtime binaries and GitHub releases
-        required: false
-        type: boolean
-        default: false
-      version:
-        description: Version or tag to publish, for example 1.2.3 or v1.2.3
-        required: true
+        description: Validated source, time, frameworks, counts and provenance
         type: string
       skip_hardware_checks:
-        description: Publish without hardware validation when the processor or local runner is unavailable
-        required: false
+        description: Reuse reviewed processor validation
         type: boolean
         default: false
       hardware_skip_reason:
-        description: Reason for skipping hardware checks (required when selected)
-        required: false
+        description: Validated source, time, selected tests, limitations and cleanup
         type: string
-
+      validation_commit:
+        description: Optional ancestor CI source permitted by the shared policy
+        type: string
+      documentation_patch:
+        description: Existing documentation-only package maintenance mode
+        type: boolean
+        default: false
 permissions:
-  actions: read
-  checks: read
-  contents: write
-  id-token: write
-
+  contents: read
 concurrency:
   group: public-release
   cancel-in-progress: false
   queue: max
-
 jobs:
-  publish:
+  build:
     if: inputs.documentation_patch != true
-    runs-on: ubuntu-latest
-    env:
-      PROJECT_PATH: KasaClient/KasaTapoClient.csproj
-      ARTIFACT_DIR: ${{ github.workspace }}/artifacts
-
+    runs-on: windows-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
-          # Manual credential-recovery runs keep the immutable, already tested release source.
-          ref: ${{ github.event_name == 'workflow_dispatch' && (startsWith(inputs.version, 'v') && inputs.version || format('v{0}', inputs.version)) || github.ref }}
-
-      - name: Verify configured release checks
-        shell: pwsh
-        working-directory: ${{ github.workspace }}/.
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REQUIRED_RELEASE_CHECKS: ${{ vars.RELEASE_REQUIRED_CHECKS }}
-          REQUIRED_HOSTED_WORKFLOWS: '["unit-tests.yml"]'
-          RELEASE_SKIP_HARDWARE_CHECKS: ${{ inputs.skip_hardware_checks }}
-          RELEASE_HARDWARE_SKIP_REASON: ${{ inputs.hardware_skip_reason }}
-        run: |
-          Write-Output 'Configured checks are verified by the following shared-policy action.'
-      - name: Verify shared release policy
-        uses: oznetmaster/CrestronHomeNUnit/.github/actions/release-validation@2ae8197c6685099c2133e7bb962d1f3568aae9c3
+      - uses: actions/setup-dotnet@v4
         with:
-          required-checks: "${{ vars.RELEASE_REQUIRED_CHECKS }}"
-          hosted-workflows: "[\"unit-tests.yml\"]"
-          skip-hardware-checks: "${{ inputs.skip_hardware_checks }}"
-          hardware-skip-reason: "${{ inputs.hardware_skip_reason }}"
-          skip-desktop-checks: "${{ inputs.skip_desktop_checks }}"
-          desktop-skip-reason: "${{ inputs.desktop_skip_reason }}"
-          validation-commit: "${{ inputs.validation_commit }}"
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
+          dotnet-version: |
+            8.0.x
+            10.0.x
 
-      - name: Verify strict XML documentation before publication
-        shell: pwsh
-        run: ./build/Invoke.ps1 -Task xml-documentation
-
-      - name: Determine package version
+      - name: Resolve public version
         id: version
         shell: pwsh
-        run: |
-          $rawVersion = switch ('${{ github.event_name }}') {
-              'workflow_dispatch' { '${{ inputs.version }}'; break }
-              'push' { '${{ github.ref_name }}'; break }
-              default { '' }
-          }
-
-          if ([string]::IsNullOrWhiteSpace($rawVersion)) {
-              throw 'No release tag or manual version was provided.'
-          }
-
-          $packageVersion = $rawVersion.Trim()
-          if ($packageVersion.StartsWith('v', [System.StringComparison]::OrdinalIgnoreCase)) {
-              $packageVersion = $packageVersion.Substring(1)
-          }
-
-          if ($packageVersion -notmatch '^\d+\.\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z\.-]+)?$') {
-              throw "Version '$packageVersion' is not a supported NuGet semantic version."
-          }
-
-          "raw_version=$rawVersion" >> $env:GITHUB_OUTPUT
-          "package_version=$packageVersion" >> $env:GITHUB_OUTPUT
-
-      - name: Restore solution
-        run: dotnet restore KasaClient.slnx
-
-      - name: Build solution
-        run: dotnet build KasaClient.slnx --configuration Release --no-restore -p:ContinuousIntegrationBuild=true -p:Version=${{ steps.version.outputs.package_version }}
-
-      - name: Run tests
-        if: ${{ inputs.skip_desktop_checks != true }}
-        run: dotnet test KasaClient.Tests/KasaClient.Tests.csproj --configuration Release --no-build --framework net10.0 --filter "TestCategory!=Live"
-
-      - name: Pack library
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Path "${{ env.ARTIFACT_DIR }}/nuget" -Force | Out-Null
-          dotnet pack ${{ env.PROJECT_PATH }} --configuration Release --no-build -p:ContinuousIntegrationBuild=true -p:Version=${{ steps.version.outputs.package_version }} -p:PackageVersion=${{ steps.version.outputs.package_version }} --output "${{ env.ARTIFACT_DIR }}/nuget"
-          if ($LASTEXITCODE -ne 0) { throw 'NuGet pack failed.' }
-          $packages = @(Get-ChildItem -LiteralPath "${{ env.ARTIFACT_DIR }}/nuget" -Filter *.nupkg -File)
-          if ($packages.Count -ne 1) { throw 'Expected exactly one NuGet package.' }
-          ./tools/Test-NuGetDocumentation.ps1 -PackagePath $packages[0].FullName
-
-      - name: Authenticate to NuGet with GitHub OIDC
-        id: nuget-login
-        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
-        with:
-          user: oznetmaster
-
-      - name: Retain verified NuGet package
-        uses: actions/upload-artifact@v4
-        with:
-          name: client-nuget-package
-          path: ${{ env.ARTIFACT_DIR }}/nuget/*.nupkg
-          if-no-files-found: error
-
-      - name: Publish package
-        shell: pwsh
         env:
-          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+          REQUESTED_VERSION: ${{ inputs.version }}
         run: |
-          $packages = Get-ChildItem -Path "${{ env.ARTIFACT_DIR }}/nuget" -Filter '*.nupkg' | Where-Object { $_.Name -notlike '*.symbols.nupkg' }
-          if (-not $packages) {
-              throw 'No NuGet package was produced.'
-          }
-
-          if ([string]::IsNullOrWhiteSpace($env:NUGET_API_KEY)) { throw 'NuGet Trusted Publishing did not provide a temporary credential.' }
-          foreach ($package in $packages) {
-              dotnet nuget push $package.FullName --api-key $env:NUGET_API_KEY --source "https://api.nuget.org/v3/index.json" --skip-duplicate
-          }
-
-      - name: Collect release assets
-        shell: pwsh
-        run: |
-          $releaseDir = "${{ env.ARTIFACT_DIR }}/release"
-          New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
-
-          $projectDir = Split-Path -Parent "${{ env.PROJECT_PATH }}"
-          $frameworks = @('net472', 'net10.0')
-          foreach ($framework in $frameworks) {
-              $outputDir = Join-Path $projectDir "bin/Release/$framework"
-              foreach ($extension in @('dll', 'xml')) {
-                  $sourcePath = Join-Path $outputDir "KasaTapoClient.$extension"
-                  if (Test-Path $sourcePath) {
-                      Copy-Item $sourcePath (Join-Path $releaseDir "KasaTapoClient.$framework.$extension") -Force
-                  }
-              }
-          }
-
-      - name: Extract package release notes
-        id: notes
-        shell: pwsh
-        run: |
-          [xml]$xml = Get-Content -Path '${{ env.PROJECT_PATH }}' -Raw
-          $releaseNotes = $xml.Project.PropertyGroup.PackageReleaseNotes | Where-Object { $_ } | Select-Object -First 1
-
-          $notesPath = "${{ env.ARTIFACT_DIR }}/RELEASE_NOTES.md"
-          if ([string]::IsNullOrWhiteSpace($releaseNotes)) {
-              Write-Warning 'No PackageReleaseNotes found in the project file.'
-              '' | Out-File -FilePath $notesPath -Encoding utf8
-          } else {
-              $releaseNotes.Trim() | Out-File -FilePath $notesPath -Encoding utf8
-          }
-
-          "notes_path=$notesPath" >> $env:GITHUB_OUTPUT
-
-      - name: Create GitHub release from tag
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-        uses: softprops/action-gh-release@v2
+          $version = if ($env:GITHUB_EVENT_NAME -eq 'push') { $env:GITHUB_REF_NAME } else { $env:REQUESTED_VERSION }
+          $version = $version -creplace '^v', ''
+          if ($version -cnotmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') { throw 'Use a canonical three-part stable public version.' }
+          "version=$version" >> $env:GITHUB_OUTPUT
+      - uses: oznetmaster/BuildAutomation/.github/actions/release-prepare@5d8006f140a59c8d1dd92ab70723fe8338650bd2
         with:
-          tag_name: v${{ steps.version.outputs.package_version }}
-          name: ${{ steps.version.outputs.raw_version }}
-          body_path: ${{ steps.notes.outputs.notes_path }}
-          generate_release_notes: true
-          prerelease: ${{ contains(steps.version.outputs.package_version, '-') }}
-          files: |
-            ${{ env.ARTIFACT_DIR }}/release/*.dll
-            ${{ env.ARTIFACT_DIR }}/release/*.xml
+          version: ${{ steps.version.outputs.version }}
+      - name: Verify shared validation policy
+        uses: oznetmaster/CrestronHomeNUnit/.github/actions/release-validation@2ae8197c6685099c2133e7bb962d1f3568aae9c3
+        with:
+          required-checks: ${{ vars.RELEASE_REQUIRED_CHECKS }}
+          hosted-workflows: '["unit-tests.yml"]'
+          skip-desktop-checks: ${{ inputs.skip_desktop_checks }}
+          desktop-skip-reason: ${{ inputs.desktop_skip_reason }}
+          skip-hardware-checks: ${{ inputs.skip_hardware_checks }}
+          hardware-skip-reason: ${{ inputs.hardware_skip_reason }}
+          validation-commit: ${{ inputs.validation_commit }}
+      - name: Stage packages and companion applications through Cake
+        uses: oznetmaster/BuildAutomation@5d8006f140a59c8d1dd92ab70723fe8338650bd2
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        with:
+          task: release-assets
+      - uses: oznetmaster/BuildAutomation/.github/actions/release-freeze@5d8006f140a59c8d1dd92ab70723fe8338650bd2
+        with:
+          version: ${{ steps.version.outputs.version }}
+  publish:
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 30
 
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: oznetmaster/BuildAutomation/.github/actions/release-publish@5d8006f140a59c8d1dd92ab70723fe8338650bd2
+        with:
+          version: ${{ needs.build.outputs.version }}
   nuget-documentation:
+    permissions:
+      contents: read
+      id-token: write
     if: github.event_name == 'workflow_dispatch' && inputs.documentation_patch == true
     runs-on: windows-latest
     timeout-minutes: 15
