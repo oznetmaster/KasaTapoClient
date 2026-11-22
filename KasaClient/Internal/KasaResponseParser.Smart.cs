@@ -348,7 +348,7 @@ internal static partial class KasaResponseParser
 		{
 		SmartDeviceInfoDto info = response.DeviceInfo;
 		IReadOnlyList<ChildDeviceInfo> children = CreateSmartChildren (response.ChildDeviceList, response.ChildComponentIds, response.ChildOverrides);
-		DeviceType deviceType = DetermineSmartDeviceType (response.ComponentIds, info.Type);
+		DeviceType deviceType = DetermineSmartDeviceType (response);
 		bool? isOn = info.DeviceOn;
 		if (isOn is null && deviceType == DeviceType.Hub)
 			{
@@ -666,9 +666,10 @@ internal static partial class KasaResponseParser
 			|| componentIds.Contains ("dynamic_light_effect");
 		}
 
-	private static DeviceType DetermineSmartDeviceType (IReadOnlyList<string> componentIds, string? rawDeviceType)
+	internal static DeviceType DetermineSmartDeviceType (SmartParsedResponse response)
 		{
-		string deviceType = (rawDeviceType ?? string.Empty).ToUpperInvariant ();
+		IReadOnlyList<string> componentIds = response.ComponentIds;
+		string deviceType = (response.DeviceInfo.Type ?? string.Empty).ToUpperInvariant ();
 		if (deviceType.Contains ("HUB"))
 			{
 			return DeviceType.Hub;

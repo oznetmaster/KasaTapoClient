@@ -44,12 +44,28 @@ internal static partial class KasaResponseParser
 			response.HomeKit);
 		}
 
-	internal static SmartParsedResponse ParseSmartResponse (string responseJson)
+	internal static SmartParsedResponse ParseSmartResponse (string responseJson) => ParseSmartCoreResponses (ReadSmartBatchResults (responseJson));
+
+	internal static List<SmartMethodResponseDto> ReadSmartBatchResults (string responseJson)
 		{
 		SmartEnvelopeDto root = WireJson.Read<SmartEnvelopeDto> (responseJson);
-		List<SmartMethodResponseDto> responses = root.Result?.Responses
+		return root.Result?.Responses
 			?? throw new InvalidDataException ("The smart device response did not contain result.responses.");
+		}
 
+	internal static SmartMethodResponseDto ParseSmartCoreResult (string method, string responseJson)
+		{
+		ResponseEnvelope<SmartEnvelopeResultDto> response = WireJson.Read<ResponseEnvelope<SmartEnvelopeResultDto>> (responseJson);
+		return new SmartMethodResponseDto
+			{
+			Method = method,
+			ErrorCode = response.ErrorCode,
+			Result = response.ErrorCode is null or 0 ? response.Result : null,
+			};
+		}
+
+	internal static SmartParsedResponse ParseSmartCoreResponses (IReadOnlyList<SmartMethodResponseDto> responses)
+		{
 		SmartEnvelopeResultDto? deviceInfoResult = null;
 		SmartEnvelopeResultDto? componentResult = null;
 		SmartEnvelopeResultDto? childDeviceListResult = null;

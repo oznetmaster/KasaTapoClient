@@ -6,9 +6,13 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 Dated entries record shipped features, fixes, compatibility and runtime dependency changes; an Unreleased entry describes the next prepared version. See [development and validation history](DEVELOPMENT-HISTORY.md) for tests, CI, build tooling and work not yet released.
 
-## Unreleased
+## [2.2.2](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v2.2.2) — 2026-11-22
 
-- Future binary library releases include separate portable-PDB symbol packages on GitHub and NuGet, verified against the matching Release DLLs for each framework.
+- Recover from a timed-out SMART refresh batch by retrying its reads individually and using individual core reads for that device on subsequent refreshes.
+- Discover outlets on SMART strips such as the Tapo P300 on the first refresh. Keep the previous outlet snapshot if a later page is missing.
+- Publish separate portable PDB symbol packages on GitHub and NuGet, verified against the matching Release DLLs for each framework.
+
+See the [release notes](release-notes/v2.2.2.md).
 
 ## [2.2.1](https://github.com/oznetmaster/KasaTapoClient/releases/tag/v2.2.1) — 2026-11-10
 

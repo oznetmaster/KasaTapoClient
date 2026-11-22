@@ -5,6 +5,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,6 +16,10 @@ namespace KasaTapoClient;
 
 public sealed partial class KasaDevice
 	{
+	// Accessed only inside the serialized device operation. A successful fallback
+	// avoids paying for the same core batch timeout on every poll of this device.
+	private bool _useSingleSmartCoreRequests;
+
 	private async Task UpdateLegacyAsync (CancellationToken cancellationToken)
 		{
 		DateTime now = DateTime.Now;
@@ -65,10 +71,12 @@ public sealed partial class KasaDevice
 		{
 		DeviceConnectionParameters? connectionParameters = Configuration.ConnectionOptions.ConnectionParameters;
 		bool shouldRequestChildDeviceList = DeviceType == DeviceType.Hub
+			|| DeviceType == DeviceType.Strip
 			|| Children.Count > 0
 			|| connectionParameters?.DeviceFamily == DeviceFamilyKind.SmartTapoHub
 			|| connectionParameters?.DeviceFamily == DeviceFamilyKind.SmartKasaHub;
 		bool shouldRequestChildDeviceComponentList = DeviceType == DeviceType.Hub
+			|| DeviceType == DeviceType.Strip
 			|| connectionParameters?.DeviceFamily == DeviceFamilyKind.SmartTapoHub
 			|| connectionParameters?.DeviceFamily == DeviceFamilyKind.SmartKasaHub;
 
@@ -86,8 +94,23 @@ public sealed partial class KasaDevice
 			coreRequests[KasaCommands.SMART_GET_CHILD_DEVICE_COMPONENT_LIST_METHOD] = null;
 			}
 
-		string response = await _transport.SendAsync (KasaCommands.CreateSmartMultipleRequest (coreRequests), cancellationToken).ConfigureAwait (false);
-		KasaResponseParser.SmartParsedResponse parsedResponse = KasaResponseParser.ParseSmartResponse (response);
+		List<KasaResponseParser.SmartMethodResponseDto> coreResults = await ReadSmartCoreAsync (coreRequests, cancellationToken).ConfigureAwait (false);
+		KasaResponseParser.SmartParsedResponse parsedResponse = KasaResponseParser.ParseSmartCoreResponses (coreResults);
+		if (!shouldRequestChildDeviceList && KasaResponseParser.DetermineSmartDeviceType (parsedResponse) == DeviceType.Strip)
+			{
+			// SMART strips identify themselves as plugs until component negotiation.
+			if (parsedResponse.ChildDeviceList is null)
+				{
+				var childRequests = new Dictionary<string, object?>
+					{
+					[KasaCommands.SMART_GET_CHILD_DEVICE_LIST_METHOD] = null,
+					[KasaCommands.SMART_GET_CHILD_DEVICE_COMPONENT_LIST_METHOD] = null,
+					};
+				coreResults.AddRange (await ReadSmartCoreAsync (childRequests, cancellationToken).ConfigureAwait (false));
+				parsedResponse = KasaResponseParser.ParseSmartCoreResponses (coreResults);
+				}
+			shouldRequestChildDeviceList = true;
+			}
 		if (shouldRequestChildDeviceList)
 			{
 			parsedResponse = await EnsureFullChildDeviceListAsync (parsedResponse, cancellationToken).ConfigureAwait (false);
@@ -101,6 +124,63 @@ public sealed partial class KasaDevice
 				ApplyParsedStateCore (state);
 			});
 		_smartResponse = parsedResponse;
+		}
+
+	private async Task<List<KasaResponseParser.SmartMethodResponseDto>> ReadSmartCoreAsync (
+		Dictionary<string, object?> requests,
+		CancellationToken cancellationToken)
+		{
+		if (!_useSingleSmartCoreRequests)
+			{
+			try
+				{
+				string batchResponse = await SendSmartCoreReadAsync (KasaCommands.CreateSmartMultipleRequest (requests), cancellationToken).ConfigureAwait (false);
+				return KasaResponseParser.ReadSmartBatchResults (batchResponse);
+				}
+			catch (TimeoutException) when (!cancellationToken.IsCancellationRequested)
+				{
+				// Some devices never answer a batch containing both child-list reads.
+				}
+			}
+
+		var results = new List<KasaResponseParser.SmartMethodResponseDto> (requests.Count);
+		foreach (KeyValuePair<string, object?> request in requests)
+			{
+			cancellationToken.ThrowIfCancellationRequested ();
+			string response = await SendSmartCoreReadAsync (KasaCommands.CreateSmartRequest (request.Key, request.Value), cancellationToken).ConfigureAwait (false);
+			KasaResponseParser.SmartMethodResponseDto result = KasaResponseParser.ParseSmartCoreResult (request.Key, response);
+			if (request.Key == KasaCommands.SMART_GET_CHILD_DEVICE_LIST_METHOD && result.Result is not KasaResponseParser.SmartEnvelopeResultDto { ChildDeviceList: not null })
+				{
+				throw new InvalidDataException ("The individual smart response did not contain the child device list.");
+				}
+			results.Add (result);
+			}
+		_useSingleSmartCoreRequests = true;
+		return results;
+		}
+
+	private async Task<string> SendSmartCoreReadAsync (string request, CancellationToken cancellationToken)
+		{
+		// Use our own deadline for transports whose HTTP API does not enforce its
+		// setting for asynchronous requests (including HttpWebRequest on Mono).
+		using var deadline = CancellationTokenSource.CreateLinkedTokenSource (cancellationToken);
+		if (Configuration.Timeout > TimeSpan.Zero)
+			{
+			deadline.CancelAfter (Configuration.Timeout);
+			}
+		try
+			{
+			return await _transport.SendAsync (request, deadline.Token).ConfigureAwait (false);
+			}
+		catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested
+			&& (deadline.IsCancellationRequested || exception is TaskCanceledException))
+			{
+			throw new TimeoutException ("The smart refresh request timed out.", exception);
+			}
+		catch (WebException exception) when (!cancellationToken.IsCancellationRequested && exception.Status == WebExceptionStatus.Timeout)
+			{
+			throw new TimeoutException ("The smart refresh request timed out.", exception);
+			}
 		}
 
 	private async Task<KasaResponseParser.SmartParsedResponse> EnsureFullChildDeviceListAsync (
@@ -119,15 +199,15 @@ public sealed partial class KasaDevice
 		while (mergedChildren.Count < sum)
 			{
 			int startIndex = mergedChildren.Count;
-			string pageResponseJson = await _transport.SendAsync (
+			string pageResponseJson = await SendSmartCoreReadAsync (
 				KasaCommands.CreateSmartRequest (
 					KasaCommands.SMART_GET_CHILD_DEVICE_LIST_METHOD,
 					new PageParametersDto { StartIndex = startIndex }),
 				cancellationToken).ConfigureAwait (false);
 			KasaResponseParser.SmartChildDeviceListDto? page = KasaResponseParser.ParseSmartChildDeviceListPage (pageResponseJson);
-			if (page is null || page.ChildDevices.Count == 0)
+			if (page is null || page.ChildDevices.Count == 0 || (page.StartIndex.HasValue && page.StartIndex != startIndex))
 				{
-				break;
+				throw new InvalidDataException ("The smart device did not return the remaining child device list.");
 				}
 
 			mergedChildren.AddRange (page.ChildDevices);

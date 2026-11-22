@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "version": "2.2.2",
+  "completedUtc": "2026-11-22T06:28:06.2515731Z",
+  "sourceBaseCommit": "ee28e5aecdd15144328baf8bd7bea9ef6f211749",
+  "sourceFileHashEncoding": "UTF-8 without BOM, LF line endings",
+  "validatedSourceFiles": [
+    {
+      "sha256": "660F86BD4CBD41048E6B635EC1F2279E74883F2DCC09DB8EC60905EFFC8F3F17",
+      "path": "KasaClient/Internal/KasaResponseParser.EntryPoints.cs"
+    },
+    {
+      "sha256": "49A0F050549267ED919FF154AABB22F40395CB21A511265DE8F327ABF6052D1A",
+      "path": "KasaClient/Internal/KasaResponseParser.Smart.cs"
+    },
+    {
+      "sha256": "7D40B35ECFF0B9A834DFFFC28B6CC1157AFE1179E7276941AAF726B0ED239F97",
+      "path": "KasaClient/KasaDevice.Refresh.cs"
+    },
+    {
+      "sha256": "2F049E95FA51089A39FD3919F9F76FBB9B73AE23D22CBB77FF7D01115F8BA63C",
+      "path": "KasaClient.Tests/KasaSmartRefreshTimeoutTests.cs"
+    }
+  ],
+  "workstation": [
+    {
+      "skipped": 0,
+      "passed": 180,
+      "failed": 0,
+      "configuration": "Debug",
+      "framework": "net10.0"
+    },
+    {
+      "skipped": 0,
+      "passed": 180,
+      "failed": 0,
+      "configuration": "Debug",
+      "framework": "net472"
+    }
+  ],
+  "processor": {
+    "failed": 0,
+    "testReportSha256": "0B9A7EB818AE85EFFFABF37AF32766ED42F6B497AD126B716587DAC5F732ABCD",
+    "scope": "Entire offline client suite in the shared merged test host, with simulated protocol failures",
+    "leaseReleased": true,
+    "framework": "net472",
+    "skipped": 0,
+    "configuration": "Debug",
+    "temporaryPackageRemoved": true,
+    "passed": 180,
+    "runtime": "Crestron processor Mono",
+    "temporaryHostRemoved": true
+  },
+  "publicationChanges": "Version metadata and release documentation were added after these tests."
+}

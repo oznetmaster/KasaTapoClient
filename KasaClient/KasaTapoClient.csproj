@@ -10,7 +10,7 @@
 		<TargetFrameworks>net472;net10.0</TargetFrameworks>
 		<IsPackable>true</IsPackable>
 		<PackageId>KasaTapoClient</PackageId>
-		<Version>2.2.1</Version>
+		<Version>2.2.2</Version>
 		<Authors>Neil Colvin</Authors>
 		<Company>Neil Colvin</Company>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -21,20 +21,16 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Description>Reusable Kasa/Tapo client library for .NET Framework 4.7.2 and .NET 10.</Description>
-		<PackageReleaseNotes># KasaTapoClient 2.2.1
+		<PackageReleaseNotes># KasaTapoClient 2.2.2
 
-This patch corrects the audited reliability issues while retaining the existing public API and supported frameworks.
+- When a SMART refresh batch times out, retry its reads individually. The device instance keeps using individual core reads on later polls, avoiding a repeated timeout. Caller cancellation still stops the refresh.
+- Discover outlets during the first refresh of SMART strips such as the Tapo P300. If a later page is missing, keep the previously published outlet list and report the refresh failure.
 
-- Device disposal closes admission, cancels queued work and prevents late state publication. Owned transports are released after admitted work exits. Cancellable connection initiators use independently owned attempts unless they can join an existing uncancellable attempt; cancelling one caller cannot cancel another connection. Failed connection initialization releases its transport.
+This patch preserves the public API, runtime dependencies, and support for .NET 10 and .NET Framework 4.7.2. The release also includes a separate portable symbol package.
 
-## Validation
+Validation passed on the workstation with 180 offline tests per framework and on Crestron processor Mono with all 180 offline tests. The timeout regressions used simulated SMART responses. [Validation record](https://github.com/oznetmaster/KasaTapoClient/blob/v2.2.2/release-validation/v2.2.2.json)
 
-- Offline workstation tests passed in Debug and Release on .NET 10 and .NET Framework 4.7.2: Kasa net10.0: 175; Kasa net472: 175. No failures or skips.
-- 11 selected tests passed in the shared 374-case processor run on Mono 6.12.0.107 (32-bit), with no failures or skips. The merged host&apos;s resolved dependency graph was tested; these are not eight independent release-package tests.
-- Fake transports and credentials exercised ordering, cancellation, shutdown and failure recovery. No new household-device or cloud control was performed. Pairing storage is unchanged.
-- Strict XML, formatting and style checks passed. Package and companion-app preparation is verified separately by the shared release pipeline.
-
-See [the changelog](https://github.com/oznetmaster/KasaTapoClient/blob/v2.2.1/CHANGELOG.md) and [validation provenance](https://github.com/oznetmaster/KasaTapoClient/blob/v2.2.1/release-validation/v2.2.1.json).
+Upstream reference [python-kasa #1759](https://github.com/python-kasa/python-kasa/pull/1759).
 </PackageReleaseNotes>
 		<!-- brings in System.Net.Http -->
 		<LangVersion>13.0</LangVersion>
