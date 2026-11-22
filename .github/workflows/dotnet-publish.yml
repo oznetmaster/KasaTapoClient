@@ -112,7 +112,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - uses: oznetmaster/BuildAutomation/.github/actions/release-publish@dd6056146da4424c996c0c3a0f98651e16209098
+      - uses: oznetmaster/BuildAutomation/.github/actions/release-publish@3227d67806b1f42cea26c1ecb0d0fc0f4ed0cf10
         with:
           version: ${{ needs.build.outputs.version }}
   nuget-documentation:
@@ -183,7 +183,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - uses: oznetmaster/BuildAutomation/.github/actions/release-publish@dd6056146da4424c996c0c3a0f98651e16209098
+      - uses: oznetmaster/BuildAutomation/.github/actions/release-publish@3227d67806b1f42cea26c1ecb0d0fc0f4ed0cf10
         with:
           version: ${{ inputs.version }}
           source-run-id: ${{ inputs.artifact_run_id }}
